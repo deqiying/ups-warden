@@ -1,0 +1,28 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 编辑器与 IDE 本地配置
+/.idea/
+/.vscode/
+/.fleet/
+
+# mise 管理的工具缓存（Go / npm / pnpm / Node 统一放在仓库内）
+/.cache/
+
+# Go 构建产物
+/backend/bin/
+*.exe
+*.test
+*.out
+
+# 前端依赖与构建产物
+/frontend/node_modules/
+/frontend/dist/
+*.local
+
+# 日志
+*.log
+
+# 本地运行数据（SQLite、密钥文件等）
+/data/

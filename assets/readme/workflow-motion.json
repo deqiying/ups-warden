@@ -1,0 +1,45 @@
+{
+  "width": 1200,
+  "fps": 30,
+  "duration": 6.5,
+  "colors": 256,
+  "dither": "none",
+  "clip_to_base_alpha": true,
+  "max_size_mb": 2.0,
+  "reveals": [
+    {
+      "id": "progress",
+      "axis": "x",
+      "start": 0.3,
+      "end": 3.4,
+      "exit": { "start": 5.8, "end": 6.45 }
+    }
+  ],
+  "layers": [
+    {
+      "id": "station-1",
+      "enter": { "start": 0.2, "end": 1.0, "from": [0, 14] },
+      "exit": { "start": 5.8, "end": 6.45 }
+    },
+    {
+      "id": "station-2",
+      "enter": { "start": 0.9, "end": 1.7, "from": [0, 14] },
+      "exit": { "start": 5.8, "end": 6.45 }
+    },
+    {
+      "id": "station-3",
+      "enter": { "start": 1.6, "end": 2.4, "from": [0, 14] },
+      "exit": { "start": 5.8, "end": 6.45 }
+    },
+    {
+      "id": "station-4",
+      "enter": { "start": 2.3, "end": 3.1, "from": [0, 14] },
+      "exit": { "start": 5.8, "end": 6.45 }
+    },
+    {
+      "id": "station-5",
+      "enter": { "start": 3.0, "end": 3.8, "from": [0, 14] },
+      "exit": { "start": 5.8, "end": 6.45 }
+    }
+  ]
+}

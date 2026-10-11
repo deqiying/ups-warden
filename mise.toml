@@ -1,0 +1,20 @@
+min_version = "2026.9.11"
+
+[tools]
+# Go 官方当前最新补丁为 1.27.2；1.27.3 发布后在此升级。
+go = "1.27.2"
+node = "24.21.0"
+pnpm = "12.11.2"
+
+[env]
+# 所有工具缓存统一放在仓库根目录 .cache/ 下，不使用用户全局缓存目录。
+# 禁止 go 命令按 go.mod 的 toolchain 指令自动下载其他版本，版本只由本文件管理。
+GOTOOLCHAIN = "local"
+GOPATH = "{{config_root}}/.cache/go/path"
+GOBIN = "{{config_root}}/.cache/go/path/bin"
+GOMODCACHE = "{{config_root}}/.cache/go/mod"
+GOCACHE = "{{config_root}}/.cache/go/build"
+NODE_COMPILE_CACHE = "{{config_root}}/.cache/node/compile-cache"
+npm_config_cache = "{{config_root}}/.cache/npm"
+pnpm_config_cache_dir = "{{config_root}}/.cache/pnpm/cache"
+pnpm_config_store_dir = "{{config_root}}/.cache/pnpm/store"

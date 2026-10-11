@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">UPS Warden</title>
+  <desc id="desc">UPS Warden：统一接入 SNMP、Modbus TCP、AYI9 云监控卡 JSON API 三种协议的 UPS，停电时发送通知并按阶段关闭局域网设备。右侧以 ET1K 实测数据为例：同一时刻的电池容量在三种协议中分别为 33.1.2.4.0 = 100、寄存器 10 = 1000（×0.1）、ayi9-json QAD[20] = "100"，归一化后统一为 battery_capacity_pct = 100 %。</desc>
+
+  <rect width="1200" height="420" rx="24" fill="#0D1311"/>
+
+  <g id="title-block" transform="translate(64 0)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <path d="M10 70 L2 86 H10 L7 98 L18 80 H10 L13 70 Z" fill="#F2B544"/>
+    <text x="30" y="92" font-family="SFMono-Regular, Menlo, Consolas, 'Cascadia Mono', monospace" font-size="18" letter-spacing="2" fill="#8C9A92">UPS MONITOR · LAN SHUTDOWN</text>
+
+    <text x="0" y="176" font-size="78" font-weight="700" fill="#ECF1EC" letter-spacing="-1">UPS Warden</text>
+
+    <text x="0" y="224" font-size="25" fill="#ECF1EC">统一接入 SNMP · Modbus TCP ·</text>
+    <text x="0" y="260" font-size="25" fill="#ECF1EC">AYI9 云监控卡 JSON API</text>
+    <text x="0" y="296" font-size="25" fill="#ECF1EC">停电即通知，按阶段关闭局域网设备</text>
+
+    <rect x="0" y="338" width="198" height="38" rx="19" fill="none" stroke="#F2B544" stroke-opacity="0.7"/>
+    <circle cx="22" cy="357" r="5" fill="#F2B544"/>
+    <text x="36" y="363" font-size="18" fill="#F2B544">初始化阶段 · 开发中</text>
+    <text x="218" y="363" font-family="SFMono-Regular, Menlo, Consolas, 'Cascadia Mono', monospace" font-size="18" fill="#8C9A92">Go · React 19 · TypeScript 7</text>
+  </g>
+
+  <g id="project-proof" transform="translate(664 40)">
+    <rect width="472" height="340" rx="18" fill="#151D1A" stroke="#26312C"/>
+    <text x="28" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="18" fill="#8C9A92">ET1K 实测 · 同一时刻的电池容量</text>
+
+    <g font-family="SFMono-Regular, Menlo, Consolas, 'Cascadia Mono', monospace" font-size="20">
+      <g transform="translate(28 66)">
+        <rect width="104" height="40" rx="8" fill="#0D1311" stroke="#26312C"/>
+        <text x="52" y="27" text-anchor="middle" font-size="18" fill="#ECF1EC">SNMP</text>
+        <text x="124" y="27" fill="#8C9A92">33.1.2.4.0</text>
+        <text x="270" y="27" fill="#ECF1EC">= 100</text>
+      </g>
+      <g transform="translate(28 118)">
+        <rect width="104" height="40" rx="8" fill="#0D1311" stroke="#26312C"/>
+        <text x="52" y="27" text-anchor="middle" font-size="18" fill="#ECF1EC">Modbus</text>
+        <text x="124" y="27" fill="#8C9A92">reg 10</text>
+        <text x="270" y="27" fill="#ECF1EC">= 1000</text>
+        <text x="350" y="27" font-size="18" fill="#8C9A92">×0.1</text>
+      </g>
+      <g transform="translate(28 170)">
+        <rect width="104" height="40" rx="8" fill="#0D1311" stroke="#26312C"/>
+        <text x="52" y="26" text-anchor="middle" font-size="15" fill="#ECF1EC">ayi9-json</text>
+        <text x="124" y="27" fill="#8C9A92">QAD[20]</text>
+        <text x="270" y="27" fill="#ECF1EC">= "100"</text>
+      </g>
+    </g>
+
+    <g id="normalize-arrow">
+      <line x1="28" y1="236" x2="190" y2="236" stroke="#26312C"/>
+      <line x1="282" y1="236" x2="444" y2="236" stroke="#26312C"/>
+      <text x="236" y="242" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="18" fill="#3DD6B5">归一化 ↓</text>
+    </g>
+
+    <g transform="translate(28 252)">
+      <rect width="416" height="64" rx="12" fill="#10261F" stroke="#3DD6B5" stroke-opacity="0.55"/>
+      <text x="20" y="40" font-family="SFMono-Regular, Menlo, Consolas, 'Cascadia Mono', monospace" font-size="20" fill="#3DD6B5">battery_capacity_pct</text>
+      <text x="396" y="43" text-anchor="end" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="32" font-weight="700" fill="#ECF1EC">100 %</text>
+    </g>
+  </g>
+</svg>
