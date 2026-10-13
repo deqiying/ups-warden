@@ -21,7 +21,7 @@ UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UP
 
 静态版本：[`assets/readme/workflow.svg`](assets/readme/workflow.svg)
 
-## 协议支持
+## 协议支持（设计目标）
 
 同一型号的 UPS 网卡往往同时暴露多种协议，但字段、类型和单位各不相同。UPS Warden 不为单一型号写死映射，而是用 **设备 Profile** 描述"原始字段 → 统一字段"，再归一化为统一数据模型；存储、规则、通知和界面只使用统一模型。
 
@@ -39,39 +39,26 @@ UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UP
 
 ## 快速开始
 
-开发环境由根目录 [`mise.toml`](mise.toml) 统一管理（Go 1.27、Node.js 24、pnpm 12），Go、npm、pnpm 等缓存都放在仓库内的 `.cache/` 中。
+开发环境由根目录 [`mise.toml`](mise.toml) 统一管理，工具缓存位于仓库内的 `.cache/`。以下 Bash / Git Bash 命令从**仓库根目录**执行：
 
 ```bash
 mise install
-
-# 后端：默认监听 127.0.0.1:8080，提供 /healthz
-cd backend
-mise x -- go run ./cmd/ups-warden
-
-# 前端（另开终端）：开发服务器把 /api 与 /healthz 代理到后端
-cd frontend
-mise x -- pnpm install
-mise x -- pnpm dev
+(cd frontend && mise x -- pnpm install)
 ```
 
-已激活 mise 的 shell 可以省略 `mise x --`。
-
-<details>
-<summary>检查与测试命令</summary>
+两个终端分别从**仓库根目录**启动：
 
 ```bash
-# backend/
-gofmt -l .
-go vet ./...
-go test ./...
-
-# frontend/（Vite+ 统一提供格式、lint、类型检查与测试）
-pnpm check
-pnpm test
-pnpm build
+# 终端一：后端默认监听 127.0.0.1:8080，仅提供 /healthz
+(cd backend && mise x -- go run ./cmd/ups-warden)
 ```
 
-</details>
+```bash
+# 终端二：前端开发服务器，打开终端输出的地址
+(cd frontend && mise x -- pnpm dev)
+```
+
+启动参数、代理设置、测试与构建命令见[开发指南](docs/guides/development.md)。已激活 mise 的 shell 可以省略 `mise x --`。
 
 ## 目录结构
 
@@ -79,8 +66,14 @@ pnpm build
 backend/    Go 后端，入口 cmd/ups-warden
 frontend/   React 19 + TypeScript 7 + Vite+ 前端
 assets/     README 视觉资产
+docs/       开发指南、需求计划、协议证据与设计稿
+.agents/notes/  架构方案与决策记录
 mise.toml   工具链版本与缓存目录
 ```
+
+## 文档
+
+从[文档导航](docs/README.md)查找当前开发说明、需求草案、后端方案、开发计划与协议探测记录。导航中明确区分已实现现状、待实施设计和历史证据。
 
 ## 参与开发
 
