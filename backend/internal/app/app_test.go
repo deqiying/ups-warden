@@ -33,6 +33,14 @@ func TestStartupHealthAndRestart(t *testing.T) {
 			t.Error(err)
 		}
 	})
+	if len(a.profiles) != 5 {
+		t.Fatalf("启动未加载全部内置 Profile: %d", len(a.profiles))
+	}
+	for _, p := range a.profiles {
+		if _, err := p.ReadPlan(); err != nil {
+			t.Fatalf("内置 Profile 不能生成只读计划: %s: %v", p.Key, err)
+		}
+	}
 	for _, name := range []string{"master.key", "ups-warden.db", "ups-warden.lock"} {
 		if _, err := os.Stat(filepath.Join(c.DataDir, name)); err != nil {
 			t.Fatal(err)

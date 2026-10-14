@@ -7,6 +7,7 @@
 > **重要说明**：「实测」只指探测当日、该样机与当时配置；「推断 / 未验证」不能当作事实。无响应不等于证明协议不存在，单机结果不能直接推广到其他型号。
 > **协议命名**：厂商未给 TCP 2390 上的 JSON 协议单独命名。本项目统一称为 **AYI9 云监控卡 JSON API**，代码与配置标识为 `ayi9-json`（默认端口 TCP 2390）。下文出现的「2390」仅指端口。
 > **阅读入口**：[文档导航](../../README.md) · [需求草案](../../planning/requirements.md) · [后端方案](../../../.agents/notes/proposed/architecture/2026-10-11-backend-design.md)
+> **后续证据（2026-10-14）**：重新只读采集的 10 组市电与 50 组电池样本已形成[脱敏回归资料](../../../backend/testdata/et1k/README.md)。新样本确认 reg28 与 QAD 输出电压一致，reg02 存在最高 0.2 V 差异；本文保留 2026-10-11 的原观察，当前映射以 [Profile 指南](../../guides/profiles.md)为准。
 
 > [!WARNING]
 > 本文保留了曾导致事故的 HTTP 访问、端口扫描和控制指令记录，仅用于复盘，**禁止重放**。当前约束以 [AGENTS.md](../../../AGENTS.md) 为准：不访问设备 WebUI、不扫描或爆破，只允许 SNMP GET / GETNEXT / GETBULK、Modbus FC03 / FC04、`ayi9-json` 的 `QAD` / `RTD`。文中 HTTP 优先级和 UPS 控制接口旧建议均不采用。

@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于已完成 M0 工程基础设施的后端与前端脚手架，说明已有运行入口、配置与检查方式。业务目标见[需求草案](../planning/requirements.md)，其中采集、规则、通知与关机编排尚未实现。
+本文适用于已完成 M0 工程基础设施与 M1 离线模型 / Profile / 归一化的后端，以及前端脚手架，说明已有运行入口、配置与检查方式。业务目标见[需求草案](../planning/requirements.md)，其中联网采集、规则、通知与关机编排尚未实现。
 
 ## 1. 工具链与工作目录
 
@@ -35,7 +35,7 @@ cd backend
 mise x -- go run ./cmd/ups-warden --data-dir ../data
 ```
 
-默认监听 `127.0.0.1:8080`。后端会创建数据目录、获取独占文件锁、加载主密钥并迁移 SQLite，然后启动 HTTP；不连接 UPS，也不托管前端页面。
+默认监听 `127.0.0.1:8080`。后端会创建数据目录、获取独占文件锁、加载主密钥、迁移 SQLite，并校验五个内置 Profile，然后启动 HTTP；不连接 UPS，也不托管前端页面。离线数据模型和映射契约见 [Profile 与归一化](profiles.md)。
 
 ### 启动配置
 
@@ -128,7 +128,14 @@ mise x -- go vet ./...
 mise x -- go test ./...
 ```
 
-后端测试覆盖配置优先级、日志掩码和滚动、主密钥与加密、跨进程目录锁、SQLite 迁移与约束、应用启动/失败清理/重启、panic 退避以及包依赖边界；时间相关后台任务测试使用 `testing/synctest`。仍无协议驱动、采集或关机编排测试。Linux 交叉编译不能替代 Linux 实机运行验证。
+后端测试覆盖配置优先级、日志掩码和滚动、主密钥与加密、跨进程目录锁、SQLite 迁移与约束、应用启动/失败清理/重启、panic 退避以及包依赖边界；时间相关后台任务测试使用 `testing/synctest`。M1 还覆盖统一字段目录、严格 Profile 解析与只读计划、相数和质量、单位换算、60 组 ET1K 脱敏采样回归及本地 fixture 导入。仍无联网协议驱动、调度或关机编排测试。Linux 交叉编译不能替代 Linux 实机运行验证。
+
+在仓库根目录可单独执行短时 fuzz；所有输入均离线，不连接设备：
+
+```bash
+mise x -- go -C backend test ./internal/profile -run '^$' -fuzz '^FuzzParseReadPlan$' -fuzztime=15s
+mise x -- go -C backend test ./internal/normalize -run '^$' -fuzz '^FuzzNormalizeAYI9$' -fuzztime=15s
+```
 
 在 **`frontend/`** 目录：
 

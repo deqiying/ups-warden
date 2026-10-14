@@ -670,7 +670,7 @@ ET1K 的特殊行为（实测，内置 Profile 需要覆盖）：GET 对所有 O
 
 | 统一字段 | 寄存器 | 缩放 |
 |---|---|---|
-| `output_voltage[1]` | 28（reg02 同值） | ×0.1 |
+| `output_voltage[1]` | 28（2026-10-14 的 60 组样本均与 QAD 一致；reg02 最高相差 0.2 V，见[回归资料](../../backend/testdata/et1k/README.md)） | ×0.1 |
 | `battery_voltage` | 8 | ×0.1 |
 | `battery_capacity_pct` | 10 | ×0.1 |
 | `temperature` | 13 | ×0.1 |

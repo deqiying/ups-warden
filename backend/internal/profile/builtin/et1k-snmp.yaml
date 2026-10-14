@@ -1,0 +1,46 @@
+schema: 1
+key: et1k-snmp
+name: ET1K（SNMP）
+version: 1
+protocol: snmp
+match: {models: [ET1K], agent_versions: ['ayi9 v1']}
+snmp: {strategy: getbulk, bulk_root: 1.3.6.1.2.1.33, max_repetitions: 60}
+phases: {input: 1, output: 1}
+# 2026-10-14 新采样确认 output_source：市电=3、电池=5，可优先使用。
+power_hints: {indicators: [output_source, native_seconds_on_battery, input_voltage]}
+fields:
+  - {field: manufacturer, source: {oid: 1.3.6.1.2.1.33.1.1.1.0}, type: string}
+  - {field: model, source: {oid: 1.3.6.1.2.1.33.1.1.2.0}, type: string}
+  - {field: firmware, source: {oid: 1.3.6.1.2.1.33.1.1.3.0}, type: string}
+  - {field: agent_version, source: {oid: 1.3.6.1.2.1.33.1.1.4.0}, type: string}
+  - {field: battery_status, source: {oid: 1.3.6.1.2.1.33.1.2.1.0}, type: int, enum: {1: unknown, 2: normal, 3: low, 4: depleted}}
+  - {field: native_seconds_on_battery, source: {oid: 1.3.6.1.2.1.33.1.2.2.0}, type: int}
+  - {field: native_runtime_remaining, source: {oid: 1.3.6.1.2.1.33.1.2.3.0}, type: int, unit: min, invalid: {values: [0]}}
+  - {field: battery_capacity_pct, source: {oid: 1.3.6.1.2.1.33.1.2.4.0}, type: int}
+  - {field: battery_voltage, source: {oid: 1.3.6.1.2.1.33.1.2.5.0}, type: int, scale: 0.1}
+  - {field: temperature, source: {oid: 1.3.6.1.2.1.33.1.2.7.0}, type: int}
+  - {field: input_freq, source: {oid: 1.3.6.1.2.1.33.1.3.3.1.2.1}, type: int, scale: 0.1}
+  - {field: 'input_voltage[1]', source: {oid: 1.3.6.1.2.1.33.1.3.3.1.3.1}, type: int}
+  - {field: 'input_voltage[2]', source: {oid: 1.3.6.1.2.1.33.1.3.3.1.3.2}, type: int}
+  - {field: 'input_voltage[3]', source: {oid: 1.3.6.1.2.1.33.1.3.3.1.3.3}, type: int}
+  - {field: output_source, source: {oid: 1.3.6.1.2.1.33.1.4.1.0}, type: int, enum: {1: other, 2: none, 3: normal, 4: bypass, 5: battery, 6: booster, 7: reducer}}
+  - {field: output_freq, source: {oid: 1.3.6.1.2.1.33.1.4.2.0}, type: int, scale: 0.1}
+  - {field: 'output_voltage[1]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.2.1}, type: int}
+  - {field: 'output_voltage[2]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.2.2}, type: int}
+  - {field: 'output_voltage[3]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.2.3}, type: int}
+  - {field: 'output_power[1]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.4.1}, type: int, scale: 0.1, note: 待校准（需求 V2，不能假定为标准 RFC 有功功率）}
+  - {field: 'output_power[2]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.4.2}, type: int, scale: 0.1, note: 待校准（需求 V2）}
+  - {field: 'output_power[3]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.4.3}, type: int, scale: 0.1, note: 待校准（需求 V2）}
+  - {field: 'output_load_pct[1]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.5.1}, type: int}
+  - {field: 'output_load_pct[2]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.5.2}, type: int}
+  - {field: 'output_load_pct[3]', source: {oid: 1.3.6.1.2.1.33.1.4.4.1.5.3}, type: int}
+  - {field: bypass_freq, source: {oid: 1.3.6.1.2.1.33.1.5.1.0}, type: int, scale: 0.1}
+  # ET1K 旁路表使用非标准列 2/3/4，而通用 RFC 使用 3/4/5。
+  - {field: 'bypass_voltage[1]', source: {oid: 1.3.6.1.2.1.33.1.5.3.1.2.1}, type: int}
+  - {field: 'bypass_voltage[2]', source: {oid: 1.3.6.1.2.1.33.1.5.3.1.2.2}, type: int}
+  - {field: 'bypass_voltage[3]', source: {oid: 1.3.6.1.2.1.33.1.5.3.1.2.3}, type: int}
+  - {field: nominal_input_voltage, source: {oid: 1.3.6.1.2.1.33.1.9.1.0}, type: int}
+  - {field: nominal_output_voltage, source: {oid: 1.3.6.1.2.1.33.1.9.3.0}, type: int}
+  - {field: nominal_output_freq, source: {oid: 1.3.6.1.2.1.33.1.9.4.0}, type: int, scale: 0.1}
+  - {field: rated_va, source: {oid: 1.3.6.1.2.1.33.1.9.5.0}, type: int}
+  - {field: rated_w, source: {oid: 1.3.6.1.2.1.33.1.9.6.0}, type: int}

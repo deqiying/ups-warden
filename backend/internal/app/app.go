@@ -15,6 +15,7 @@ import (
 
 	"ups-warden/internal/config"
 	"ups-warden/internal/datalock"
+	"ups-warden/internal/profile"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/server"
 	"ups-warden/internal/store"
@@ -30,6 +31,7 @@ type App struct {
 	db        *store.Store
 	cipher    *secret.Cipher
 	lock      *datalock.Lock
+	profiles  []*profile.Profile
 	wg        sync.WaitGroup
 	mu        sync.Mutex
 	closing   bool
@@ -37,7 +39,7 @@ type App struct {
 	closeErr  error
 }
 
-// Run 按“锁 → 密钥 → 数据库 → HTTP”启动，ctx 取消后按反向顺序关闭。
+// Run 按“锁 → 密钥 → 数据库 → 内置 Profile → HTTP”启动，ctx 取消后关闭资源。
 // encodedKey 来自 UPS_WARDEN_MASTER_KEY，不得记录到日志或持久化配置。
 func Run(ctx context.Context, c config.Config, version string, logger *slog.Logger, encodedKey string) (err error) {
 	a, err := open(ctx, c, logger, encodedKey)
@@ -81,6 +83,10 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	}
 	if err := a.checkSecrets(); err != nil {
 		return nil, err
+	}
+	a.profiles, err = profile.Builtins()
+	if err != nil {
+		return nil, fmt.Errorf("加载内置 Profile: %w", err)
 	}
 	return a, nil
 }

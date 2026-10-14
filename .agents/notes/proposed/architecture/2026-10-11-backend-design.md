@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态**：proposed（整套业务方案未完成；M0 工程基础设施已落地）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节）；M0 的实际验收范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md#m0-工程基础设施4-人日)。未完成 M1~M8 前不将整篇标为 implemented。
+> **状态**：proposed（整套业务方案未完成；M0 工程基础设施、M1 统一模型 / Profile / 归一化已落地）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节）；实际验收范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)。未完成 M2~M8 前不将整篇标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前后端已完成 M0：[入口](../../../../backend/cmd/ups-warden/main.go)调用 `config`、`logging` 与 `app`，已实现数据目录锁、SQLite 与迁移、主密钥及加密、生命周期和架构检查。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；业务模块、驱动、模拟器、认证和发布配置均 **待实现**。
+- 当前后端已完成 M0、M1：[入口](../../../../backend/cmd/ups-warden/main.go)调用 `config`、`logging` 与 `app`，已实现数据目录锁、SQLite 与迁移、主密钥及加密、生命周期和架构检查；统一模型、五个内置 Profile、只读计划及离线归一化已落地，启动校验内置 Profile。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；联网驱动、模拟器、调度、认证和发布配置均 **待实现**。当前离线契约与采样边界见 [Profile 指南](../../../../docs/guides/profiles.md)。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
@@ -73,7 +73,7 @@
 
 版本在引入时按当期最新稳定版锁定，`go.sum` 入库。
 
-当前 [go.mod](../../../../backend/go.mod) 已锁定 M0 直接依赖 `modernc.org/sqlite v1.60.1`、`gopkg.in/natefinch/lumberjack.v2 v2.2.1`、`golang.org/x/sys v0.49.0`，校验和见 `go.sum`。完整依赖清单已获项目方批准，尚未进入的阶段不提前引入依赖。
+当前 [go.mod](../../../../backend/go.mod) 已锁定 M0 直接依赖 `modernc.org/sqlite v1.60.1`、`gopkg.in/natefinch/lumberjack.v2 v2.2.1`、`golang.org/x/sys v0.49.0`，M1 引入 `go.yaml.in/yaml/v3 v3.0.5`，校验和见 `go.sum`。完整依赖清单已获项目方批准，尚未进入的阶段不提前引入依赖。
 
 ---
 
@@ -500,6 +500,7 @@ fields:
 - 有效相数之外的相 → `unsupported/phase_inactive`（FR-NORM-05、FR-AYI9-08）。
 - 每个字段产生一条诊断 `Trace{Field, Source 描述, Raw, Decoded, Final, Quality, Reason}`；collector 为每个数据源只在内存中保留最近一次 RawData 与 Trace（FR-NORM-08），供连接测试、原始数据查看和 P1 校准视图使用。
 - 归一化是纯函数，便于用 fixture 做回归测试（FR-NORM-10）。
+- M1 采用 2026-10-14 重新采集的 60 组三协议样本，脱敏派生 fixture 保留测量值和时间间隔，原件留在忽略的 `data/`。输出电压选择与 QAD 在全部样本一致的 Modbus reg28，不以旧报告中 reg02 的近似同值替代；W 与 VA 不互换，未校准功率不强行映射。详见 [fixture 证据与边界](../../../../backend/testdata/et1k/README.md)。
 
 ### 6.5 Profile 推荐（FR-DEV-05）
 
@@ -1054,7 +1055,7 @@ M8 用模拟器做 32 台与 100 台设备的压测验证。
 | 风险 | 影响 | 缓解 |
 |---|---|---|
 | 自研 SNMP 与其他品牌 agent 的兼容性 | 非 ET1K 设备可能出现编码边界问题 | BER 解码 fuzz；模拟器覆盖标准 RFC 1628 行为；真机冒烟 |
-| ET1K 实测原始数据未入库 | 回归 fixture 只能根据报告中的数值重建 | M1 前向项目方索取脱敏后的 `FINAL_CAPTURE.txt` 与 `battery_capture.jsonl`，放入 `testdata/et1k/` |
+| 旧 ET1K 原始附件缺失（已缓解） | 旧报告不能证明切换瞬间与恢复行为 | 已由 2026-10-14 新采样生成 60 组脱敏 `testdata/et1k/` fixture；原件长期保留在忽略的 `data/`，后续独立验收补足切换与恢复覆盖 |
 | ayi9 错误响应的确切格式未实测 | 103 等错误码解析可能不准 | 解析兼容多种形式；真机冒烟时用错误密码验证（只读请求） |
 | V2 功率量纲待校准 | 功率字段数值可能错 10 倍 | 内置 Profile 标注"待校准"；P1 校准视图 |
 | ICMP 权限 | 部分部署环境无法使用 ping 检测 | 明确报错并推荐 TCP 探测；文档说明 Docker `NET_RAW` |

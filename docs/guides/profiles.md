@@ -1,0 +1,101 @@
+# Profile 与归一化
+
+[返回文档导航](../README.md)
+
+本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化不访问设备；服务启动只加载并校验内置 Profile。设备管理、Profile HTTP API、采集驱动和调度仍按后续里程碑接入。
+
+## 内置 Profile
+
+| key | 协议 | 差异 |
+|---|---|---|
+| `rfc1628-generic` | SNMP | RFC 1628 通用映射；不将有功功率 W 当作视在功率 VA |
+| `ayi9-json-generic` | ayi9-json | QAD / RTD 字段字典，相数从 RTD 的 `1/1`、`3/3` 等文本读取 |
+| `et1k-snmp` | SNMP | ET1K 缩放与旁路列差异；原生剩余时间 0 无效 |
+| `et1k-modbus` | Modbus TCP | FC03、地址 0～79、单相；输出电压使用 reg28 |
+| `et1k-ayi9-json` | ayi9-json | ET1K 映射；原生剩余时间 0 无效 |
+
+内置文件位于 `backend/internal/profile/builtin/`，随二进制 embed；`Builtins()` 每次返回独立实例，修改返回对象不会改写内置数据。`IsBuiltinKey` 标识保留键，未来自定义 Profile 保存接口应拒绝覆盖这些键；当前没有持久化编辑接口。
+
+## 最小示例
+
+```yaml
+schema: 1
+key: example-modbus
+name: 单相只读示例
+version: 1
+protocol: modbus
+modbus:
+  unit_id: 0
+  readable:
+    - {fc: 3, start: 0, end: 79}
+  max_registers_per_read: 100
+  byte_order: big
+  word_order: big
+phases:
+  input: 1
+  output: 1
+power_hints:
+  indicators: [input_voltage]
+fields:
+  - field: battery_voltage
+    source: {fc: 3, addr: 8}
+    type: uint16
+    scale: 0.1
+  - field: "input_voltage[1]"
+    source: {fc: 3, addr: 17}
+    type: uint16
+    scale: 0.1
+```
+
+这只是解析示例，不构成新设备地址映射或设备访问授权。型号地址必须有独立证据，不通过扫描或枚举发现。
+
+## 校验与默认值
+
+- `Parse([]byte)` 接受单个 YAML 或 JSON 对象，最大 256 KiB；拒绝未知键、重复键、额外文档、`null`、alias / merge。错误包含行号和字段路径；程序直接构造的 Profile 无原始行号，使用 `line 0`。
+- `schema` 必须为 1；`key` 使用小写 ASCII 字母、数字、`_`、`-`，且首字符为字母或数字；`version` 为正整数。
+- 字段名必须存在于统一目录；按相字段必须显式使用 `[1]`、`[2]` 或 `[3]`；同字段不能重复，也不能映射 `power_state`、`runtime_estimate` 等状态引擎派生字段。
+- SNMP 默认 `strategy: getbulk`、`bulk_root: 1.3.6.1.2.1.33`、`max_repetitions: 60`；来源必须是合法 OID。
+- Modbus 必须声明可读范围，地址为 0 基、范围端点均包含。默认每次最多 100 个寄存器，上限 125；默认 `byte_order: big`、`word_order: big`、Unit ID 0。
+- ayi9 默认 `ayi9.rtd_interval_s: 600`；每轮计划读取 QAD，RTD 按周期刷新；只接受 QAD 索引 0～22、RTD 索引 0～9。
+- `scale` 缺省为 1、`offset` 缺省为 0；显式 `scale: 0` 不会被当成省略。数值必须有限，范围必须由两个有序有限数构成。
+- `power_hints.indicators` 只接受统一字段 `ups_mode`、`mains_ok`、`output_source`、`native_seconds_on_battery`、`input_voltage`，不能写协议地址或派生状态。
+
+## 解码与有效性
+
+| 协议 | 当前映射类型 |
+|---|---|
+| SNMP | `int`、`string` |
+| Modbus | `uint16`、`int16`、`uint32`、`int32`、`float32` |
+| ayi9-json | `string`、`number_string`、`si_number`、`bitstring16` |
+
+- `uint32` / `int32` / `float32` 占两个寄存器；字节序控制每个寄存器内部两个字节，字顺序控制两个寄存器排列。
+- `bit` 与 `bits` 互斥，范围 0～15；`bits: "0-3"` 包含两端。`bitstring16` 的左端对应 b15，必须恰好包含 16 个二进制字符。
+- 布尔字段必须提取单个位，可用 `invert: true` 取反；枚举必须声明原始值到目录枚举的映射。未命中的枚举为 `unknown`，质量 `invalid`，原因 `enum_unmapped`；原始编码只在 Trace 中保留。
+- `si_number` 将 `1K` 转为 1000。换算公式为 `(decoded × scale + offset) × unit_factor`。原单位为空表示已使用目录单位；支持 `min→s`、`ms→s`、`kV/mV→V`、`mA→A`、`kW→W`、`kVA→VA`，不做 W 与 VA 的互换。
+- `invalid.values` 比较**解码后的原始值**，如寄存器哨兵 `65535`；未加引号的 YAML 数字先按其数值语义规范化，`0xFFFF`、`0b1111111111111111` 与十进制 `65535` 等价，带引号的字符串保持文本语义。`invalid.range` 校验**换算后的统一值**，端点包含。`invalid.placeholders` 补充默认占位符空串与 `---`，不能取消默认占位符。
+- 百分比限制在 0～100，时长不能为负，输出为整数秒；NaN、Infinity、溢出、缺失值不转换成有效零。
+- 相数可使用静态 `phases.input/output`，或 `phases.from: {cmd: RTD, index: 8}`，不能混用。未声明时使用映射得到的 `input_phases` / `output_phases`；旁路按输入相数处理。有效相数之外标记 `unsupported/phase_inactive`；相数损坏时不信任按相观测；相数未知时不将第二、第三相的数值标成 Good。
+
+统一目录包含 49 个基础字段、展开为 69 个字段实例；单源快照包含 64 个观测字段，5 个派生字段留给状态引擎。质量值使用 `good/invalid/unsupported/stale` 字符串；零值质量不等于 `good`。未映射观测字段为 `unsupported/not_mapped`。
+
+`Normalize(sourceID, raw, profile)` 是纯函数，返回独立 `SourceSnapshot`、有序 Trace 和错误。协议不匹配或 Profile 无效时整体失败；单字段解码失败只降低该字段质量。业务层只能消费统一快照，不能消费包含 OID、寄存器和原始值的 Trace。
+
+## 读计划与推荐
+
+`Profile.ReadPlan()` 每次重新校验，不执行网络请求：
+
+- SNMP 收集并去重映射 OID，提供 GET 列表和批量策略参数。
+- Modbus 按功能码和地址排序，合并间隙不超过 8 个寄存器的读取，限制单块长度且不跨不可读空洞。多寄存器字段必须在至少一个块中完整读取；重叠字段必要时使用重叠块。
+- ayi9 仅生成固定 QAD / RTD 读取周期，没有任意指令字段。
+
+推荐是本地身份匹配：型号精确匹配优先于 Agent 版本匹配，再回退到协议通用 Profile；相同得分按 key 排序。Modbus 缺少可信身份时列出全部协议候选，交由用户选择，不自动认定型号。
+
+Profile 校验是第一道保护，**不能替代 M2 驱动发送前的字节白名单**。不得将构造合法读计划误述为已验证真机驱动安全。
+
+## 回归证据与限制
+
+[ET1K fixture 说明](../../backend/testdata/et1k/README.md)记录脱敏方式、导入工具和来源。真实原件长期保留在本地被忽略的 `data/samples/et1k/`，不删除、不直接提交；回归数据只保留测试所需的协议值，移除地址、凭据和真实设备标识，整体平移时间但保留间隔。
+
+2026-10-14 的 10 组市电与 50 组电池样本确认：ET1K `output_source` 在这两阶段为 3 / 5；reg28 与 QAD 输出电压一致，reg02 存在最高 0.2 V 的差异。SNMP 电压和温度为整数，比较时按记录精度保留容差，不篡改原始样本。功率缩放等待校准项继续保留注释，不把本轮回归当作面板校准。
+
+样本不覆盖断电瞬间、市电恢复、低电告警及错误密码响应；这些仍需模拟器场景或后续独立验收。自动化测试不依赖本地原件或真实设备。

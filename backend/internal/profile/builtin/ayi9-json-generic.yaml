@@ -1,0 +1,50 @@
+schema: 1
+key: ayi9-json-generic
+name: AYI9 云监控卡 JSON API（通用）
+version: 1
+protocol: ayi9-json
+ayi9: {rtd_interval_s: 600}
+phases: {from: {cmd: RTD, index: 8}}
+power_hints: {indicators: [ups_mode, mains_ok, input_voltage]}
+fields:
+  - {field: 'input_voltage[1]', source: {cmd: QAD, index: 0}, type: number_string}
+  - {field: 'input_voltage[2]', source: {cmd: QAD, index: 1}, type: number_string}
+  - {field: 'input_voltage[3]', source: {cmd: QAD, index: 2}, type: number_string}
+  - {field: input_freq, source: {cmd: QAD, index: 3}, type: number_string}
+  - {field: 'input_current[1]', source: {cmd: QAD, index: 4}, type: number_string}
+  - {field: 'input_current[2]', source: {cmd: QAD, index: 5}, type: number_string}
+  - {field: 'input_current[3]', source: {cmd: QAD, index: 6}, type: number_string}
+  - {field: 'output_voltage[1]', source: {cmd: QAD, index: 8}, type: number_string}
+  - {field: 'output_voltage[2]', source: {cmd: QAD, index: 9}, type: number_string}
+  - {field: 'output_voltage[3]', source: {cmd: QAD, index: 10}, type: number_string}
+  - {field: output_freq, source: {cmd: QAD, index: 11}, type: number_string}
+  - {field: 'output_current[1]', source: {cmd: QAD, index: 12}, type: number_string}
+  - {field: 'output_current[2]', source: {cmd: QAD, index: 13}, type: number_string}
+  - {field: 'output_current[3]', source: {cmd: QAD, index: 14}, type: number_string}
+  - {field: 'output_load_pct[1]', source: {cmd: QAD, index: 15}, type: number_string}
+  - {field: 'output_load_pct[2]', source: {cmd: QAD, index: 16}, type: number_string}
+  - {field: 'output_load_pct[3]', source: {cmd: QAD, index: 17}, type: number_string}
+  - {field: battery_voltage, source: {cmd: QAD, index: 18}, type: number_string}
+  - {field: native_runtime_remaining, source: {cmd: QAD, index: 19}, type: number_string}
+  - {field: battery_capacity_pct, source: {cmd: QAD, index: 20}, type: number_string}
+  - {field: temperature, source: {cmd: QAD, index: 21}, type: number_string}
+  - field: ups_mode
+    source: {cmd: QAD, index: 22}
+    type: bitstring16
+    bits: '0-3'
+    enum: {0: power_on, 1: standby, 2: bypass, 3: line, 4: battery, 5: test, 6: fault, 7: converter, 8: eco, 9: shutdown}
+  - {field: buzzer_muted, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 4}
+  - {field: shutting_down, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 5}
+  - {field: low_battery, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 6}
+  - {field: mains_ok, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 7, invert: true}
+  - {field: overload, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 8}
+  # b10/b11 自检含义未确认，不映射。
+  - {field: ups_type, source: {cmd: QAD, index: 22}, type: bitstring16, bit: 15, enum: {0: online, 1: backup}}
+  - {field: manufacturer, source: {cmd: RTD, index: 0}, type: string}
+  - {field: firmware, source: {cmd: RTD, index: 1}, type: string}
+  - {field: model, source: {cmd: RTD, index: 2}, type: string}
+  - {field: nominal_input_voltage, source: {cmd: RTD, index: 3}, type: number_string}
+  - {field: nominal_output_voltage, source: {cmd: RTD, index: 4}, type: number_string}
+  - {field: nominal_output_freq, source: {cmd: RTD, index: 6}, type: number_string}
+  - {field: nominal_battery_voltage, source: {cmd: RTD, index: 7}, type: number_string}
+  - {field: rated_va, source: {cmd: RTD, index: 9}, type: si_number}

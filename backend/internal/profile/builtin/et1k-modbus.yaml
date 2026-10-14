@@ -1,0 +1,28 @@
+schema: 1
+key: et1k-modbus
+name: ET1K（Modbus TCP）
+version: 1
+protocol: modbus
+# Modbus 没有可验证身份，必须人工选择。
+match: {models: []}
+modbus:
+  readable: [{fc: 3, start: 0, end: 79}]
+  max_registers_per_read: 100
+  byte_order: big
+  word_order: big
+  unit_id: 0
+phases: {input: 1, output: 1}
+power_hints: {indicators: [input_voltage]}
+fields:
+  - {field: 'output_voltage[1]', source: {fc: 3, addr: 28}, type: uint16, scale: 0.1}
+  - {field: battery_voltage, source: {fc: 3, addr: 8}, type: uint16, scale: 0.1}
+  - {field: battery_capacity_pct, source: {fc: 3, addr: 10}, type: uint16, scale: 0.1}
+  - {field: temperature, source: {fc: 3, addr: 13}, type: uint16, scale: 0.1}
+  - {field: input_freq, source: {fc: 3, addr: 16}, type: uint16, scale: 0.1}
+  - {field: 'input_voltage[1]', source: {fc: 3, addr: 17}, type: uint16, scale: 0.1}
+  - {field: 'input_power[1]', source: {fc: 3, addr: 23}, type: uint16, note: 待校准}
+  - {field: output_freq, source: {fc: 3, addr: 27}, type: uint16, scale: 0.1}
+  - {field: 'output_power[1]', source: {fc: 3, addr: 34}, type: uint16, scale: 0.1, note: 待校准（需求 V2）}
+  - {field: 'output_load_pct[1]', source: {fc: 3, addr: 45}, type: uint16, scale: 0.1}
+  - {field: bypass_freq, source: {fc: 3, addr: 49}, type: uint16, scale: 0.1}
+  - {field: 'bypass_voltage[1]', source: {fc: 3, addr: 50}, type: uint16, scale: 0.1}

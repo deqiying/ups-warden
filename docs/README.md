@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-后端 **M0 工程基础设施已完成**，前端仍为脚手架。采集及联动业务尚未实现，需求、后续里程碑与静态设计稿不代表功能已交付。
+后端 **M0 工程基础设施与 M1 统一模型、Profile、归一化已完成**，前端仍为脚手架。联网采集及联动业务尚未实现，需求、后续里程碑与静态设计稿不代表功能已交付。
 
 | 模块 | 已有实现 | 尚未实现 |
 |---|---|---|
-| 后端 | 配置、滚动日志与脱敏、数据目录锁、SQLite 迁移、凭据加密、app 生命周期、`GET /healthz` | 设备采集、Profile、归一化、业务 API、认证、规则、通知、关机编排 |
+| 后端 | 配置、滚动日志与脱敏、数据目录锁、SQLite 迁移、凭据加密、app 生命周期、统一模型、五个内置 Profile、离线归一化、`GET /healthz` | 联网设备采集、业务 API、认证、规则、通知、关机编排 |
 | 前端 | React 占位页、开发代理、检查与测试脚本 | 总览、设备、规则等业务页面及 API 调用 |
 | 构建与运行 | mise 工具链及仓库内缓存；`backend:check`、`backend:build`；前端运行与构建脚本 | 前端内嵌、统一发布任务、Docker / systemd 配置 |
 
@@ -19,10 +19,11 @@
 | 目标 | 文档 | 性质与边界 |
 |---|---|---|
 | 启动、联调、查询参数或运行检查 | [开发指南](guides/development.md) | 当前源码与配置对应的操作说明 |
+| 理解字段映射、只读计划与离线回归 | [Profile 与归一化](guides/profiles.md) | 当前 M1 契约与 ET1K 采样限制；不是联网驱动 |
 | 了解功能目标、优先级、字段和验收要求 | [需求文档](planning/requirements.md) | v0.3 草案；已确认项与待确认项按正文区分 |
-| 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0 已落地，业务方案未完成 |
-| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0 已完成，M1 原始采样已补齐、待整理 fixture；M1~M8 未完成 |
-| 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；已脱敏，本次未重测设备 |
+| 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0、M1 已落地，后续业务方案未完成 |
+| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0、M1 已完成；M2~M8 未完成 |
+| 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
 | 评审设备状态页的视觉设计 | [设备状态页静态设计稿](design/device-status.html) | 独立 HTML 原型，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |
 
@@ -34,6 +35,7 @@
 docs/
   README.md                              文档入口与现状摘要
   guides/development.md                  当前开发、参数、接口与检查说明
+  guides/profiles.md                     Profile、只读计划与离线归一化契约
   planning/
     requirements.md                      需求草案
     backend-plan.md                      开发任务与验收计划
@@ -41,7 +43,7 @@ docs/
     et1k-probe-report.md                  历史协议证据与安全复盘
   design/device-status.html              UI 静态设计稿
 .agents/notes/proposed/architecture/
-  2026-10-11-backend-design.md            整体待实施方案，含 M0 已落地范围
+  2026-10-11-backend-design.md            整体待实施方案，含 M0、M1 已落地范围
 ```
 
 - **现状说明**以实现、配置和验证结果为依据；能力变化时原地更新，不写开发流水账。
@@ -52,5 +54,5 @@ docs/
 
 ## 尚待补齐的证据
 
-- 旧探测原始附件未随报告提供；2026-10-14 已重新采集 10 组市电与 50 组电池三协议样本，原件保留在本地 Git 忽略目录，脱敏回归 fixture 待 M1 整理；未覆盖停电瞬间、市电恢复和错误密码响应。
+- 旧探测原始附件未随报告提供；2026-10-14 重新采集的 10 组市电与 50 组电池三协议样本已整理为 [ET1K 脱敏 fixture](../backend/testdata/et1k/README.md)，原件保留在本地 Git 忽略目录；未覆盖停电瞬间、市电恢复和错误密码响应。
 - 需求第 17 节的未决事项与协议校准项仍保留待确认状态；本次文档归类不替代产品评审或真机验收。
