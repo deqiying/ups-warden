@@ -103,7 +103,7 @@ func (e *Engine) Apply(r model.SourceResult) model.DeviceUpdate {
 	e.tick(now, &events)
 	e.derived(now)
 	e.summarize(events)
-	return model.DeviceUpdate{State: e.Snapshot(), Events: events, Sample: !r.Failed}
+	return model.DeviceUpdate{State: e.Snapshot(), Events: events, Sample: !r.Failed, AlertsChanged: len(events) > 0}
 }
 
 // Tick 推进确认与放电计时，不生成新的历史测量点。
@@ -116,7 +116,7 @@ func (e *Engine) Tick(now time.Time) model.DeviceUpdate {
 	e.tick(now, &events)
 	e.derived(now)
 	e.summarize(events)
-	return model.DeviceUpdate{State: e.Snapshot(), Events: events}
+	return model.DeviceUpdate{State: e.Snapshot(), Events: events, AlertsChanged: len(events) > 0}
 }
 func observationFields(fields map[string]model.Field) map[string]model.Field {
 	out := map[string]model.Field{}

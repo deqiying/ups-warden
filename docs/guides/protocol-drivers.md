@@ -4,14 +4,14 @@
 
 ## 当前范围
 
-M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。M3 已将采集调度与状态接入主服务，启动 `ups-warden` 会连接数据库中启用的数据源，见[采集、状态与历史](collection-state-history.md)；设备管理 HTTP API 尚未开放。真实设备 CP-1 待项目方限定范围后验收；模拟器通过不等于真机兼容性已经确认。
+M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。M3 已将采集调度与状态接入主服务，启动 `ups-warden` 会连接数据库中启用的数据源，见[采集、状态与历史](collection-state-history.md)；M4 已开放设备/源管理及只读连接 test/raw HTTP API，见[监控 API 与 SSE 契约](../reference/monitoring-api.md)。CP-2 双方联调与真实设备 CP-1 均待验收；开发测试只用临时数据库和 loopback 模拟器，模拟器通过不等于真机兼容性已经确认。
 
 驱动只消费 `driver.ReadPlan`，不依赖 Profile 或具体型号。调用者先编译 Profile，再通过对应包的 `New(Config, plan)` 创建实例；构造函数不联网，`Probe` / `Poll` 才建立连接。业务层只消费归一化结果，不能把 `RawData` 或协议诊断用于规则判断。
 
 ## 连接与安全契约
 
-- `guard.Config.Address` 必须明确为 `host:port`；没有扫描、HTTP WebUI 访问或自动协议发现。协议默认端口的用户交互由后续配置/API 层提供，驱动不会猜测未提供的端口。
-- 请求超时默认 2 秒，可配置为大于 0、不超过 1 分钟；同时受调用者 context 截止时间约束。一次 `Poll` 可包含多次请求，调用者应设置总截止时间；采集周期和重试预算由后续 collector 管理。
+- `guard.Config.Address` 必须明确为 `host:port`；没有扫描、HTTP WebUI 访问或自动协议发现。M4 配置/API 层处理 host/port 并校验，驱动不会猜测未提供的端口。
+- 请求超时默认 2 秒，可配置为大于 0、不超过 1 分钟；同时受调用者 context 截止时间约束。一次 `Poll` 可包含多次请求，调用者应设置总截止时间；主服务的采集周期和重试预算由 collector 管理。
 - 每个客户端串行使用连接，等待串行资格时也响应 context 取消与截止时间。`Close` 是幂等终态，会取消正在进行的请求；关闭后不能再次采集。
 - 每次 `Write` 必须提供单个完整请求，发送前解析字节验证白名单。未知操作、截断、尾随报文、越界寄存器和重复/额外 JSON 键均拒绝。短写关闭连接，不尝试将剩余字节作为另一条指令发送。
 - `guard.ErrWriteBlocked` 表示没有任何字节被发送；护栏日志不含报文或凭据。SNMP community、AYI9 密码使用 `secret.String`，错误不回显响应内容。
@@ -70,7 +70,7 @@ steps:
   - {at: 220s, state: online}
 ```
 
-事件时间必须严格递增；`flash` 固定 5 秒且不允许与期间其他事件重叠。`offline/online` 只改变通信，不改变供电状态。模拟器 `Scenario.StateAt` 是纯函数，集成测试注入时钟，不依赖真实放电。场景状态仅提供采集输入，去抖、事件和联动行为属于后续里程碑。
+事件时间必须严格递增；`flash` 固定 5 秒且不允许与期间其他事件重叠。`offline/online` 只改变通信，不改变供电状态。模拟器 `Scenario.StateAt` 是纯函数，集成测试注入时钟，不依赖真实放电。场景状态仅提供采集输入；去抖与事件由 M3 状态引擎处理，通知、规则与关机联动尚未实现。
 
 场景的可选物理数值使用零值作为默认值标记（例如温度 0 会采用默认 25），不用于零点校准；需要精确协议零值可使用自定义寄存器表或录制 fixture。
 

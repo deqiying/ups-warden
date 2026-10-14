@@ -91,9 +91,9 @@ func (p *Profile) ReadPlan() (driver.ReadPlan, error) {
 
 // Recommendation 是不含设备地址的 Profile 推荐说明。
 type Recommendation struct {
-	Key    string
-	Score  int
-	Reason string
+	Key    string `json:"key"`
+	Score  int    `json:"score"`
+	Reason string `json:"reason"`
 }
 
 // Recommend 按型号精确匹配、Agent 版本、通用 Profile 排序；Modbus 全部留给人工选择。

@@ -6,21 +6,27 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"ups-warden/internal/webui"
 )
 
-// New 创建监听 addr 的 HTTP 服务。目前只注册健康检查，业务 API 后续挂载到 /api/v1。
-func New(addr string) *http.Server {
+// New 创建 HTTP 服务；API 由 app 注入，WriteTimeout 留空以支持 SSE。
+func New(addr string, api ...http.Handler) *http.Server {
 	return &http.Server{
 		Addr:              addr,
-		Handler:           NewHandler(),
+		Handler:           NewHandler(api...),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 }
 
 // NewHandler 返回服务的根路由，单独导出便于测试直接调用。
-func NewHandler() http.Handler {
+func NewHandler(api ...http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handleHealthz)
+	if len(api) > 0 && api[0] != nil {
+		mux.Handle("/api/", api[0])
+		mux.Handle("/api", api[0])
+	}
+	mux.Handle("/", webui.NewHandler())
 	return mux
 }
 

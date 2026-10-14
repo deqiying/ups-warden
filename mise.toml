@@ -34,8 +34,14 @@ go vet ./...
 go test ./...
 '''
 
+[tasks."webui:build"]
+description = "构建前端并安全复制到后端 embed 目录"
+dir = "{{config_root}}"
+run = ["pnpm --dir frontend build", "node scripts/build-webui.mjs"]
+
 [tasks."backend:build"]
-description = "构建本机纯 Go 后端（尚不包含 WebUI）"
+description = "构建包含内嵌 WebUI 的本机纯 Go 后端"
+depends = ["webui:build"]
 dir = "backend"
 env.CGO_ENABLED = "0"
 run = "go build -trimpath -o ../.cache/build/ ./cmd/ups-warden"

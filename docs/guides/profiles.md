@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化本身不访问设备。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；M3 主服务已接入[采集、状态与历史](collection-state-history.md)，启动会采集数据库中启用的数据源。设备管理与 Profile HTTP API 尚未开放。
+本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化本身不访问设备。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；M3 主服务已接入[采集、状态与历史](collection-state-history.md)，启动会采集数据库中启用的数据源。M4 已开放设备与 Profile 管理 HTTP API，完整路由与请求格式见[监控 API 与 SSE 契约](../reference/monitoring-api.md)；CP-2 双方联调待验收，前端无业务页面。
 
 ## 内置 Profile
 
@@ -14,7 +14,7 @@
 | `et1k-modbus` | Modbus TCP | FC03、地址 0～79、单相；输出电压使用 reg28 |
 | `et1k-ayi9-json` | ayi9-json | ET1K 映射；原生剩余时间 0 无效 |
 
-内置文件位于 `backend/internal/profile/builtin/`，随二进制 embed；`Builtins()` 每次返回独立实例，修改返回对象不会改写内置数据。`IsBuiltinKey` 标识保留键，未来自定义 Profile 保存接口应拒绝覆盖这些键；当前没有持久化编辑接口。
+内置文件位于 `backend/internal/profile/builtin/`，随二进制 embed；`Builtins()` 每次返回独立实例，修改返回对象不会改写内置数据。`IsBuiltinKey` 标识保留键；M4 持久化接口拒绝覆盖、修改或删除内置 Profile，需先复制为新的自定义 key。自定义 Profile 支持新建/导入、复制、更新、删除、导出与校验；更新保持 key/protocol 不变且 version 必须递增，引用源的 profile_version 与配置审计同事务更新，再恢复受影响采集。被数据源引用时拒绝删除。
 
 ## 最小示例
 

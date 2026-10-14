@@ -52,6 +52,22 @@ var (
 	ErrStore         = errors.New("collector: store_failed")
 )
 
+// ParseParams 严格读取公开连接参数，不允许通过参数覆盖只读计划。
+func ParseParams(text, protocol string) (Params, error) { return parseParams(text, protocol) }
+
+// ValidateSource 离线验证配置和驱动构造契约；不解析 DNS，也不建立连接。
+func ValidateSource(source Source) error {
+	plan, err := validate(source)
+	if err != nil {
+		return err
+	}
+	d, err := defaultFactory(source, plan)
+	if err != nil {
+		return ErrConfig
+	}
+	return closeDriver(d)
+}
+
 func parseParams(text, protocol string) (Params, error) {
 	var p Params
 	// 逐键解析同时拒绝重复键、null、未知键和尾随内容。

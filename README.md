@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 后端 **M0/M1 已完成，M2 只读驱动与 M3 采集、状态、事件及历史已实现并通过本机验证**；**真机 CP-1 待验收**。前端仍为脚手架，业务 API、认证、规则、通知和关机编排 **尚未实现**。下文完整业务流程是设计目标，当前能力见[采集、状态与历史](docs/guides/collection-state-history.md)。
+> 后端 **M0～M4 已实现并通过本机验证**；M4 交付认证、审计、监控 API、SSE 与静态 SPA 托管，[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收。**真机 CP-1 待验收**。前端仍为脚手架、无业务页面；M5 通知、M6 规则动作、M7 编排、M8 系统与发布均未实现，**本轮到 M4 停止**。下文完整业务流程是设计目标。
 
 ## 停电联动流程
 
@@ -49,8 +49,9 @@ mise install
 两个终端分别从**仓库根目录**启动：
 
 ```bash
-# 终端一：HTTP 目前仅提供 /healthz；会自动采集已有数据库中启用的数据源
-(cd backend && mise x -- go run ./cmd/ups-warden --data-dir ../data)
+# HTTP 提供 /healthz、/api/v1 与静态 SPA；开发测试只用临时数据库和 loopback 模拟器
+# 将路径替换为新建的独立临时目录，不使用含真实设备配置的 data/
+(cd backend && mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden)
 ```
 
 ```bash
@@ -58,7 +59,7 @@ mise install
 (cd frontend && mise x -- pnpm dev)
 ```
 
-启动参数、代理设置、测试与构建命令见[开发指南](docs/guides/development.md)。已激活 mise 的 shell 可以省略 `mise x --`。
+启动参数、初始化与会话、代理设置、测试与内嵌构建命令见[开发指南](docs/guides/development.md)。已激活 mise 的 shell 可以省略 `mise x --`。主服务会自动采集数据库中启用的数据源；无用户时 setup token 仅在主进程 stderr 输出一次，不要公开终端日志。
 
 ## 目录结构
 

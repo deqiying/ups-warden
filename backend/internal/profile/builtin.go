@@ -20,6 +20,14 @@ func IsBuiltinKey(key string) bool {
 	return false
 }
 
+// BuiltinContent 返回内置声明原文，供导出/复制；保留键校验阻止任意路径读取。
+func BuiltinContent(key string) ([]byte, error) {
+	if !IsBuiltinKey(key) {
+		return nil, fmt.Errorf("unknown builtin profile")
+	}
+	return builtinFiles.ReadFile("builtin/" + key + ".yaml")
+}
+
 // Builtin 每次解析内嵌 YAML，返回完全独立的可变实例。
 func Builtin(key string) (*Profile, error) {
 	if !IsBuiltinKey(key) {

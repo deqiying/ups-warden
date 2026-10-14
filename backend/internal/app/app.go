@@ -8,11 +8,14 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
 
+	"ups-warden/internal/api"
+	"ups-warden/internal/auth"
 	"ups-warden/internal/bus"
 	"ups-warden/internal/collector"
 	"ups-warden/internal/config"
@@ -27,13 +30,15 @@ import (
 
 const shutdownTimeout = 10 * time.Second
 
-// App 持有进程资源；业务模块只能在启动阶段装配，关闭后不接受新任务。
+// App 持有进程资源并串行协调动态设备变更；关闭后不接受新任务。
 type App struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	logger        *slog.Logger
 	db            *store.Store
 	cipher        *secret.Cipher
+	auth          *auth.Service
+	api           *api.Server
 	lock          *datalock.Lock
 	profiles      []*profile.Profile
 	collector     *collector.Supervisor
@@ -42,7 +47,12 @@ type App struct {
 	actors        map[int64]*state.Actor
 	stateCancel   context.CancelFunc
 	historyCancel context.CancelFunc
-	stateDone     []chan struct{}
+	stateDone     map[int64]chan struct{}
+	actorCancel   map[int64]context.CancelFunc
+	actorErr      map[int64]error
+	stateCtx      context.Context
+	pipelineMu    sync.Mutex
+	actorsMu      sync.RWMutex
 	stateErr      error
 	wg            sync.WaitGroup
 	mu            sync.Mutex
@@ -62,6 +72,10 @@ func Run(ctx context.Context, c config.Config, version string, logger *slog.Logg
 	listener, err := net.Listen("tcp", c.Listen)
 	if err != nil {
 		return fmt.Errorf("监听 HTTP: %w", err)
+	}
+	// 初始化口令只写进程 stderr 一次，不进入轮转日志、数据库或 HTTP 响应。
+	if token := a.auth.SetupToken(); token != "" {
+		fmt.Fprintf(os.Stderr, "首次初始化 setup token: %s\n", token)
 	}
 	logger.Info("HTTP 服务启动", "listen", listener.Addr().String(), "version", version)
 	return a.serve(listener)
@@ -100,9 +114,14 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if err != nil {
 		return nil, fmt.Errorf("加载内置 Profile: %w", err)
 	}
+	a.auth, err = auth.New(a.db, auth.Options{})
+	if err != nil {
+		return nil, err
+	}
 	if err := a.startPipeline(); err != nil {
 		return nil, err
 	}
+	a.api = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Logger: a.logger})
 	return a, nil
 }
 
@@ -138,7 +157,7 @@ func (a *App) checkTableSecrets(table string) (err error) {
 }
 
 func (a *App) serve(listener net.Listener) (err error) {
-	srv := server.New(listener.Addr().String())
+	srv := server.New(listener.Addr().String(), a.api)
 	defer func() { err = errors.Join(err, srv.Close()) }()
 	srv.BaseContext = func(net.Listener) context.Context { return a.ctx }
 	srv.ErrorLog = slog.NewLogLogger(a.logger.Handler(), slog.LevelError)
@@ -180,6 +199,8 @@ func (a *App) Close() error {
 		a.closing = true
 		a.cancel()
 		a.mu.Unlock()
+		a.pipelineMu.Lock()
+		defer a.pipelineMu.Unlock()
 		if a.collector != nil {
 			a.closeErr = errors.Join(a.closeErr, a.collector.Close())
 		}

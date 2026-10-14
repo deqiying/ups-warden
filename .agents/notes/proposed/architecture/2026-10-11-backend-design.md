@@ -5,17 +5,20 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态**：proposed（整套业务方案未完成；M0/M1 已完成，M2 只读驱动与 M3 采集/状态/历史代码及本机验证已完成，CP-1 真机待验收）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M4～M8 和剩余验收完成前不将整篇标为 implemented。
+> **状态（同步至 2026-10-15）**：proposed（整套业务方案未完成；M0～M3 代码与本机验证已完成，M4 认证/审计/监控 API/SSE/静态 SPA 托管已实现，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M5～M8 未实现，本轮到 M4 停止，整篇不标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前 M0～M3 代码已落地；主服务装配基础设施、Profile 校验、采集调度、设备状态/事件与历史，启动后会连接数据库中启用的数据源。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)及[协议开发指南](../../../../docs/guides/protocol-drivers.md)。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；业务 API、认证、规则、通知、关机编排与发布配置待实现，CP-1 真机待验收。
+- 当前 M0～M4 代码已落地并通过本机验证；主服务装配基础设施、Profile 校验、采集调度、状态/事件/历史、认证与审计、监控管理 API、SSE 和静态 SPA，启动会连接数据库中启用的数据源。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)及[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)。前端仍为脚手架、无业务页面；通知、规则/动作、关机编排与系统发布待实现。M4 全量检查、回归、fuzz、内嵌构建、Windows 临时库 + loopback 冒烟与 Linux 交叉编译已通过；CP-1 真机、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成，证据见开发计划。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
 - M3 实施约束：P0 单源由 supervisor 拒绝冲突；同 canonical IP 串行且固定解析后的拨号 IP，拒绝多地址 DNS，防止主机别名绕过限流。状态先在候选副本计算，再同事务提交周期、事件及关键状态，成功后发布，避免数据库失败使内存与后续动作分歧。重启保留已确认周期和活动告警，但舍弃未确认窗口，不能把服务停机时间当作连续有效观测。历史只接收目录允许的统一字段；明细与聚合沿用初始 schema，未为诊断缓存新增持久化表。
+- M4 实施边界与决定（2026-10-15 演进，非原评审历史）：初始化 token 仅主进程 stderr 输出一次、只存内存，避免进入轮转日志或 API；Cookie 固定 7 天绝对期限，服务端执行 24 小时 idle，避免活跃 SSE 无法续发响应头导致 Cookie 提前过期。SSE 每 15 秒心跳重新认证；256 缓冲溢出独立失效信号立即断开、不排空，帧写期限 5 秒，避免慢订阅者继续消费陈旧数据或无限占用连接。
+- M4 配置一致性：暂停并排空受影响 collector/actor，Flush 历史，再提交配置与审计同事务，最后按提交状态恢复运行，避免旧采集事实跨配置边界。事务失败保持旧配置并尝试恢复；保存成功恢复失败用 503 / `configuration_saved_runtime_error` 明确区分，不能伪装回滚。Profile 更新递增版本并同步引用，内置键保留、引用时拒绝删除；源凭据省略/空串保留，`clear_secrets` 显式清除，协议变更清旧凭据，响应仅 `*_set`。
+- M4 构建只实现静态 SPA 托管：`backend:build` 依赖 `webui:build`，pnpm build 后由 `scripts/build-webui.mjs` 校验并安全复制 embed 产物（当前 4 文件，产物不提交）；业务页面、统一发布与 M5～M8 不因此完成。CP-2 契约交付仅为后端联调基线，未伪造双方联调或真机证据。
 
 ---
 
@@ -74,7 +77,7 @@
 
 版本在引入时按当期最新稳定版锁定，`go.sum` 入库。
 
-当前 [go.mod](../../../../backend/go.mod) 已锁定 M0 直接依赖 `modernc.org/sqlite v1.60.1`、`gopkg.in/natefinch/lumberjack.v2 v2.2.1`、`golang.org/x/sys v0.49.0`，M1 引入 `go.yaml.in/yaml/v3 v3.0.5`，校验和见 `go.sum`。完整依赖清单已获项目方批准，尚未进入的阶段不提前引入依赖。
+当前 [go.mod](../../../../backend/go.mod) 已锁定 M0 直接依赖 `modernc.org/sqlite v1.60.1`、`gopkg.in/natefinch/lumberjack.v2 v2.2.1`、`golang.org/x/sys v0.49.0`，M1 引入 `go.yaml.in/yaml/v3 v3.0.5`，M4 为 argon2id 引入 `golang.org/x/crypto v0.58.0`，校验和见 `go.sum`；SSH 行为尚未实现。完整依赖清单已获项目方批准，尚未进入的阶段不提前引入依赖。
 
 ---
 
@@ -882,6 +885,8 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 15.2 端点
 
+下表保留完整目标端点；M4 已实现范围与实际请求/响应以[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)为准。通知、规则、动作、受控主机、关机计划、系统设置及 P1 ack 均未实现。
+
 | 分组 | 端点 |
 |---|---|
 | 健康检查 | `GET /healthz`（无需登录） |
@@ -905,14 +910,14 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 15.3 SSE（FR-API-03、FR-UI-01）
 
-- 连接建立后先发送一次全量 `sync`（全部设备 `DeviceState`、活动告警、活动计划运行），随后推送增量事件：`device_state`、`event`、`alert`、`plan_progress`、`notify_failed`。断线重连后再次全量同步，因此不需要 `Last-Event-ID` 回放。
-- 每 15 s 发送一次注释心跳，用于前端判定"实时连接已断开"。
-- 订阅者缓冲溢出时服务端主动断开连接（3.3），前端重连后自动恢复。
-- SSE 连接不受全局写超时限制（服务器不设置 `WriteTimeout`，或对该请求用 `http.ResponseController` 清除截止时间）。
+- M4 连接建立先发送全量 `sync`（全部运行设备 `DeviceState`、活动告警，`plan_runs` 固定空数组），随后推送 `device_state`、`event`、`alert`；配置变更后再次 sync。`plan_progress`、`notify_failed` 留待 M7/M5，当前不产生。重连重新全量同步，不做 `Last-Event-ID` 回放。
+- 每 15 s 注释心跳重新认证，响应注销、改密撤销和绝对期限到期，不永久持有连接建立时的授权。
+- 每订阅者 256 缓冲，溢出独立失效信号通知立即断开，不排空积压更新；前端重连并获取全量 sync。
+- SSE 不设置整个长连接的全局写超时，但每帧用 `http.ResponseController` 设置 5 秒写期限，避免慢客户端无限占用。
 
 ### 15.4 WebUI 托管
 
-`internal/webui` 通过 `//go:embed all:dist` 打包前端构建产物；非 `/api`、`/healthz` 的 GET 请求先匹配静态文件，未命中时返回 `index.html`（SPA fallback）。构建时把 `frontend/dist` 复制到 `backend/internal/webui/dist`（该目录除占位文件外不入库）；开发模式下 dist 为空时返回提示页，前端使用 Vite 开发服务器代理 `/api`。
+`internal/webui` 通过 `//go:embed all:dist` 打包前端构建产物；非 `/api`、`/healthz` 及其子路径的 GET/HEAD 请求先匹配静态文件，未命中回退 `index.html`（SPA fallback），拒绝隐藏文件、遍历和目录列表。`backend:build` 依赖 `webui:build`，由 `scripts/build-webui.mjs` 安全复制 `frontend/dist` 到 embed 目录（除占位文件外不入库）；未构建时返回 503 提示页。当前仅托管 React 占位页，开发可用 Vite 同源代理 `/api`。
 
 ---
 
@@ -920,16 +925,16 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 16.1 认证与会话（SEC-10~12）
 
-- 除 `/healthz`、`/setup/*`（无用户时）、`/auth/login` 与静态资源外，所有 `/api/v1` 请求都经过认证中间件。静态资源本身不含数据，页面在前端检测未登录后跳转登录页。
-- 首次启动：数据库中没有用户时允许 `POST /setup` 创建第一个管理员。为防止局域网内他人抢先完成初始化，启动时如无用户，在日志中输出一次性 **setup token**，向导需要填写（D3）。token 只在内存中保存，进程重启后重新生成；第一个管理员创建成功后立即失效。
+- 除 `/api/v1/setup/status`、`POST /api/v1/setup` 与 `POST /api/v1/auth/login` 外，所有 API（含未知路径和 SSE）都经过管理员认证。`/healthz` 与静态资源无需会话；前端检测未登录并跳转登录页仍是业务 UI 目标，当前未实现。
+- 首次启动：数据库中没有用户时允许 `POST /setup` 创建第一个管理员。为防止局域网内他人抢先完成初始化，主进程启动仅向 stderr 输出一次 **setup token**（D3，M4 实施细化为不进入轮转日志），不写数据库或 HTTP 响应。token 只存内存，重启重新生成，首个管理员创建成功后失效；前端向导页面尚未实现。
 - 密码：argon2id（m=64 MiB, t=3, p=2，参数随哈希一起存储）；最小长度 8。
-- 会话：32 字节随机 token，Cookie `HttpOnly; SameSite=Strict; Path=/`，HTTPS 下加 `Secure`；数据库只存 SHA-256 哈希。空闲 24 小时失效、绝对有效期 7 天；修改密码后作废该用户其他会话。
-- CSRF：非 GET / HEAD 请求必须携带 `X-CSRF-Token`，与会话中的 token 一致；同时校验 `Origin`（存在时）与 Host 一致。
+- 会话：32 字节随机 token，Cookie `HttpOnly; SameSite=Strict; Path=/`，直接 HTTPS 下 `Secure`；数据库只存 SHA-256 哈希。Cookie 固定 7 天绝对期限、不滚动续发，服务端另执行空闲 24 小时失效；自己改密保留当前会话并撤销其他会话，修改他人密码撤销其全部会话。
+- CSRF：认证后的非 GET/HEAD 请求必须携带会话 `X-CSRF-Token`；所有写请求（含初始化/登录）若有 Origin，必须与请求 scheme/Host 一致。不启用 CORS，不信任 `X-Forwarded-*`。
 - 登录限速：按"用户名"与"来源 IP"分别计数，15 分钟内失败 5 次锁定 15 分钟；响应统一为"用户名或密码错误"，锁定期间返回 429。
 
 ### 16.2 角色
 
-P0 只有管理员（需求 Q2 默认假设：多个管理员账号，角色 P1）。中间件中保留"所需角色"声明，P1 启用 operator / viewer 时只需在路由上标注。
+P0 只有管理员（需求 Q2 默认假设：多个管理员账号，角色 P1），当前 API 统一检查 admin。operator / viewer 与路由级角色声明留待 P1，不将规划中的扩展能力描述为已实现。
 
 ### 16.3 敏感信息加密（SEC-13）
 
@@ -964,7 +969,7 @@ P0 只有管理员（需求 Q2 默认假设：多个管理员账号，角色 P1�
 
 ## 18. 部署与构建
 
-本节表格描述目标方案，当前操作以[开发指南](../../../../docs/guides/development.md)为准。M0 已实现数据目录、日志文件及后端 check/build tasks；前端内嵌、完整发布 tasks、Docker 和 systemd 配置仍未实现。
+本节表格描述目标方案，当前操作以[开发指南](../../../../docs/guides/development.md)为准。M0 已实现数据目录、日志文件及后端 check/build tasks；M4 已实现前端产物安全复制、embed 静态 SPA 与本机单二进制构建。完整发布 tasks、Docker 和 systemd 配置仍未实现，前端仍无业务页面。
 
 | 项 | 方案 |
 |---|---|

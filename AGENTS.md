@@ -4,7 +4,7 @@
 
 ## 项目现状
 
-后端已完成 **M0/M1**，**M2 只读驱动及 M3 采集调度、状态、事件与历史已实现并通过本机验证，CP-1 真机验收待完成**。主服务会自动采集数据库中启用的数据源，开发测试必须使用临时数据库与本机模拟器，不得直接使用本地真实设备配置启动测试。前端仍为脚手架；业务 API、认证、规则、通知、关机编排尚未实现，不要把规划或模拟器验证描述为已完成真实设备验收。
+后端 **M0～M4 已实现并通过本机验证**；M4 包括认证、审计、监控 API、SSE 与静态 SPA 托管，CP-2 契约已交付、双方联调待验收。**CP-1 真机验收未完成**。主服务会自动采集数据库中启用的数据源，开发测试必须使用临时数据库与本机模拟器，不得直接使用本地真实设备配置启动测试。前端仍为脚手架、无业务页面；M5 通知、M6 规则动作、M7 编排、M8 系统与发布均未实现，本轮到 M4 停止，不自动推进后续阶段。当前契约见 [监控 API 与 SSE](docs/reference/monitoring-api.md)，不要把本机/模拟器验证描述为真机、Linux 实机或双方联调验收。
 
 README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技能。
 
@@ -29,7 +29,7 @@ mise.toml   项目工具链与缓存目录的唯一来源
 
 ```bash
 # 后端（在 backend/ 下执行）
-go run ./cmd/ups-warden --data-dir ../data # 启动服务，数据统一放根目录 data/
+go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden # 开发测试用独立临时目录，不使用真实 data/
 go test ./...
 go vet ./...
 gofmt -l .
@@ -45,6 +45,8 @@ pnpm check                        # 格式、lint、类型检查
 pnpm test
 pnpm build
 ```
+
+`backend:build` 依赖 `webui:build`：先执行前端 pnpm build，再由 `scripts/build-webui.mjs` 安全复制到 `backend/internal/webui/dist` 并 embed；产物不提交。直接 go run 未构建 dist 时根路径返回 503 提示页，业务 API 不依赖业务前端页面。初始化 token 仅主进程 stderr 输出一次且只存内存；不得把终端日志公开。
 
 ## 设备安全（强制）
 

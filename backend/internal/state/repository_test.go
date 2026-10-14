@@ -186,3 +186,24 @@ func FuzzParseConfig(f *testing.F) {
 		}
 	})
 }
+
+func TestClearingAlertWithoutRecoveryEventKeepsNotification(t *testing.T) {
+	db := stateDB(t)
+	a := actor(t, db, DefaultConfig(), nil)
+	at := time.Now()
+	r := reading(at, "online", 99)
+	r.Snapshot.Fields["ups_mode"] = model.Field{Str: "fault", Quality: model.Good}
+	u := process(t, a, r)
+	if !hasEvent(u, model.EventUPSFault) || !u.AlertsChanged {
+		t.Fatal("未发布故障")
+	}
+	r = reading(at.Add(time.Second), "online", 99)
+	r.Snapshot.Fields["ups_mode"] = model.Field{Str: "line", Quality: model.Good}
+	u = process(t, a, r)
+	if len(u.Events) != 0 || !u.AlertsChanged {
+		t.Fatalf("清除信号丢失: %+v", u.Events)
+	}
+	if count(t, db, "SELECT count(*) FROM events WHERE active=1") != 0 {
+		t.Fatal("故障未清除")
+	}
+}
