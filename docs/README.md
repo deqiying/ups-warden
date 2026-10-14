@@ -4,11 +4,11 @@
 
 ## 当前状态
 
-后端 **M0、M1 已完成，M2 只读驱动与本机模拟器已实现**；M2 真机检查点 CP-1 待验收。前端仍为脚手架，采集调度及联动业务尚未实现，后续需求与静态设计稿不代表功能已交付。
+后端 **M0/M1 已完成，M2 只读驱动及 M3 采集、状态、事件、历史已实现并通过本机验证**；M2 真机检查点 CP-1 待验收。前端仍为脚手架，业务 API 与联动业务尚未实现，后续需求与静态设计稿不代表功能已交付。
 
 | 模块 | 已有实现 | 尚未实现 |
 |---|---|---|
-| 后端 | 配置、日志、目录锁、SQLite、加密、app 生命周期、统一模型、五个内置 Profile、归一化、三协议只读驱动与 guard、本机模拟器、`GET /healthz` | 采集调度、业务 API、认证、规则、通知、关机编排 |
+| 后端 | 基础设施、统一模型、五个内置 Profile、归一化、三协议只读驱动与 guard、本机模拟器、采集调度、状态/事件、历史写入与查询、`GET /healthz` | 业务 API、认证、规则、通知、关机编排 |
 | 前端 | React 占位页、开发代理、检查与测试脚本 | 总览、设备、规则等业务页面及 API 调用 |
 | 构建与运行 | mise 工具链及仓库内缓存；`backend:check`、`backend:build`；前端运行与构建脚本 | 前端内嵌、统一发布任务、Docker / systemd 配置 |
 
@@ -21,9 +21,10 @@
 | 启动、联调、查询参数或运行检查 | [开发指南](guides/development.md) | 当前源码与配置对应的操作说明 |
 | 理解字段映射、只读计划与离线回归 | [Profile 与归一化](guides/profiles.md) | 当前 M1 契约与 ET1K 采样限制；不是联网驱动 |
 | 本机测试三协议、理解发送护栏或运行只读冒烟 | [协议驱动与本机模拟器](guides/protocol-drivers.md) | M2 当前行为；真实设备 CP-1 尚未执行 |
+| 理解采集调度、状态去抖、重启恢复与历史查询 | [采集、状态与历史](guides/collection-state-history.md) | M3 当前行为与内部契约；不是 HTTP API |
 | 了解功能目标、优先级、字段和验收要求 | [需求文档](planning/requirements.md) | v0.3 草案；已确认项与待确认项按正文区分 |
-| 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0/M1 及 M2 代码已落地，后续业务未完成 |
-| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1 已完成；M2 待 CP-1；M3~M8 未完成 |
+| 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0～M3 代码已落地，后续业务未完成 |
+| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3 已完成本机验收；M2 待 CP-1；M4～M8 未完成 |
 | 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
 | 评审设备状态页的视觉设计 | [设备状态页静态设计稿](design/device-status.html) | 独立 HTML 原型，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |
@@ -38,6 +39,7 @@ docs/
   guides/development.md                  当前开发、参数、接口与检查说明
   guides/profiles.md                     Profile、只读计划与离线归一化契约
   guides/protocol-drivers.md             只读驱动、本机模拟器与显式冒烟工具
+  guides/collection-state-history.md     采集、状态、事件、历史与生命周期
   planning/
     requirements.md                      需求草案
     backend-plan.md                      开发任务与验收计划

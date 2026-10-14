@@ -4,7 +4,7 @@
 
 ## 当前范围
 
-M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。主服务尚未装配采集调度、设备管理 API 或实时状态，启动 `ups-warden` 不会连接设备。真实设备 CP-1 待项目方限定范围后验收；模拟器通过不等于真机兼容性已经确认。
+M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。M3 已将采集调度与状态接入主服务，启动 `ups-warden` 会连接数据库中启用的数据源，见[采集、状态与历史](collection-state-history.md)；设备管理 HTTP API 尚未开放。真实设备 CP-1 待项目方限定范围后验收；模拟器通过不等于真机兼容性已经确认。
 
 驱动只消费 `driver.ReadPlan`，不依赖 Profile 或具体型号。调用者先编译 Profile，再通过对应包的 `New(Config, plan)` 创建实例；构造函数不联网，`Probe` / `Poll` 才建立连接。业务层只消费归一化结果，不能把 `RawData` 或协议诊断用于规则判断。
 

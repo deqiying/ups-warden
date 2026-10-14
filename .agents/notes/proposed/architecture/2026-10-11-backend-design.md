@@ -5,16 +5,17 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态**：proposed（整套业务方案未完成；M0/M1 已完成，M2 驱动与模拟器代码和本机验证已完成，CP-1 真机待验收）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M3~M8 和剩余验收完成前不将整篇标为 implemented。
+> **状态**：proposed（整套业务方案未完成；M0/M1 已完成，M2 只读驱动与 M3 采集/状态/历史代码及本机验证已完成，CP-1 真机待验收）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M4～M8 和剩余验收完成前不将整篇标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前 M0/M1 已完成；M2 只读驱动、字节护栏、本机模拟器及显式冒烟工具已落地，当前行为见[协议开发指南](../../../../docs/guides/protocol-drivers.md)。[主服务入口](../../../../backend/cmd/ups-warden/main.go)仍只装配基础设施和内置 Profile 校验，[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；采集调度、业务 API、认证与发布配置 **待实现**，不会启动后自动连接设备。
+- 当前 M0～M3 代码已落地；主服务装配基础设施、Profile 校验、采集调度、设备状态/事件与历史，启动后会连接数据库中启用的数据源。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)及[协议开发指南](../../../../docs/guides/protocol-drivers.md)。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；业务 API、认证、规则、通知、关机编排与发布配置待实现，CP-1 真机待验收。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
+- M3 实施约束：P0 单源由 supervisor 拒绝冲突；同 canonical IP 串行且固定解析后的拨号 IP，拒绝多地址 DNS，防止主机别名绕过限流。状态先在候选副本计算，再同事务提交周期、事件及关键状态，成功后发布，避免数据库失败使内存与后续动作分歧。重启保留已确认周期和活动告警，但舍弃未确认窗口，不能把服务停机时间当作连续有效观测。历史只接收目录允许的统一字段；明细与聚合沿用初始 schema，未为诊断缓存新增持久化表。
 
 ---
 

@@ -13,11 +13,15 @@ import (
 	"sync"
 	"time"
 
+	"ups-warden/internal/bus"
+	"ups-warden/internal/collector"
 	"ups-warden/internal/config"
 	"ups-warden/internal/datalock"
+	"ups-warden/internal/history"
 	"ups-warden/internal/profile"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/server"
+	"ups-warden/internal/state"
 	"ups-warden/internal/store"
 )
 
@@ -25,21 +29,29 @@ const shutdownTimeout = 10 * time.Second
 
 // App 持有进程资源；业务模块只能在启动阶段装配，关闭后不接受新任务。
 type App struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	logger    *slog.Logger
-	db        *store.Store
-	cipher    *secret.Cipher
-	lock      *datalock.Lock
-	profiles  []*profile.Profile
-	wg        sync.WaitGroup
-	mu        sync.Mutex
-	closing   bool
-	closeOnce sync.Once
-	closeErr  error
+	ctx           context.Context
+	cancel        context.CancelFunc
+	logger        *slog.Logger
+	db            *store.Store
+	cipher        *secret.Cipher
+	lock          *datalock.Lock
+	profiles      []*profile.Profile
+	collector     *collector.Supervisor
+	history       *history.Writer
+	bus           bus.Bus
+	actors        map[int64]*state.Actor
+	stateCancel   context.CancelFunc
+	historyCancel context.CancelFunc
+	stateDone     []chan struct{}
+	stateErr      error
+	wg            sync.WaitGroup
+	mu            sync.Mutex
+	closing       bool
+	closeOnce     sync.Once
+	closeErr      error
 }
 
-// Run 按“锁 → 密钥 → 数据库 → 内置 Profile → HTTP”启动，ctx 取消后关闭资源。
+// Run 按“锁 → 密钥 → 数据库 → Profile → 状态/历史/采集 → HTTP”启动。
 // encodedKey 来自 UPS_WARDEN_MASTER_KEY，不得记录到日志或持久化配置。
 func Run(ctx context.Context, c config.Config, version string, logger *slog.Logger, encodedKey string) (err error) {
 	a, err := open(ctx, c, logger, encodedKey)
@@ -87,6 +99,9 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	a.profiles, err = profile.Builtins()
 	if err != nil {
 		return nil, fmt.Errorf("加载内置 Profile: %w", err)
+	}
+	if err := a.startPipeline(); err != nil {
+		return nil, err
 	}
 	return a, nil
 }
@@ -158,13 +173,32 @@ func (a *App) serve(listener net.Listener) (err error) {
 	return nil
 }
 
-// Close 停止并等待后台任务，随后关闭数据库并释放目录锁；可重复调用。
+// Close 依次停止采集、状态、历史和其他任务，再关闭数据库并释放目录锁。
 func (a *App) Close() error {
 	a.closeOnce.Do(func() {
 		a.mu.Lock()
 		a.closing = true
 		a.cancel()
 		a.mu.Unlock()
+		if a.collector != nil {
+			a.closeErr = errors.Join(a.closeErr, a.collector.Close())
+		}
+		if a.stateCancel != nil {
+			a.stateCancel()
+		}
+		for _, done := range a.stateDone {
+			<-done
+		}
+		if a.history != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+			a.closeErr = errors.Join(a.closeErr, a.stateErr)
+			a.closeErr = errors.Join(a.closeErr, a.history.Close(ctx))
+			cancel()
+		}
+		if a.historyCancel != nil {
+			a.historyCancel()
+		}
+		a.bus.Close()
 		a.wg.Wait()
 		if a.db != nil {
 			a.closeErr = errors.Join(a.closeErr, a.db.Close())

@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化不访问设备；服务启动只加载并校验内置 Profile。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；设备管理、Profile HTTP API 和采集调度尚未接入。
+本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化本身不访问设备。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；M3 主服务已接入[采集、状态与历史](collection-state-history.md)，启动会采集数据库中启用的数据源。设备管理与 Profile HTTP API 尚未开放。
 
 ## 内置 Profile
 
