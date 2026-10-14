@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态**：proposed（整套业务方案未完成；M0 工程基础设施、M1 统一模型 / Profile / 归一化已落地）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节）；实际验收范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)。未完成 M2~M8 前不将整篇标为 implemented。
+> **状态**：proposed（整套业务方案未完成；M0/M1 已完成，M2 驱动与模拟器代码和本机验证已完成，CP-1 真机待验收）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M3~M8 和剩余验收完成前不将整篇标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前后端已完成 M0、M1：[入口](../../../../backend/cmd/ups-warden/main.go)调用 `config`、`logging` 与 `app`，已实现数据目录锁、SQLite 与迁移、主密钥及加密、生命周期和架构检查；统一模型、五个内置 Profile、只读计划及离线归一化已落地，启动校验内置 Profile。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；联网驱动、模拟器、调度、认证和发布配置均 **待实现**。当前离线契约与采样边界见 [Profile 指南](../../../../docs/guides/profiles.md)。
+- 当前 M0/M1 已完成；M2 只读驱动、字节护栏、本机模拟器及显式冒烟工具已落地，当前行为见[协议开发指南](../../../../docs/guides/protocol-drivers.md)。[主服务入口](../../../../backend/cmd/ups-warden/main.go)仍只装配基础设施和内置 Profile 校验，[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；采集调度、业务 API、认证与发布配置 **待实现**，不会启动后自动连接设备。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
@@ -315,6 +315,8 @@ type RawData struct {
 | L3 测试层 | ① 每种驱动的 fuzz 测试：随机生成 Profile / ReadPlan，经驱动发到记录型假连接，断言全部字节通过 guard 校验；② 模拟器记录收到的所有请求，集成测试结束时断言无非白名单请求（对应 AC-11 的自动化部分）；③ 架构测试断言驱动包不直接调用 `net.Dial*`（只能经 guard） |
 
 此外，驱动、连接测试、Profile 推荐都 **不访问设备 HTTP 端口**，系统中没有任何针对设备的 HTTP 客户端代码（SEC-03）。
+
+M2 已落实上述防护，并把每次 Write 限定为完整单帧，拒绝尾随报文、重复 JSON 键和截断输入；短写关闭连接而非重发片段。所有网络测试使用假连接或 loopback 模拟器。结构性只读不等于型号兼容性或真机验收；CP-1 仍须独立授权。
 
 ### 5.3 SNMP（`driver/snmp`）
 

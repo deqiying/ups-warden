@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化不访问设备；服务启动只加载并校验内置 Profile。设备管理、Profile HTTP API、采集驱动和调度仍按后续里程碑接入。
+本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化不访问设备；服务启动只加载并校验内置 Profile。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；设备管理、Profile HTTP API 和采集调度尚未接入。
 
 ## 内置 Profile
 
@@ -90,7 +90,7 @@ fields:
 
 推荐是本地身份匹配：型号精确匹配优先于 Agent 版本匹配，再回退到协议通用 Profile；相同得分按 key 排序。Modbus 缺少可信身份时列出全部协议候选，交由用户选择，不自动认定型号。
 
-Profile 校验是第一道保护，**不能替代 M2 驱动发送前的字节白名单**。不得将构造合法读计划误述为已验证真机驱动安全。
+Profile 校验是第一道保护，**不能替代驱动发送前的字节白名单**。M2 已实现独立 guard 与安全测试，但不得将合法读计划或模拟器验收误述为已完成真机验收。
 
 ## 回归证据与限制
 
