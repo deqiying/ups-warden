@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 项目处于 **初始化阶段**：目前只有 Go 后端与 React 前端脚手架，采集、规则、通知、关机编排均 **尚未实现**。下文描述的是设计目标。
+> 后端已完成 **M0 工程基础设施**（配置、日志、数据目录锁、SQLite 与凭据加密），前端仍为脚手架；采集、规则、通知、关机编排均 **尚未实现**。下文业务流程描述的是设计目标。
 
 ## 停电联动流程
 
@@ -50,7 +50,7 @@ mise install
 
 ```bash
 # 终端一：后端默认监听 127.0.0.1:8080，仅提供 /healthz
-(cd backend && mise x -- go run ./cmd/ups-warden)
+(cd backend && mise x -- go run ./cmd/ups-warden --data-dir ../data)
 ```
 
 ```bash

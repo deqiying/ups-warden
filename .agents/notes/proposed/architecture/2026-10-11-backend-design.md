@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态**：proposed（设计已评审，业务方案未落地）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节）；评审确认不等于 implemented。正文中标注「**决策**」的条目是需求文档未规定、由本方案确定的取舍。
+> **状态**：proposed（整套业务方案未完成；M0 工程基础设施已落地）。D1~D10 已于 2026-10-11 评审确认（第 21.1 节）；M0 的实际验收范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md#m0-工程基础设施4-人日)。未完成 M1~M8 前不将整篇标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前后端只有脚手架：[入口](../../../../backend/cmd/ups-warden/main.go)负责参数解析、`slog`、优雅关闭，[HTTP 服务](../../../../backend/internal/server/server.go)只注册 `GET /healthz`。本方案中的业务模块、数据库、驱动、模拟器和发布配置均为 **待实现**；`ServeMux` 等脚手架基础已存在。
+- 当前后端已完成 M0：[入口](../../../../backend/cmd/ups-warden/main.go)调用 `config`、`logging` 与 `app`，已实现数据目录锁、SQLite 与迁移、主密钥及加密、生命周期和架构检查。[HTTP 服务](../../../../backend/internal/server/server.go)仍只注册 `GET /healthz`；业务模块、驱动、模拟器、认证和发布配置均 **待实现**。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
@@ -73,7 +73,7 @@
 
 版本在引入时按当期最新稳定版锁定，`go.sum` 入库。
 
-当前 [go.mod](../../../../backend/go.mod) 尚无第三方依赖；上表不是已经安装的依赖清单。
+当前 [go.mod](../../../../backend/go.mod) 已锁定 M0 直接依赖 `modernc.org/sqlite v1.60.1`、`gopkg.in/natefinch/lumberjack.v2 v2.2.1`、`golang.org/x/sys v0.49.0`，校验和见 `go.sum`。完整依赖清单已获项目方批准，尚未进入的阶段不提前引入依赖。
 
 ---
 
@@ -960,7 +960,7 @@ P0 只有管理员（需求 Q2 默认假设：多个管理员账号，角色 P1�
 
 ## 18. 部署与构建
 
-本节为目标方案，不是当前部署指南。现有脚手架的启动参数见[开发指南](../../../../docs/guides/development.md)；数据目录、日志文件、前端内嵌、mise 构建 tasks、Docker 和 systemd 配置均尚未实现。
+本节表格描述目标方案，当前操作以[开发指南](../../../../docs/guides/development.md)为准。M0 已实现数据目录、日志文件及后端 check/build tasks；前端内嵌、完整发布 tasks、Docker 和 systemd 配置仍未实现。
 
 | 项 | 方案 |
 |---|---|

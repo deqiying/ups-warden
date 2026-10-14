@@ -26,3 +26,8 @@ Thumbs.db
 
 # 本地运行数据（SQLite、密钥文件等）
 /data/
+/backend/data/
+
+# 后端内嵌前端产物（M4 接入，仅保留占位文件）
+/backend/internal/webui/dist/*
+!/backend/internal/webui/dist/.gitkeep

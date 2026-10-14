@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于当前脚手架，说明已有的运行入口、配置与检查方式。业务目标见[需求草案](../planning/requirements.md)，不能把其中的部署方案或 API 列表作为当前能力使用。
+本文适用于已完成 M0 工程基础设施的后端与前端脚手架，说明已有运行入口、配置与检查方式。业务目标见[需求草案](../planning/requirements.md)，其中采集、规则、通知与关机编排尚未实现。
 
 ## 1. 工具链与工作目录
 
@@ -32,30 +32,43 @@ mise x -- pnpm install
 
 ```bash
 cd backend
-mise x -- go run ./cmd/ups-warden
+mise x -- go run ./cmd/ups-warden --data-dir ../data
 ```
 
-默认监听 `127.0.0.1:8080`。当前后端不连接 UPS、不创建业务数据库，也不托管前端页面。
+默认监听 `127.0.0.1:8080`。后端会创建数据目录、获取独占文件锁、加载主密钥并迁移 SQLite，然后启动 HTTP；不连接 UPS，也不托管前端页面。
 
 ### 启动配置
 
-定义与优先级来自 [main.go](../../backend/cmd/ups-warden/main.go)：**显式命令行参数 > 非空环境变量 > 默认值**。环境变量为空时回退默认值，不能把空值当作有效配置。
+定义与优先级来自 [config.go](../../backend/internal/config/config.go)：**显式命令行参数 > 非空环境变量 > 默认值**。环境变量为空时回退默认值。相对路径以进程工作目录为基准；在 `backend/` 运行时请显式传入 `--data-dir ../data`。
 
 | 参数 | 环境变量 | 默认值 | 说明 |
 |---|---|---|---|
-| `-listen` | `UPS_WARDEN_LISTEN` | `127.0.0.1:8080` | HTTP 监听地址 |
-| `-log-level` | `UPS_WARDEN_LOG_LEVEL` | `info` | 日志级别；常用值为 `debug`、`info`、`warn`、`error`，由 `slog.Level.UnmarshalText` 解析 |
+| `--listen` | `UPS_WARDEN_LISTEN` | `127.0.0.1:8080` | HTTP 监听地址；端口 0 可申请临时端口 |
+| `--data-dir` | `UPS_WARDEN_DATA_DIR` | `./data` | 数据目录；推荐统一使用仓库根目录 `data/` |
+| `--log-level` | `UPS_WARDEN_LOG_LEVEL` | `info` | 常用 `debug`、`info`、`warn`、`error`；由 `slog.Level.UnmarshalText` 解析 |
+| `--log-file` | `UPS_WARDEN_LOG_FILE` | 空 | 空时写 stderr；指定后写滚动文件，20 MB、最多 5 份备份 |
+| `--log-format` | `UPS_WARDEN_LOG_FORMAT` | `text` | `text` 或 `json` |
+| `--script-dir` | `UPS_WARDEN_SCRIPT_DIR` | `<data-dir>/scripts` | 仅解析目录配置，脚本执行在 M6 实现；当前不创建该目录 |
 
 例如在 **`backend/`** 目录启用调试日志并更改端口：
 
 ```bash
-mise x -- go run ./cmd/ups-warden -listen 127.0.0.1:8081 -log-level debug
+mise x -- go run ./cmd/ups-warden --data-dir ../data --listen 127.0.0.1:8081 --log-level debug
 ```
 
-- 日志以文本格式写入 stderr；当前没有日志文件或滚动配置。
-- 无效日志级别、监听失败或关闭失败会记录错误并以非零状态退出。
-- 入口处理 `os.Interrupt` / `SIGTERM`，优雅关闭最多等待 10 秒；HTTP 读取请求头超时为 5 秒。
-- 规划中的 `--data-dir`、`--log-file`、`--log-format`、`--script-dir`、TLS 等参数尚未实现。
+- 已知敏感属性键和 `secret.String` 自动掩码；不得把原始凭据插入日志消息、任意结构体或错误字符串中。协议错误和外部 URL 清洗随后续模块实现。
+- 无效参数、日志文件打不开、目录锁冲突、主密钥错误、数据库迁移失败、监听失败或关闭失败均使进程非零退出；日志文件模式下初始化失败仍可从 stderr 排查。
+- 入口处理 `os.Interrupt` / `SIGTERM`，HTTP 优雅关闭最多等待 10 秒，超时强制关闭连接；请求头超时为 5 秒。后台任务必须响应 context 取消；错误或 panic 以 1～30 秒指数退避重启，正常返回不重启，HTTP 异常退出则结束进程。
+- TLS、脚本编辑等 P1 参数尚未实现。
+
+### 数据目录与主密钥
+
+- `ups-warden.lock`：操作系统独占文件锁；第二实例立即报“数据目录已被占用”。进程退出自动释放，**不要手工删除仍被持有的锁文件**。目录应位于本地磁盘，不依赖网络共享文件系统的锁语义。
+- `ups-warden.db`：SQLite WAL，`synchronous=FULL`、`busy_timeout=5000`、`foreign_keys=ON`；写池 1 条连接、只读池最多 4 条连接。启动执行 embed 前向迁移，初始化 25 张表；建表不等于相关业务模块已实现。已有迁移不可改写，后续修改使用新编号脚本。
+- `master.key`：默认生成并保存原始 32 字节密钥，Linux 文件权限为 `0600`。也可用 `UPS_WARDEN_MASTER_KEY` 提供 Base64 编码的 32 字节密钥，优先于文件且不会写回文件。该变量不是命令行参数，避免密钥出现在命令历史或进程参数中。
+- 凭据使用 AES-256-GCM，以 `表名.列名` 为 AAD；启动会检查已有加密凭据。错误密钥、损坏文件或解密失败均不会被静默清空。请恢复正确密钥备份；凭据管理界面尚未实现，当前不能通过 WebUI 重新填写。
+- **Windows 的 `0600` 不提供 Unix 权限保护**：请用数据目录 ACL 限制为服务账号可访问，启动日志也会提示。不要依赖 Git 忽略规则作为访问控制。
+- 备份时先停止服务，再复制完整数据目录（包括可能存在的 WAL 文件）；使用环境密钥时另行安全备份该密钥。丢失密钥将无法解密已有凭据，不要删除密钥后让服务重新生成。
 
 ### 健康检查
 
@@ -98,18 +111,24 @@ UPS_WARDEN_BACKEND=http://127.0.0.1:8081 mise x -- pnpm dev
 
 ## 4. 检查、测试与构建
 
-完成第 1 节的工具链与依赖安装后执行。以下是维护命令，不是本次文档整理已运行这些命令的声明。
+完成第 1 节工具链安装后，在**仓库根目录**执行：
 
-在 **`backend/`** 目录：
+```bash
+mise run backend:check
+mise run backend:build
+```
+
+`backend:check` 使用 Bash / Git Bash，依次检查 `gofmt -l .`（有输出即失败）、`go vet ./...`、`go test ./...`。`backend:build` 使用 `CGO_ENABLED=0` 构建本机二进制，输出到 `.cache/build/`（Windows 为 `ups-warden.exe`），尚不包含 WebUI。
+
+需要单独运行时，在 **`backend/`** 执行：
 
 ```bash
 mise x -- gofmt -l .
 mise x -- go vet ./...
 mise x -- go test ./...
-mise x -- go build -o bin/ups-warden ./cmd/ups-warden
 ```
 
-`gofmt -l .` 预期无输出。后端测试见 [server_test.go](../../backend/internal/server/server_test.go)，目前只检查健康响应和 POST 被拒绝；没有协议模拟器、采集或关机编排测试。
+后端测试覆盖配置优先级、日志掩码和滚动、主密钥与加密、跨进程目录锁、SQLite 迁移与约束、应用启动/失败清理/重启、panic 退避以及包依赖边界；时间相关后台任务测试使用 `testing/synctest`。仍无协议驱动、采集或关机编排测试。Linux 交叉编译不能替代 Linux 实机运行验证。
 
 在 **`frontend/`** 目录：
 
@@ -122,16 +141,16 @@ mise x -- pnpm build
 - `check` 调用 `vp check`，覆盖格式、lint 与配置启用的类型检查。
 - `test` 调用 `vp test run`；现有 [App.test.tsx](../../frontend/src/App.test.tsx) 使用服务端渲染检查项目名称，不是浏览器端到端测试。
 - `build` 执行 `tsc -b && vp build`，产物位于 `frontend/dist/`；不会复制到后端或嵌入 Go 二进制。
-- 当前没有统一 mise 构建 tasks、文档构建或专用链接检查脚本。仅修改文档时应核对路径、相对链接、参数和示例，不为验证文档访问真实设备。
+- 当前没有统一前后端发布任务、文档构建或专用链接检查脚本。仅修改文档时核对路径、相对链接、参数和示例，不为验证文档访问真实设备。
 
 ## 5. 常见排查与安全边界
 
 | 现象 | 优先检查 |
 |---|---|
 | 工具命令缺失或版本不符 | 在根目录执行 `mise install`，再使用 `mise x --`；不要绕过 `GOTOOLCHAIN=local` 自动下载 Go |
-| 后端无法启动 | 查看 stderr；检查监听地址是否被占用，以及日志级别能否解析 |
+| 后端无法启动 | 查看 stderr 或日志文件；检查端口、配置、目录权限、是否有另一实例持锁，以及主密钥和数据库是否完整 |
 | 前端代理报连接错误 | 确认后端已启动，检查 `UPS_WARDEN_BACKEND` 是否与 `-listen` 一致且非空 |
 | `/api/v1` 返回 404 | 当前尚无业务 API；先用 `/healthz` 检查本机后端 |
 | 后端根路径没有 WebUI | 前端尚未内嵌；开发阶段需单独启动前端开发服务器 |
 
-完整设备安全规则见 [AGENTS.md](../../AGENTS.md)。自动化测试只用模拟器或脱敏录制数据；当前脚手架不需要真实 UPS。实际设备地址、community、密码和未脱敏数据不得写入文档或 Git 跟踪文件；本地敏感数据放仓库根目录 `/data/`（已在 [.gitignore](../../.gitignore) 中忽略），不是 `backend/data/` 或 `frontend/data/`。
+完整设备安全规则见 [AGENTS.md](../../AGENTS.md)。自动化测试只用临时目录、回环服务、模拟器或脱敏录制数据，不需要真实 UPS。实际设备地址、community、密码和未脱敏数据不得写入文档或 Git 跟踪文件；本地敏感数据统一放仓库根目录 `/data/`（已在 [.gitignore](../../.gitignore) 中忽略）。额外忽略 `backend/data/` 仅防止误用默认目录时泄漏，不改变推荐位置。

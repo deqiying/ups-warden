@@ -18,3 +18,24 @@ NODE_COMPILE_CACHE = "{{config_root}}/.cache/node/compile-cache"
 npm_config_cache = "{{config_root}}/.cache/npm"
 pnpm_config_cache_dir = "{{config_root}}/.cache/pnpm/cache"
 pnpm_config_store_dir = "{{config_root}}/.cache/pnpm/store"
+
+[tasks."backend:check"]
+description = "检查后端格式、静态分析和测试"
+dir = "backend"
+shell = "bash -c"
+run = '''
+set -eu
+unformatted="$(gofmt -l .)"
+if [ -n "$unformatted" ]; then
+  printf '以下文件需要 gofmt：\n%s\n' "$unformatted"
+  exit 1
+fi
+go vet ./...
+go test ./...
+'''
+
+[tasks."backend:build"]
+description = "构建本机纯 Go 后端（尚不包含 WebUI）"
+dir = "backend"
+env.CGO_ENABLED = "0"
+run = "go build -trimpath -o ../.cache/build/ ./cmd/ups-warden"

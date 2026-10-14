@@ -4,7 +4,7 @@
 
 ## 项目现状
 
-项目处于 **初始化阶段**：前后端只有脚手架，尚未实现采集、规则、通知、关机编排等业务逻辑。不要把规划中的功能描述为"已实现"。
+后端已完成 **M0 工程基础设施**：配置、日志、数据目录锁、SQLite 迁移、凭据加密与 app 生命周期；前端仍为脚手架。采集、规则、通知、关机编排等业务逻辑尚未实现，不要把规划中的功能描述为"已实现"。
 
 README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技能。
 
@@ -29,10 +29,14 @@ mise.toml   项目工具链与缓存目录的唯一来源
 
 ```bash
 # 后端（在 backend/ 下执行）
-go run ./cmd/ups-warden          # 启动服务，默认监听 127.0.0.1:8080
+go run ./cmd/ups-warden --data-dir ../data # 启动服务，数据统一放根目录 data/
 go test ./...
 go vet ./...
 gofmt -l .
+
+# 后端统一检查与本机构建（在仓库根目录执行）
+mise run backend:check
+mise run backend:build
 
 # 前端（在 frontend/ 下执行）
 pnpm install
