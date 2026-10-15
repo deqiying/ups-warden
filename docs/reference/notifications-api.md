@@ -6,7 +6,7 @@
 
 M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日志和管理 API。所有端点以 `/api/v1` 为前缀，要求管理员会话；写操作遵循现有 CSRF、同源检查、严格 JSON 和配置审计约定。
 
-**M5 不自动订阅设备事件，也不向所有启用渠道广播。** 当前 HTTP 发送入口是渠道测试；业务内部调用 `notify.Service.Enqueue`，只接受统一模型。事件到渠道的规则与通知动作属于 M6，尚未实现；不能把测试消息成功视为停电自动通知已验收。前端仍无通知业务页面。
+**通知服务不直接订阅设备事件，也不向所有启用渠道广播。** 除渠道测试外，M6 已通过显式规则与通知动作调用 `notify.Service.Enqueue`，只接受统一模型。配置与 dry-run 语义见[规则、动作与受控主机](rules-actions-hosts-api.md)。本机模拟停电通知通过测试，但不等同于真实渠道验收；前端仍无通知业务页面。
 
 - 每渠道一个工作协程、256 条等待队列；慢渠道不阻塞其他渠道。入队只表示接受，不表示送达；队列满拒绝本次请求，不静默丢弃已有任务。
 - 首次发送失败后额外重试 3 次，间隔 2、4、8 秒，单目标最多 4 次尝试。Telegram 429 的 `parameters.retry_after` 大于当前退避时采用该等待值，等待可取消。
@@ -98,7 +98,7 @@ M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日�
 
 ## 模板管理与渲染
 
-- `GET /notify-templates` 返回 `{items:[{event_type,format,body,customized}]}`：当前 15 种统一模型事件及 `test`，每种有 json/html/text 默认模板，共 48 项。
+- `GET /notify-templates` 返回 `{items:[{event_type,format,body,customized}]}`：15 种统一模型事件、`test` 及 M6 条件规则的 `rule_triggered` / `rule_recovered`，每种有 json/html/text 默认模板，共 54 项。规则上下文不新增伪造的设备事件记录。
 - `PUT /notify-templates` 写入一项 `{event_type,format,body}`，或通过 `{event_type,format,reset:true}` 删除覆盖、恢复默认；`reset:true` 不可同时提供非空 body。
 - 保存校验事件、格式、变量、语法和 JSON 合法性；未知变量或格式返回 422。模板及渲染输出各限 64 KiB。
 - 语法为严格 `{{path}}`，不执行函数、条件或方法，不接受占位符内空白。例如 `{{device.name}}`、`{{event.type}}`、`{{event.severity}}`、`{{device.id}}`、`{{battery_capacity_pct}}`、`{{input_voltage[1]}}`、`{{on_battery_elapsed}}`、`{{runtime_estimate}}`、`{{time}}`。
@@ -114,7 +114,7 @@ M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日�
 
 | 字段 | 语义 |
 |---|---|
-| `id`、`channel_id`、`event_id` | 日志/渠道/关联事件 ID；测试消息 event_id 为 null |
+| `id`、`channel_id`、`event_id` | 日志/渠道/关联事件 ID；测试消息和条件规则上下文 event_id 为 null |
 | `at` | 该目标完成时间，UTC RFC3339 |
 | `target` | Webhook 为 `webhook`，Telegram 为对应 Chat ID |
 | `summary` | 渲染内容脱敏后最多 200 个 Unicode 字符，覆盖原文及 JSON/HTML 转义的凭据形式 |

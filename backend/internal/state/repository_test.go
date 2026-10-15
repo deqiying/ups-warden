@@ -203,6 +203,14 @@ func TestClearingAlertWithoutRecoveryEventKeepsNotification(t *testing.T) {
 	if len(u.Events) != 0 || !u.AlertsChanged {
 		t.Fatalf("清除信号丢失: %+v", u.Events)
 	}
+	if len(u.ClearedEvents) != 1 || u.ClearedEvents[0].Clears != model.EventUPSFault || u.ClearedEvents[0].Type != "" {
+		t.Fatal("规则消费者未收到内部恢复标记", u.ClearedEvents)
+	}
+	copy := model.CloneUpdate(u)
+	copy.ClearedEvents[0].Clears = "changed"
+	if u.ClearedEvents[0].Clears != model.EventUPSFault {
+		t.Fatal("内部恢复标记没有复制")
+	}
 	if count(t, db, "SELECT count(*) FROM events WHERE active=1") != 0 {
 		t.Fatal("故障未清除")
 	}

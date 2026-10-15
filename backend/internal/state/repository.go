@@ -183,6 +183,8 @@ func save(ctx context.Context, db *store.Store, e *Engine, update *model.DeviceU
 	for _, event := range update.Events {
 		if event.Type != "" {
 			filtered = append(filtered, event)
+		} else if event.Clears != "" {
+			update.ClearedEvents = append(update.ClearedEvents, event)
 		}
 	}
 	update.Events = filtered

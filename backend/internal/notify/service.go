@@ -179,10 +179,8 @@ func (s *Service) Enqueue(ctx context.Context, id int64, r Request) error {
 	if w == nil {
 		return ErrUnavailable
 	}
-	if r.Event.Type != "test" {
-		if _, ok := model.EventSeverity(r.Event.Type); !ok {
-			return errors.New("notify: 事件类型无效")
-		}
+	if !knownTemplateEvent(r.Event.Type) {
+		return errors.New("notify: 事件类型无效")
 	}
 	if r.Event.ID < 0 {
 		return errors.New("notify: 事件 ID 无效")

@@ -4,7 +4,7 @@
 
 ## 项目现状
 
-后端 **M0～M5 已实现并通过本机验证**；M4 包括认证、审计、监控 API、SSE 与静态 SPA 托管，CP-2 契约已交付、双方联调待验收；M5 提供通知模板、Webhook/Telegram、队列重试、日志及管理 API。**CP-1 真机验收未完成**。主服务会自动采集数据库中启用的数据源，开发测试必须使用临时数据库与本机模拟器，不得直接使用本地真实设备配置启动测试。前端仍为脚手架、无业务页面；M6 规则动作、M7 编排、M8 系统与发布均未实现，本轮到 M5 停止，不自动推进后续阶段。M5 不自动触发事件通知，规则联动留待 M6。当前契约见 [监控 API 与 SSE](docs/reference/monitoring-api.md)、[通知服务与 API](docs/reference/notifications-api.md)，不要把本机/模拟器验证描述为真机、真实渠道、Linux 实机或双方联调验收。
+后端 **M0～M6 已实现并通过本机验证**；M4 认证/审计/监控 API/SSE/SPA 与 M5 通知已交付，M6 提供规则、通知联动、HTTP/脚本/SSH 动作、主机指纹/在线检测与管理 API。**CP-1 真机验收未完成，CP-2 双方联调待验收**。主服务会自动采集启用源并评估启用规则；开发测试必须使用临时数据库与本机模拟器，不得使用本地真实设备配置启动测试。新建规则默认 dry-run；手动动作需 confirm，禁止在开发中执行真实关机。前端仍为脚手架、无业务页面；M7 编排、M8 系统与发布未实现，本轮到 M6 停止。M7 计划模板仅预填，不支持 plan 动作；HTTP 护栏默认开启，设置管理留 M8。当前契约见[监控](docs/reference/monitoring-api.md)、[通知](docs/reference/notifications-api.md)、[规则、动作与受控主机](docs/reference/rules-actions-hosts-api.md)。不要把本机/模拟器验证描述为真机、真实渠道/主机、Linux 实机或双方联调验收。
 
 README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技能。
 

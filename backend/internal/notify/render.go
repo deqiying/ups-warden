@@ -38,6 +38,7 @@ var templateEvents = []string{
 	model.EventOnBypass, model.EventBypassCleared,
 	model.EventUPSFault, model.EventUPSShuttingDown,
 	model.EventTemperatureHigh, model.EventSelfTestResult, "test",
+	"rule_triggered", "rule_recovered",
 }
 
 // DefaultTemplates 返回全部已知事件和测试事件的 JSON、HTML、纯文本模板的独立副本。
@@ -69,6 +70,7 @@ func DefaultTemplate(eventType, format string) (string, error) {
 		model.EventBypassCleared: "UPS 旁路解除", model.EventUPSFault: "UPS 故障",
 		model.EventUPSShuttingDown: "UPS 正在关机", model.EventTemperatureHigh: "UPS 温度过高",
 		model.EventSelfTestResult: "UPS 自检结果", "test": "通知测试",
+		"rule_triggered": "规则条件命中", "rule_recovered": "规则条件恢复",
 	}[eventType]
 	switch format {
 	case "json":
@@ -82,7 +84,7 @@ func DefaultTemplate(eventType, format string) (string, error) {
 
 func knownTemplateEvent(eventType string) bool {
 	_, ok := model.EventSeverity(eventType)
-	return ok || eventType == "test"
+	return ok || eventType == "test" || eventType == "rule_triggered" || eventType == "rule_recovered"
 }
 
 func knownTemplateFormat(format string) bool {

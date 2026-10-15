@@ -188,6 +188,9 @@ func (a *App) ChangeDevices(ctx context.Context, ids []int64, change func() erro
 			return err
 		}
 	}
+	if err = a.rules.ResetTimers(ctx, ids); err != nil {
+		return err
+	}
 	if err = a.history.Flush(ctx); err != nil {
 		return err
 	}
@@ -212,6 +215,12 @@ func (a *App) Snapshots() []model.DeviceState {
 func (a *App) publish(u model.DeviceUpdate) {
 	if u.Sample {
 		a.history.Enqueue(u.State)
+	}
+	if err := a.rules.Enqueue(u); err != nil {
+		a.logger.Error("规则输入未被接受", "device_id", u.State.DeviceID, "error_type", fmt.Sprintf("%T", err))
+		a.mu.Lock()
+		a.stateErr = errors.Join(a.stateErr, fmt.Errorf("设备 %d 的规则输入未被接受: %w", u.State.DeviceID, err))
+		a.mu.Unlock()
 	}
 	a.bus.Publish(u)
 }

@@ -203,7 +203,7 @@ func TestVariablesQualityAndElapsed(t *testing.T) {
 
 func TestAllDefaultTemplates(t *testing.T) {
 	templates := DefaultTemplates()
-	if len(templates) != 16*3 {
+	if len(templates) != 18*3 {
 		t.Fatalf("默认模板数量 = %d", len(templates))
 	}
 	seen := make(map[string]bool)
@@ -217,7 +217,7 @@ func TestAllDefaultTemplates(t *testing.T) {
 			t.Fatalf("默认模板 %s 保存校验失败: %v", key, err)
 		}
 		severity, known := model.EventSeverity(template.EventType)
-		if !known && template.EventType != "test" {
+		if !known && template.EventType != "test" && template.EventType != "rule_triggered" && template.EventType != "rule_recovered" {
 			t.Fatalf("未知默认事件 %s", template.EventType)
 		}
 		vars := Variables("\"<b>UPS</b>\\\n", model.Event{Type: template.EventType, Severity: severity}, model.DeviceState{}, time.Now())

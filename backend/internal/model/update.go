@@ -29,8 +29,10 @@ type Event struct {
 // DeviceUpdate 在关键状态与事件成功落库后发布；Sample 仅在成功采集时为真。
 // tick 推进计时，但不伪造新的历史测量点。
 type DeviceUpdate struct {
-	State         DeviceState         `json:"state"`
-	Events        []Event             `json:"events,omitempty"`
+	State  DeviceState `json:"state"`
+	Events []Event     `json:"events,omitempty"`
+	// ClearedEvents 仅向内部规则传递无独立业务类型的告警恢复，不改变 SSE 事件目录。
+	ClearedEvents []Event             `json:"-"`
 	Sample        bool                `json:"-"`
 	AlertsChanged bool                `json:"-"`
 	Resync        bool                `json:"-"`
@@ -75,11 +77,16 @@ func CloneUpdate(u DeviceUpdate) DeviceUpdate {
 		}
 		u.NotifyFailed = &v
 	}
-	events := make([]Event, len(u.Events))
-	for i, e := range u.Events {
-		events[i] = e
-		events[i].Summary = CloneFields(e.Summary)
-	}
-	u.Events = events
+	u.Events = cloneEvents(u.Events)
+	u.ClearedEvents = cloneEvents(u.ClearedEvents)
 	return u
+}
+
+func cloneEvents(events []Event) []Event {
+	result := make([]Event, len(events))
+	for i, e := range events {
+		result[i] = e
+		result[i].Summary = CloneFields(e.Summary)
+	}
+	return result
 }

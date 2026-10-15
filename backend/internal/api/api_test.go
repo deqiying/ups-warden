@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"ups-warden/internal/action"
 	"ups-warden/internal/auth"
 	"ups-warden/internal/bus"
 	"ups-warden/internal/collector"
@@ -71,7 +72,16 @@ func newAPI(t *testing.T) *apiFixture {
 			t.Error(err)
 		}
 	})
-	s, err := New(Options{DB: db, Cipher: cipher, Auth: a, Collector: c, History: h, Bus: b, Runtime: &snapshotRuntime{}, Notify: n, Logger: logger})
+	executor, err := action.New(context.Background(), db, cipher, n, filepath.Join(dir, "scripts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := executor.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	s, err := New(Options{DB: db, Cipher: cipher, Auth: a, Collector: c, History: h, Bus: b, Runtime: &snapshotRuntime{}, Notify: n, Actions: executor, Logger: logger})
 	if err != nil {
 		t.Fatal(err)
 	}

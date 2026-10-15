@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"ups-warden/internal/action"
 	"ups-warden/internal/api"
 	"ups-warden/internal/auth"
 	"ups-warden/internal/bus"
@@ -23,6 +24,7 @@ import (
 	"ups-warden/internal/history"
 	"ups-warden/internal/notify"
 	"ups-warden/internal/profile"
+	"ups-warden/internal/rule"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/server"
 	"ups-warden/internal/state"
@@ -45,6 +47,8 @@ type App struct {
 	collector     *collector.Supervisor
 	history       *history.Writer
 	notify        *notify.Service
+	actions       *action.Service
+	rules         *rule.Service
 	bus           bus.Bus
 	actors        map[int64]*state.Actor
 	stateCancel   context.CancelFunc
@@ -124,10 +128,23 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if err != nil {
 		return nil, err
 	}
+	scriptDir := c.ScriptDir
+	if scriptDir == "" {
+		scriptDir = filepath.Join(c.DataDir, "scripts")
+	}
+	// 动作在规则队列排空后显式关闭，不随采集上下文提前取消。
+	a.actions, err = action.New(context.WithoutCancel(child), a.db, a.cipher, a.notify, scriptDir)
+	if err != nil {
+		return nil, err
+	}
+	a.rules, err = rule.New(child, a.db, a.actions, a.logger)
+	if err != nil {
+		return nil, err
+	}
 	if err := a.startPipeline(); err != nil {
 		return nil, err
 	}
-	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Notify: a.notify, Logger: a.logger})
+	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Notify: a.notify, Actions: a.actions, Logger: a.logger})
 	if err != nil {
 		return nil, err
 	}
@@ -208,6 +225,10 @@ func (a *App) Close() error {
 		a.closing = true
 		a.cancel()
 		a.mu.Unlock()
+		// 先解除规则满队列的反压，否则 actor 卡在发布时无法响应 stateCancel。
+		if a.rules != nil {
+			a.rules.BeginClose()
+		}
 		a.pipelineMu.Lock()
 		defer a.pipelineMu.Unlock()
 		if a.collector != nil {
@@ -218,6 +239,12 @@ func (a *App) Close() error {
 		}
 		for _, done := range a.stateDone {
 			<-done
+		}
+		if a.rules != nil {
+			a.closeErr = errors.Join(a.closeErr, a.rules.Close())
+		}
+		if a.actions != nil {
+			a.closeErr = errors.Join(a.closeErr, a.actions.Close())
 		}
 		if a.history != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)

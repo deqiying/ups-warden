@@ -215,6 +215,13 @@ func (s *Server) deleteChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	err = s.opts.Notify.Change(r.Context(), id, func() (int64, error) {
 		return id, s.opts.DB.WithTx(r.Context(), func(tx *sql.Tx) error {
+			var referenced int
+			if err := tx.QueryRowContext(r.Context(), `SELECT count(*) FROM actions,json_each(actions.config,'$.channel_ids') WHERE actions.type='notify' AND json_each.value=?`, id).Scan(&referenced); err != nil {
+				return err
+			}
+			if referenced > 0 {
+				return errConflict
+			}
 			// 有历史证据时保留外键拒绝语义，管理员可改为停用。
 			if _, err := tx.ExecContext(r.Context(), "DELETE FROM channels WHERE id=?", id); err != nil {
 				return err

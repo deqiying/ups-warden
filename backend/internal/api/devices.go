@@ -221,7 +221,14 @@ func (s *Server) deleteDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = s.change(r, []int64{id}, func(tx *sql.Tx) error {
-		// 后续规则/通知/计划引用由外键拒绝，不能顺手删除执行证据。
+		// JSON 作用范围没有外键，显式保留规则引用；历史证据仍由外键保护。
+		var referenced int
+		if err := tx.QueryRowContext(r.Context(), `SELECT count(*) FROM rules,json_each(rules.scope,'$.device_ids') WHERE json_each.value=?`, id).Scan(&referenced); err != nil {
+			return err
+		}
+		if referenced > 0 {
+			return errConflict
+		}
 		for _, query := range []string{"DELETE FROM events WHERE device_id=?", "DELETE FROM device_state WHERE device_id=?", "DELETE FROM outage_cycles WHERE device_id=?", "DELETE FROM devices WHERE id=?"} {
 			if _, err := tx.ExecContext(r.Context(), query, id); err != nil {
 				return err

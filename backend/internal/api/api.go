@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"sync"
 
+	"ups-warden/internal/action"
 	"ups-warden/internal/auth"
 	"ups-warden/internal/bus"
 	"ups-warden/internal/collector"
@@ -39,6 +40,7 @@ type Options struct {
 	Bus       *bus.Bus
 	Runtime   Runtime
 	Notify    *notify.Service
+	Actions   *action.Service
 	Logger    *slog.Logger
 }
 
@@ -51,7 +53,7 @@ type Server struct {
 
 // New 创建 API handler；外层根路由须挂载 /api/，所有未知 API 也受认证拦截。
 func New(opts Options) (*Server, error) {
-	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil || opts.Notify == nil {
+	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil || opts.Notify == nil || opts.Actions == nil {
 		return nil, errors.New("api: 缺少必需模块")
 	}
 	if opts.Logger == nil {
@@ -108,6 +110,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/notify-templates", s.notifyTemplates)
 	s.mux.HandleFunc("PUT /api/v1/notify-templates", s.saveNotifyTemplate)
 	s.mux.HandleFunc("GET /api/v1/notify-logs", s.notifyLogs)
+	s.ruleRoutes()
+	s.actionRoutes()
+	s.hostRoutes()
 	s.mux.HandleFunc("GET /api/v1/stream", s.stream)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "not_found", "接口不存在") })
 }
