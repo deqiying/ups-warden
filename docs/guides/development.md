@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于已实现并通过本机验证的 M0～M4 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA 托管；M2 真机 CP-1、CP-2 双方联调待验收。M5 通知、M6 规则动作、M7 编排、M8 系统与发布均未实现，本轮到 M4 停止。主服务会采集数据库中启用的数据源，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data；模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控 API 与 SSE](../reference/monitoring-api.md)。
+本文适用于已实现并通过本机验证的 M0～M5 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA 托管，M5 提供模板、Webhook/Telegram、队列重试、日志及管理 API；M2 真机 CP-1、CP-2 双方联调待验收。M6 规则动作、M7 编排、M8 系统与发布均未实现，本轮到 M5 停止。主服务会采集数据库中启用的数据源，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data；模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控 API 与 SSE](../reference/monitoring-api.md)及[通知服务与 API](../reference/notifications-api.md)。通知当前不自动订阅设备事件，规则联动留待 M6。
 
 ## 1. 工具链与工作目录
 
@@ -35,7 +35,7 @@ cd backend
 mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden
 ```
 
-默认监听 `127.0.0.1:8080`。后端创建数据目录、获取独占文件锁、加载主密钥、迁移 SQLite、校验 Profile，恢复状态/历史并自动采集启用源，然后开放 `/healthz`、`/api/v1` 和静态 SPA。空数据库不会连接 UPS；已有启用源则会连接。直接 `go run` 未构建 embed dist 时 WebUI 返回 503 提示页；`mise run backend:build` 先构建并嵌入当前前端占位页，不代表业务 UI 已完成。离线映射契约见 [Profile 与归一化](profiles.md)。
+默认监听 `127.0.0.1:8080`。后端创建数据目录、获取独占文件锁、加载主密钥、迁移 SQLite、校验 Profile/渠道配置，启动通知队列、恢复状态/历史并自动采集启用源，然后开放 `/healthz`、`/api/v1` 和静态 SPA。空数据库不会连接 UPS；已有启用源则会连接。通知队列启动不主动外发或重放，只有显式入队才发送。直接 `go run` 未构建 embed dist 时 WebUI 返回 503 提示页；`mise run backend:build` 先构建并嵌入当前前端占位页，不代表业务 UI 已完成。离线映射契约见 [Profile 与归一化](profiles.md)。
 
 ### 启动配置
 
@@ -57,7 +57,7 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden --lis
 ```
 
 - 已知敏感属性键和 `secret.String` 自动掩码；不得把原始凭据插入日志消息、任意结构体或错误字符串中。采集层保留安全的 AYI9 错误码，不传播原始包装文本；API 内部错误记录类型、SQLite 数字码和调用位置，panic 记录类型与堆栈，不输出原始值。
-- 无效参数、日志文件打不开、目录锁冲突、主密钥错误、数据库迁移失败、监听失败或关闭失败均使进程非零退出；日志文件模式下初始化失败仍可从 stderr 排查。API 在构造时要求 DB、Cipher、Auth、Collector、History、Bus、Runtime 全部提供，不支持缺失模块下跳过配置协调或返回空快照的降级模式。
+- 无效参数、日志文件打不开、目录锁冲突、主密钥错误、数据库迁移失败、渠道配置损坏、监听失败或关闭失败均使进程非零退出；日志文件模式下初始化失败仍可从 stderr 排查。API 在构造时要求 DB、Cipher、Auth、Collector、History、Bus、Runtime、Notify 全部提供，不支持缺失模块的静默降级。
 - 入口处理 `os.Interrupt` / `SIGTERM`，HTTP 优雅关闭最多等待 10 秒，超时强制关闭连接；请求头超时为 5 秒。后台任务必须响应 context 取消；错误或 panic 以 1～30 秒指数退避重启，正常返回不重启，HTTP 异常退出则结束进程。
 - TLS、脚本编辑等 P1 参数尚未实现。
 
@@ -65,8 +65,9 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden --lis
 
 - `ups-warden.lock`：操作系统独占文件锁；第二实例立即报“数据目录已被占用”。进程退出自动释放，**不要手工删除仍被持有的锁文件**。目录应位于本地磁盘，不依赖网络共享文件系统的锁语义。
 - `ups-warden.db`：SQLite WAL，`synchronous=FULL`、`busy_timeout=5000`、`foreign_keys=ON`；写池 1 条连接、只读池最多 4 条连接。启动校验版本与迁移历史，在事务内执行未应用的 embed 前向迁移，不重放已应用脚本到参考库或逐字比对完整 DDL。初始迁移包含 25 张表；建表不等于相关业务模块已实现。已有迁移不可改写，后续修改使用新编号脚本。迁移检查不代替数据库损坏检查，也不承诺兼容手工改表。
+- `0002_notify_results.sql` 为通知日志增量增加接收目标、尝试次数及模板回退标记，保留旧记录。通知关闭在总线/数据库关闭之前完成，取消在途请求并记录待发送项取消结果；不承诺重启重放或 exactly-once。
 - `master.key`：默认生成并保存原始 32 字节密钥，Linux 文件权限为 `0600`。也可用 `UPS_WARDEN_MASTER_KEY` 提供 Base64 编码的 32 字节密钥，优先于文件且不会写回文件。该变量不是命令行参数，避免密钥出现在命令历史或进程参数中。
-- 凭据使用 AES-256-GCM，以 `表名.列名` 为 AAD；启动会检查已有加密凭据。错误密钥、损坏文件或解密失败均不会被静默清空。请恢复正确密钥备份；M4 源管理 API 可保存加密凭据，但密钥错误导致无法启动时不能靠 HTTP 接口恢复，前端也尚无凭据管理页面。
+- 凭据使用 AES-256-GCM，以 `表名.列名` 为 AAD；启动会检查已有加密凭据。错误密钥、损坏文件或解密失败均不会被静默清空。请恢复正确密钥备份；数据源及通知渠道 API 可保存加密凭据，但密钥错误导致无法启动时不能靠 HTTP 接口恢复，前端也尚无凭据管理页面。
 - **Windows 的 `0600` 不提供 Unix 权限保护**：请用数据目录 ACL 限制为服务账号可访问，启动日志也会提示。不要依赖 Git 忽略规则作为访问控制。
 - 备份时先停止服务，再复制完整数据目录（包括可能存在的 WAL 文件）；使用环境密钥时另行安全备份该密钥。丢失密钥将无法解密已有凭据，不要删除密钥后让服务重新生成。
 
@@ -78,7 +79,7 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden --lis
 |---|---|
 | `GET /healthz` | HTTP 200，`Content-Type: application/json`，响应体 `{"status":"ok"}`（末尾换行） |
 | `POST /healthz` | HTTP 405；当前方法路由不接受 POST |
-| `/api/v1/...` | 已注册 M4 监控与管理 API；除初始化状态/初始化/登录外均需管理员会话，未知 API 也先认证、不回退 SPA |
+| `/api/v1/...` | 已注册 M4 监控/管理及 M5 通知 API；除初始化状态/初始化/登录外均需管理员会话，未知 API 也先认证、不回退 SPA |
 
 健康检查无需鉴权，只证明进程能处理 HTTP 请求，**不表示 UPS 连通或业务就绪**。占位前端没有调用它；需要单独检查。
 
@@ -141,6 +142,8 @@ mise x -- go test ./...
 后端测试覆盖配置、日志与脱敏、主密钥、目录锁、SQLite、app 生命周期及包依赖边界；M1 覆盖 Profile、归一化与 60 组 ET1K 离线回归；M2 覆盖三协议编码器、发送护栏、取消/重连、部分错误及模拟器；M3 覆盖调度、同 IP 串行、状态去抖/失联/回差、事务回滚、重启周期/告警去重、历史写入/聚合/清理/查询和主服务退出刷新。时间逻辑使用 `testing/synctest` 或注入场景时钟。尚无规则和关机编排测试；Linux 交叉编译不能替代 Linux 实机运行验证。
 
 M4 测试覆盖 auth/audit/API/webui 与 app 集成，包括初始化并发、会话与限速、CSRF/Origin、凭据不回显、配置审计/动态运行协调、Profile 引用、监控查询及 SSE/静态托管边界。后端全量检查、无缓存测试、重复回归、JSON fuzz、前端 check/test/build、内嵌构建和 Windows 临时数据库 + 三协议 loopback 冒烟已通过，详细证据见[开发计划 M4 实施记录](../planning/backend-plan.md)。CP-1 真机、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成。
+
+M5 测试覆盖模板/转义/回退、Webhook 签名与 Telegram 多目标/代理/429、队列边界与精确重试时序、通知日志/失败 SSE、凭据保护、审计回滚及 app 重启/取消。测试只使用临时数据库、内存 HTTP handler 和 loopback 假服务器；未使用真实通知渠道。详见[通知契约](../reference/notifications-api.md)和[开发计划 M5 实施记录](../planning/backend-plan.md)。
 
 本机 `upssim` 与显式 `upsprobe` 的参数、安全边界及示例见[协议驱动与本机模拟器](protocol-drivers.md)。主服务会自动采集启用数据源；勿用含真实设备配置的数据目录做开发冒烟。
 

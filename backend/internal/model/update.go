@@ -29,11 +29,12 @@ type Event struct {
 // DeviceUpdate 在关键状态与事件成功落库后发布；Sample 仅在成功采集时为真。
 // tick 推进计时，但不伪造新的历史测量点。
 type DeviceUpdate struct {
-	State         DeviceState `json:"state"`
-	Events        []Event     `json:"events,omitempty"`
-	Sample        bool        `json:"-"`
-	AlertsChanged bool        `json:"-"`
-	Resync        bool        `json:"-"`
+	State         DeviceState         `json:"state"`
+	Events        []Event             `json:"events,omitempty"`
+	Sample        bool                `json:"-"`
+	AlertsChanged bool                `json:"-"`
+	Resync        bool                `json:"-"`
+	NotifyFailed  *NotificationResult `json:"-"`
 }
 
 // CloneState 复制含指针和字段 map 的状态，防止订阅者修改 actor 内部数据。
@@ -66,6 +67,14 @@ func CloneFields(fields map[string]Field) map[string]Field {
 // CloneUpdate 隔离发布者和每个订阅者的可变数据。
 func CloneUpdate(u DeviceUpdate) DeviceUpdate {
 	u.State = CloneState(u.State)
+	if u.NotifyFailed != nil {
+		v := *u.NotifyFailed
+		if v.EventID != nil {
+			id := *v.EventID
+			v.EventID = &id
+		}
+		u.NotifyFailed = &v
+	}
 	events := make([]Event, len(u.Events))
 	for i, e := range u.Events {
 		events[i] = e

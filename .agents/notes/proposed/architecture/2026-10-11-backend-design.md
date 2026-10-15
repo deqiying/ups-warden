@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态（同步至 2026-10-15）**：proposed（整套业务方案未完成；M0～M3 代码与本机验证已完成，M4 认证/审计/监控 API/SSE/静态 SPA 托管已实现，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M5～M8 未实现，本轮到 M4 停止，整篇不标为 implemented。
+> **状态（同步至 2026-10-15）**：proposed（整套业务方案未完成；M0～M5 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M6～M8 未实现，本轮到 M5 停止，整篇不标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前 M0～M4 代码已落地并通过本机验证；主服务装配基础设施、Profile 校验、采集调度、状态/事件/历史、认证与审计、监控管理 API、SSE 和静态 SPA，启动会连接数据库中启用的数据源。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)及[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)。前端仍为脚手架、无业务页面；通知、规则/动作、关机编排与系统发布待实现。M4 全量检查、回归、fuzz、内嵌构建、Windows 临时库 + loopback 冒烟与 Linux 交叉编译已通过；CP-1 真机、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成，证据见开发计划。
+- 当前 M0～M5 代码已落地并通过本机验证；主服务装配基础设施、Profile 校验、采集调度、状态/事件/历史、认证与审计、监控管理 API、SSE、静态 SPA 与通知服务，启动会连接数据库中启用的数据源，但通知只有显式入队才外发。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)、[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)及[通知服务与 API 契约](../../../../docs/reference/notifications-api.md)。前端仍为脚手架、无业务页面；规则/动作、事件自动通知、关机编排与系统发布待实现。CP-1 真机、CP-2 双方联调、真实通知渠道、Linux 实机、race 与容量验收仍未完成，已执行验证的证据见开发计划。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
@@ -21,6 +21,7 @@
 - M4 构建只实现静态 SPA 托管：`backend:build` 依赖 `webui:build`，pnpm build 后由 `scripts/build-webui.mjs` 校验并安全复制 embed 产物（当前 4 文件，产物不提交）；业务页面、统一发布与 M5～M8 不因此完成。CP-2 契约交付仅为后端联调基线，未伪造双方联调或真机证据。
 - M0～M4 简洁性决定（2026-10-15 演进）：移除启动时参考库重放及全量 DDL 文本比对，迁移只维护版本、历史和事务契约；避免把外部结构变化兼容做成启动框架。Profile 在加载和读计划构造时校验，worker 独占并只读使用，归一化信任该契约；不使用可失效的“已校验”缓存标记。API 必需模块在构造时检查，测试注入替身，不保留空模块降级路径。参数范围沿用 M4 已交付 API，不借精简收窄兼容；错误分类和定位须保留，但不传递含凭据的原始文本。
 - 历史聚合不再每分钟重扫整个保留期，改用固定大小的内存水位及最早 dirty 起点，具体行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)。未采用持久化水位、额外迁移或逐分钟 dirty 集合：启动一次补算已能覆盖重启缺口；迟到数据重算后缀是保持状态简单的取舍。首次补算和迟到重算的容量表现仍待验收。
+- M5 实施细化（2026-10-15）：保留统一渠道接口/内置注册表与每渠道内存队列，不绕过 M6 提前订阅并广播所有事件。Telegram 按目标独立重试、记录，避免部分成功后重复发送；Webhook URL/Header/签名密钥及 Telegram Token/代理整体加密，因 URL 路径和代理 userinfo 也可能携带秘密，不以仅删 query 代替保护。配置变更取消旧任务再提交，失败恢复旧配置；不采用重启自动重放，避免在没有接收端幂等协议时宣称 exactly-once。详细边界见第 12 节。
 
 ---
 
@@ -721,11 +722,14 @@ type Request struct {
 
 ## 12. 通知（`notify`）
 
+本节已在 M5 落地；当前字段、错误与 API 契约以[通知服务与 API](../../../../docs/reference/notifications-api.md)为准。真实外部渠道尚未验收，不代表规则联动已实现。
+
 ### 12.1 渠道接口
 
 ```go
 type Channel interface {
     Send(ctx context.Context, msg Message) error // 单次发送，不含重试
+    Close() // 释放空闲 HTTP 连接；由渠道工作协程退出时调用
 }
 type Message struct {
     Severity string
@@ -756,8 +760,9 @@ type Message struct {
 - 未知变量或语法错误 → 回退到该事件的默认模板并记录日志（FR-NTF-04）；非 `good` 字段渲染为 `—`。
 - 每个渠道一个发送队列（有界 256）与一个协程，慢渠道不阻塞其他渠道和规则引擎。
 - 重试：失败后按 2 s、4 s、8 s 退避，最多 3 次（FR-NTF-05）；最终失败写通知日志并经 SSE 推送提示。
-- 通知日志：渠道、事件、内容摘要（前 200 字符）、结果、耗时、错误（脱敏）（FR-NTF-08）。
+- 通知日志：渠道、事件、接收目标、内容摘要（脱敏后前 200 字符）、结果、尝试次数、模板回退标记、耗时、错误（脱敏）（FR-NTF-08）。原始网络错误/响应正文不进入包装链；摘要覆盖原文及 JSON/HTML 转义凭据。
 - "发送测试消息"直接走同一发送路径（FR-NTF-03）。
+- M5 `0002_notify_results.sql` 增量扩展日志目标/尝试次数/模板回退，不改写初始迁移。结果落库后才发布 `notify_failed`；关闭/修改取消队列并记录失败，数据库写失败停止该渠道并显式报错。队列满拒绝未接受请求，重启不重放，已有日志引用的渠道删除被外键拒绝。精确契约和取舍见通知参考文档。
 
 ---
 
@@ -861,7 +866,7 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 | `rule_logs` | id, rule_id, device_id, at, kind, reason, values(JSON), action_run_ids(JSON) | |
 | `channels` | id, name, type, config(JSON), secret(BLOB), enabled | |
 | `notify_templates` | event_type, format, body | 覆盖默认模板 |
-| `notify_logs` | id, channel_id, event_id, at, summary, ok, duration_ms, error | |
+| `notify_logs` | id, channel_id, event_id, at, summary, ok, duration_ms, error, target, attempts, template_fallback | 后三列由 M5 增量迁移增加，逐目标结果 |
 | `hosts` | id, name, address, kind, conn(JSON), secret(BLOB), hostkey_fingerprint, online_check(JSON) | |
 | `actions` | id, name, type, config(JSON), secret(BLOB), timeout_s | 类型：notify / ssh / script / http / plan |
 | `action_runs` | id, action_id, trigger(JSON), dry_run, status, started_at, ended_at, exit_code, stdout, stderr, error | |
@@ -887,7 +892,7 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 15.2 端点
 
-下表保留完整目标端点；M4 已实现范围与实际请求/响应以[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)为准。通知、规则、动作、受控主机、关机计划、系统设置及 P1 ack 均未实现。
+下表保留完整目标端点；M4 已实现范围与实际请求/响应以[监控 API 与 SSE 契约](../../../../docs/reference/monitoring-api.md)为准，M5 通知见[通知服务与 API](../../../../docs/reference/notifications-api.md)。规则、动作、受控主机、关机计划、系统设置及 P1 ack 均未实现。
 
 | 分组 | 端点 |
 |---|---|
@@ -912,7 +917,7 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 15.3 SSE（FR-API-03、FR-UI-01）
 
-- M4 连接建立先发送全量 `sync`（全部运行设备 `DeviceState`、活动告警，`plan_runs` 固定空数组），随后推送 `device_state`、`event`、`alert`；配置变更后再次 sync。`plan_progress`、`notify_failed` 留待 M7/M5，当前不产生。重连重新全量同步，不做 `Last-Event-ID` 回放。
+- 连接建立先发送全量 `sync`（全部运行设备 `DeviceState`、活动告警，`plan_runs` 固定空数组），随后推送 `device_state`、`event`、`alert`；设备相关配置变更后再次 sync。M5 已增加落库后的 `notify_failed`，重连需查询通知日志补齐；`plan_progress` 留待 M7。重连重新全量同步，不做 `Last-Event-ID` 回放。
 - 每 15 s 注释心跳重新认证，响应注销、改密撤销和绝对期限到期，不永久持有连接建立时的授权。
 - 每订阅者 256 缓冲，溢出独立失效信号通知立即断开，不排空积压更新；前端重连并获取全量 sync。
 - SSE 不设置整个长连接的全局写超时，但每帧用 `http.ResponseController` 设置 5 秒写期限，避免慢客户端无限占用。

@@ -54,7 +54,7 @@ func TestSchemaAndIdempotentMigration(t *testing.T) {
 		"rule_logs":         "id rule_id device_id at kind reason values action_run_ids",
 		"channels":          "id name type config secret enabled",
 		"notify_templates":  "event_type format body",
-		"notify_logs":       "id channel_id event_id at summary ok duration_ms error",
+		"notify_logs":       "id channel_id event_id at summary ok duration_ms error target attempts template_fallback",
 		"hosts":             "id name address kind conn secret hostkey_fingerprint online_check",
 		"actions":           "id name type config secret timeout_s",
 		"action_runs":       "id action_id trigger dry_run status started_at ended_at exit_code stdout stderr error",
@@ -269,7 +269,7 @@ func TestPlanRunConstraints(t *testing.T) {
 
 func TestRejectInconsistentMigrationHistory(t *testing.T) {
 	for _, mutation := range []string{
-		"PRAGMA user_version=2",
+		"PRAGMA user_version=3",
 		"PRAGMA user_version=0",
 		"DELETE FROM schema_migrations",
 		"INSERT INTO schema_migrations VALUES (3,1)",
@@ -325,30 +325,35 @@ func TestMigrationOrderAndAtomicFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := fstest.MapFS{
-		"migrations/0001_init.sql": {Data: body},
-		"migrations/0002_test.sql": {Data: []byte("CREATE TABLE next_table (id INTEGER PRIMARY KEY);")},
-		"migrations/0003_bad.sql":  {Data: []byte("CREATE TABLE partial (id INTEGER); INVALID SQL;")},
+	notifyBody, err := migrationFiles.ReadFile("migrations/0002_notify_results.sql")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := s.migrateFS(t.Context(), files); err == nil || !strings.Contains(err.Error(), "0003_bad.sql") {
+	files := fstest.MapFS{
+		"migrations/0001_init.sql":           {Data: body},
+		"migrations/0002_notify_results.sql": {Data: notifyBody},
+		"migrations/0003_test.sql":           {Data: []byte("CREATE TABLE next_table (id INTEGER PRIMARY KEY);")},
+		"migrations/0004_bad.sql":            {Data: []byte("CREATE TABLE partial (id INTEGER); INVALID SQL;")},
+	}
+	if err := s.migrateFS(t.Context(), files); err == nil || !strings.Contains(err.Error(), "0004_bad.sql") {
 		t.Fatalf("bad migration error: %v", err)
 	}
 	var version, count int
-	if err := s.Read().QueryRowContext(t.Context(), "PRAGMA user_version").Scan(&version); err != nil || version != 1 {
+	if err := s.Read().QueryRowContext(t.Context(), "PRAGMA user_version").Scan(&version); err != nil || version != 2 {
 		t.Fatalf("version not rolled back: %d: %v", version, err)
 	}
 	if err := s.Read().QueryRowContext(t.Context(), "SELECT count(*) FROM sqlite_schema WHERE name IN ('next_table','partial')").Scan(&count); err != nil || count != 0 {
 		t.Fatalf("DDL not rolled back: %d: %v", count, err)
 	}
-	delete(files, "migrations/0003_bad.sql")
+	delete(files, "migrations/0004_bad.sql")
 	if err := s.migrateFS(t.Context(), files); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.migrateFS(t.Context(), files); err != nil {
 		t.Fatalf("incremental migration not idempotent: %v", err)
 	}
-	delete(files, "migrations/0002_test.sql")
-	files["migrations/0003_gap.sql"] = &fstest.MapFile{Data: []byte("SELECT 1;")}
+	delete(files, "migrations/0003_test.sql")
+	files["migrations/0004_gap.sql"] = &fstest.MapFile{Data: []byte("SELECT 1;")}
 	if err := s.migrateFS(t.Context(), files); err == nil {
 		t.Fatal("accepted migration numbering gap")
 	}

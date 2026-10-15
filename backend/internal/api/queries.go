@@ -317,6 +317,12 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
+			if update.NotifyFailed != nil {
+				if err = send("notify_failed", update.NotifyFailed); err != nil {
+					return
+				}
+				continue
+			}
 			if update.Resync {
 				if err = syncAll(); err != nil {
 					return

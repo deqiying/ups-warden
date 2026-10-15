@@ -136,7 +136,7 @@ func TestWrongMasterKeyRejectsExistingCredentials(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encrypted, err := a.cipher.Encrypt([]byte("test-token"), "channels.secret")
+	encrypted, err := a.cipher.Encrypt([]byte(`{"url":"http://127.0.0.1:1/test-token"}`), "channels.secret")
 	if err != nil {
 		a.Close()
 		t.Fatal(err)

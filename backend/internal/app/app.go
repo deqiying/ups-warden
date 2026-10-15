@@ -21,6 +21,7 @@ import (
 	"ups-warden/internal/config"
 	"ups-warden/internal/datalock"
 	"ups-warden/internal/history"
+	"ups-warden/internal/notify"
 	"ups-warden/internal/profile"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/server"
@@ -43,6 +44,7 @@ type App struct {
 	profiles      []*profile.Profile
 	collector     *collector.Supervisor
 	history       *history.Writer
+	notify        *notify.Service
 	bus           bus.Bus
 	actors        map[int64]*state.Actor
 	stateCancel   context.CancelFunc
@@ -118,10 +120,14 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if err != nil {
 		return nil, err
 	}
+	a.notify, err = notify.New(child, a.db, a.cipher, &a.bus, a.logger)
+	if err != nil {
+		return nil, err
+	}
 	if err := a.startPipeline(); err != nil {
 		return nil, err
 	}
-	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Logger: a.logger})
+	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Notify: a.notify, Logger: a.logger})
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +227,9 @@ func (a *App) Close() error {
 		}
 		if a.historyCancel != nil {
 			a.historyCancel()
+		}
+		if a.notify != nil {
+			a.closeErr = errors.Join(a.closeErr, a.notify.Close())
 		}
 		a.bus.Close()
 		a.wg.Wait()

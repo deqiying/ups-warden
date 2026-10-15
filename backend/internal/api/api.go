@@ -18,6 +18,7 @@ import (
 	"ups-warden/internal/collector"
 	"ups-warden/internal/history"
 	"ups-warden/internal/model"
+	"ups-warden/internal/notify"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/store"
 )
@@ -37,6 +38,7 @@ type Options struct {
 	History   *history.Writer
 	Bus       *bus.Bus
 	Runtime   Runtime
+	Notify    *notify.Service
 	Logger    *slog.Logger
 }
 
@@ -49,7 +51,7 @@ type Server struct {
 
 // New 创建 API handler；外层根路由须挂载 /api/，所有未知 API 也受认证拦截。
 func New(opts Options) (*Server, error) {
-	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil {
+	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil || opts.Notify == nil {
 		return nil, errors.New("api: 缺少必需模块")
 	}
 	if opts.Logger == nil {
@@ -97,6 +99,15 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/events", s.events)
 	s.mux.HandleFunc("GET /api/v1/alerts", s.alerts)
 	s.mux.HandleFunc("GET /api/v1/audit", s.audit)
+	s.mux.HandleFunc("GET /api/v1/channels", s.channels)
+	s.mux.HandleFunc("POST /api/v1/channels", s.createChannel)
+	s.mux.HandleFunc("GET /api/v1/channels/{id}", s.getChannel)
+	s.mux.HandleFunc("PUT /api/v1/channels/{id}", s.updateChannel)
+	s.mux.HandleFunc("DELETE /api/v1/channels/{id}", s.deleteChannel)
+	s.mux.HandleFunc("POST /api/v1/channels/{id}/test", s.testChannel)
+	s.mux.HandleFunc("GET /api/v1/notify-templates", s.notifyTemplates)
+	s.mux.HandleFunc("PUT /api/v1/notify-templates", s.saveNotifyTemplate)
+	s.mux.HandleFunc("GET /api/v1/notify-logs", s.notifyLogs)
 	s.mux.HandleFunc("GET /api/v1/stream", s.stream)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "not_found", "接口不存在") })
 }

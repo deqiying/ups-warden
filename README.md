@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 后端 **M0～M4 已实现并通过本机验证**；M4 交付认证、审计、监控 API、SSE 与静态 SPA 托管，[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收。**真机 CP-1 待验收**。前端仍为脚手架、无业务页面；M5 通知、M6 规则动作、M7 编排、M8 系统与发布均未实现，**本轮到 M4 停止**。下文完整业务流程是设计目标。
+> 后端 **M0～M5 已实现并通过本机验证**；M4 交付认证、审计、监控 API、SSE 与静态 SPA 托管，[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 交付模板、Webhook/Telegram、重试、日志和[通知管理 API](docs/reference/notifications-api.md)。**真机 CP-1 待验收**。前端仍为脚手架、无业务页面；M6 规则动作、M7 编排、M8 系统与发布均未实现，**本轮到 M5 停止**。通知当前支持渠道测试，事件自动联动仍待 M6；下文完整业务流程是设计目标。
 
 ## 停电联动流程
 
