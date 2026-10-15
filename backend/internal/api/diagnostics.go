@@ -10,7 +10,6 @@ import (
 
 	"ups-warden/internal/collector"
 	"ups-warden/internal/driver"
-	"ups-warden/internal/normalize"
 )
 
 func (s *Server) testSource(w http.ResponseWriter, r *http.Request) {
@@ -50,12 +49,12 @@ func (s *Server) probe(w http.ResponseWriter, r *http.Request, v source) {
 		s.storageError(w, err, "source")
 		return
 	}
-	if s.opts.Collector == nil {
-		fail(w, 503, "collector_unavailable", "采集服务不可用")
-		return
-	}
 	result, err := s.opts.Collector.Test(r.Context(), cfg)
 	if err != nil {
+		if errors.Is(err, collector.ErrPasswordWrong) {
+			fail(w, 502, "source_password_wrong", "设备密码错误（103）")
+			return
+		}
 		code := "probe_failed"
 		status := 502
 		if errors.Is(err, collector.ErrBusy) {
@@ -83,10 +82,6 @@ func (s *Server) raw(w http.ResponseWriter, r *http.Request) {
 		s.storageError(w, err, "source")
 		return
 	}
-	if s.opts.Collector == nil {
-		fail(w, 503, "collector_unavailable", "采集服务不可用")
-		return
-	}
 	raw, trace, ok := s.opts.Collector.Diagnostics(id)
 	if !ok {
 		fail(w, 404, "diagnostic_unavailable", "暂无诊断缓存")
@@ -97,7 +92,7 @@ func (s *Server) raw(w http.ResponseWriter, r *http.Request) {
 		s.storageError(w, err, "source")
 		return
 	}
-	safe, err := redactDiagnostic(map[string]any{"raw": rawView(raw), "trace": safeTrace(trace)}, cfg.Credential.Reveal())
+	safe, err := redactDiagnostic(map[string]any{"raw": rawView(raw), "trace": trace}, cfg.Credential.Reveal())
 	if err != nil {
 		s.internal(w, err)
 		return
@@ -115,7 +110,6 @@ func rawView(raw driver.RawData) map[string]any {
 	}
 	return map[string]any{"protocol": raw.Protocol, "at": raw.At.UTC(), "snmp": raw.SNMP, "modbus": regs, "ayi9": raw.AYI9, "errors": errors}
 }
-func safeTrace(trace []normalize.Trace) []normalize.Trace { return trace }
 
 // 在值层清洗回显凭据；Base64 必须先解码再替换，编码不保持子串关系。
 func redactDiagnostic(value any, credential string) (any, error) {

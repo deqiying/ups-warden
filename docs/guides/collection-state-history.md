@@ -13,15 +13,16 @@ M4 已开放初始化/认证、设备/源/Profile 管理、连接 test/raw、快
 实现入口：[`internal/collector`](../../backend/internal/collector/supervisor.go)。
 
 - `Start` 从数据库读取启用设备及启用数据源；P0 每设备只能有一个启用数据源，冲突或非法配置会阻止启动。
-- 内置 Profile 优先于同名数据库项；自定义 Profile 必须通过解析、语义校验，且 key/protocol/version 与数据源匹配。
+- 内置 Profile 优先于同名数据库项；自定义 Profile 必须通过解析、语义校验，且 key/protocol/version 与数据源匹配。每个 worker 独占加载后的 Profile，构造读计划后只读使用，不逐轮重验配置；重载重新读取并校验。
 - `sources.secret` 使用 AAD `sources.secret` 加密；明文为单个 SNMP community 或 AYI9 password 字符串，不是 JSON。原始数据与 Trace 仅保存最近一次尝试的内存副本，不落库。
 - `params` 严格拒绝未知键、重复键、null 和尾随 JSON。SNMP 只接受 `version`（`1` / `2c`）；Modbus 只接受 `unit_id`（省略则用 Profile）；AYI9 只接受空对象。
 - 同 canonical IP 的轮询与临时连接测试共用容量 1 信号量，IPv4-mapped IPv6 与 IPv4 合并；DNS 必须解析为单个无 zone IP，并固定拨号该 IP，避免别名绕过。多地址 DNS 和 IPv6 zone 暂不支持。
+- HTTP、数据库加载和采集构造共用 `ValidateTiming`：轮询 200～3600000 ms、超时 1～60000 ms、重试 0～10；超限直接拒绝，不为纳秒轮询或整数极值提供兼容计算。范围沿用 M4 已交付 API。
 - 首轮有随机抖动；成功后等待配置的轮询间隔，失败按 1/2/4/8/16/30 秒退避。每轮总限额为 `min(0.9 × poll_interval, timeout × (retries+1))`，每次尝试另受 timeout 限制；排队也占总限额。
 - 采集事实保留 Go 单调时钟，去抖不受运行期间墙钟校时影响；持久化/输出才转 UTC。驱动 Poll panic 会按失败上报并关闭旧实例，后续按同样退避重建，不永久停止采集；日志不记录 panic 原文。
 - 只有身份、额定值或静态相数不算成功采集；至少有一个有效实时观测才上报成功。部分字段无效不使其他有效字段失效。
 - `Reload(ctx, sourceID)` 取消并等待旧 worker（含 sink）结束，再装配新配置。源被禁用/删除时仅停止；新配置失败不会自动恢复旧配置。
-- `Test(ctx, Source)` 临时 Probe、归一化并推荐内置/有效自定义 Profile，不污染 worker 缓存；默认总限额 5 秒，显式 timeout 最大 1 分钟。排队超时返回 busy。
+- `Test(ctx, Source)` 临时 Probe、归一化并推荐内置/有效自定义 Profile，不污染 worker 缓存；默认总限额 5 秒，显式 timeout 最大 1 分钟。排队超时返回 busy。AYI9 密码错误保留 `ErrPasswordWrong` 分类，运行状态为 `password_wrong`；不传播含凭据的原始包装错误。
 
 M4 API 通过 app 的 `ChangeDevices` 串行协调动态配置：暂停相关 collector worker，排空并停止设备 actor，Flush 历史后执行配置与字段级审计同事务，再从数据库恢复 actor/worker。未确认窗口重新计时，已确认周期与活动告警保留。事务失败保持旧配置并尝试恢复旧运行；保存成功但恢复失败返回 503 / `configuration_saved_runtime_error`，不能理解为配置回滚。配置变更还会发布全量 resync。不要在服务运行时手工修改数据库。
 
@@ -77,11 +78,11 @@ M4 API 通过 app 的 `ChangeDevices` 串行协调动态配置：暂停相关 co
 
 - 仅写目录标记 `History=true` 且质量 good 的统一数值；不保存原始报文、OID、寄存器、QAD/RTD 段、凭据、Reason 或 Trace。
 - 每秒或累计 200 行批量写入；每事务最多 200 行，失败保留有界待写队列。时钟 tick 和失败采集不制造历史测量点。
-- 完整分钟聚合 min/max/avg/count，启动补算、每分钟幂等重算，支持迟到数据。不完整当前分钟暂不聚合；明细保留期边缘的部分分钟不覆盖已有完整聚合。
+- 完整分钟聚合 min/max/avg/count：每个 Writer 首次补算明细保留期，随后按成功水位与已提交样本的最早 dirty 分钟重算到当前完整分钟边界；迟到与同时间戳覆盖都会标记 dirty。只保留固定大小的内存水位，重启重新补算，不新增表或持久化水位。不完整当前分钟暂不聚合；明细保留期边缘的部分分钟不覆盖已有完整聚合。
 - 默认明细 7 天、分钟聚合 90 天、日志 365 天；每小时聚合后分批清理，每批最多 5000 行。活动事件、活动周期及仍被引用的记录不删除；无 `cleared_at` 的非活动恢复事件按 `started_at` 判断过期。
 - `Query{DeviceID, From, To, Resolution, MaxPoints}` 使用 `[From, To)`。`Resolution` 为 `raw`、`1m`、`auto`；auto 在范围 ≤6 小时且 From 位于明细保留期内时选 raw，否则 1m。
 - 默认及最大 1000 点，按时间桶降采样并按 count 加权平均；1m 的范围边界按分钟起点判断，不拆分部分分钟。
-- 查询只读取已提交数据，不隐式 Flush；显式调用 Cleanup 前应先 Aggregate。聚合当前会扫描保留期内完整分钟，尚未进行满容量性能验收。
+- 查询只读取已提交数据，不隐式 Flush；显式调用 Cleanup 前应先 Aggregate。Flush 与 Aggregate 共用可取消的串行 gate，只有提交成功才标记 dirty、整轮聚合成功才推进水位。正常轮次不重算未受影响的旧分钟；迟到数据会重算从最早 dirty 起的后续区间，首次补算或失败重试仍可能覆盖整个保留期。尚未进行满容量性能验收。
 
 ## 已验证与未验证
 

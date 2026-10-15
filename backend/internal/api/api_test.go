@@ -16,6 +16,7 @@ import (
 
 	"ups-warden/internal/auth"
 	"ups-warden/internal/bus"
+	"ups-warden/internal/collector"
 	"ups-warden/internal/history"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/store"
@@ -54,7 +55,16 @@ func newAPI(t *testing.T) *apiFixture {
 	}
 	b := &bus.Bus{}
 	t.Cleanup(b.Close)
-	s := New(Options{DB: db, Cipher: cipher, Auth: a, History: h, Bus: b, Logger: logger})
+	c := collector.New(db, cipher, nil, collector.Options{Logger: logger})
+	t.Cleanup(func() {
+		if err := c.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	s, err := New(Options{DB: db, Cipher: cipher, Auth: a, Collector: c, History: h, Bus: b, Runtime: &snapshotRuntime{}, Logger: logger})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return &apiFixture{s: s, db: db}
 }
 func (f *apiFixture) req(method, path string, value any) *httptest.ResponseRecorder {

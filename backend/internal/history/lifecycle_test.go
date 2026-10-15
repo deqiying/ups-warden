@@ -130,6 +130,11 @@ func TestRetentionEdgeDoesNotOverwriteCompleteAggregate(t *testing.T) {
 	if count(t, db, "history_sample") != 1 {
 		t.Fatal("expected partial retained minute")
 	}
+	// 强制把残缺分钟标脏；即使有迟到覆盖，也不能越过保留期完整分钟下界。
+	w.Enqueue(state(base.Add(40*time.Second), 100))
+	if err := w.Flush(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 	if err := w.Aggregate(t.Context(), later); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +142,7 @@ func TestRetentionEdgeDoesNotOverwriteCompleteAggregate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Points) != 1 || result.Points[0].Fields["battery_voltage"].Count != 2 {
+	if len(result.Points) != 1 || result.Points[0].Fields["battery_voltage"].Count != 2 || result.Points[0].Fields["battery_voltage"].Avg != 20 {
 		t.Fatal("partial detail overwrote complete aggregate", result)
 	}
 }

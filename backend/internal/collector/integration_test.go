@@ -185,14 +185,22 @@ func TestPreparationAtomicity(t *testing.T) {
 }
 
 func TestBudgetBoundary(t *testing.T) {
-	source := testSource(t)
-	source.PollInterval = time.Duration(1<<63 - 1)
-	source.Retries = int(^uint(0) >> 1)
-	if got := pollBudget(source); got <= 0 || got > source.PollInterval {
-		t.Fatalf("overflow: %v", got)
-	}
-	source.PollInterval = 11 * time.Nanosecond
-	if got := pollBudget(source); got != 9*time.Nanosecond {
-		t.Fatalf("rounding: %v", got)
+	for _, tc := range []struct {
+		poll, timeout time.Duration
+		retries       int
+		want          time.Duration
+	}{
+		{200 * time.Millisecond, time.Second, 10, 180 * time.Millisecond},
+		{time.Hour, time.Minute, 10, 11 * time.Minute},
+		{time.Second, time.Millisecond, 0, time.Millisecond},
+	} {
+		source := testSource(t)
+		source.PollInterval, source.Timeout, source.Retries = tc.poll, tc.timeout, tc.retries
+		if _, err := validate(source); err != nil {
+			t.Fatal(err)
+		}
+		if got := pollBudget(source); got != tc.want {
+			t.Fatalf("budget=%v want=%v", got, tc.want)
+		}
 	}
 }

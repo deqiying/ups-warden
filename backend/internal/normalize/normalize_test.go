@@ -237,7 +237,7 @@ func TestAYI9PhasesAndState(t *testing.T) {
 	}
 }
 
-func TestPartialErrorsAndInvalidProfile(t *testing.T) {
+func TestPartialErrorsAndProtocolMismatch(t *testing.T) {
 	p := snmpProfile(profile.Mapping{Field: "battery_voltage", Type: "int"})
 	raw := driver.RawData{Protocol: driver.ProtocolSNMP, SNMP: map[string]driver.SNMPValue{testOID: {Tag: 2, Int: 294}}, Errors: []driver.BlockError{{OID: testOID, Kind: "unsupported"}}}
 	s, _, err := Normalize(1, raw, p)
@@ -261,10 +261,6 @@ func TestPartialErrorsAndInvalidProfile(t *testing.T) {
 	}
 	if _, _, err := Normalize(1, raw, nil); err == nil {
 		t.Fatal("应拒绝nil Profile")
-	}
-	p.Fields[0].Field = "not_a_field"
-	if _, _, err := Normalize(1, driver.RawData{Protocol: driver.ProtocolSNMP}, p); err == nil {
-		t.Fatal("应拒绝非法Profile")
 	}
 }
 

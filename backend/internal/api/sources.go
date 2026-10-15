@@ -96,10 +96,8 @@ func (s *Server) sources(w http.ResponseWriter, r *http.Request) {
 			s.internal(w, err)
 			return
 		}
-		if s.opts.Collector != nil {
-			if status, ok := s.opts.Collector.Status(v.ID); ok {
-				v.Status = &sourceStatus{status.LastOKAt.UTC(), status.Latency.Milliseconds(), status.Failures, status.ErrorCode}
-			}
+		if status, ok := s.opts.Collector.Status(v.ID); ok {
+			v.Status = &sourceStatus{status.LastOKAt.UTC(), status.Latency.Milliseconds(), status.Failures, status.ErrorCode}
 		}
 		items = append(items, v)
 	}
@@ -149,7 +147,7 @@ func (s *Server) applySource(ctx context.Context, v *source, in sourceInput) err
 	if oldProtocol != "" && oldProtocol != v.Protocol {
 		v.Encrypted = nil
 	}
-	if !validHost(v.Host) || v.Port < 1 || v.Port > 65535 || v.PollMS < 200 || v.PollMS > 3600000 || v.TimeoutMS < 1 || v.TimeoutMS > 60000 || v.Retries < 0 || v.Retries > 10 {
+	if !validHost(v.Host) || v.Port < 1 || v.Port > 65535 || collector.ValidateTiming(int64(v.PollMS), int64(v.TimeoutMS), v.Retries) != nil {
 		return errValidation
 	}
 	if in.Password != "" && v.Protocol != driver.ProtocolAYI9 || in.Community != "" && v.Protocol != driver.ProtocolSNMP {
@@ -309,7 +307,14 @@ func (s *Server) updateSource(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		before, after := object(old), object(v)
+		before, err := object(old)
+		if err != nil {
+			return err
+		}
+		after, err := object(v)
+		if err != nil {
+			return err
+		}
 		if in.Password != "" || in.Community != "" || len(in.ClearSecrets) > 0 {
 			before["secret"] = "before"
 			after["secret"] = "changed"

@@ -15,9 +15,6 @@ import (
 )
 
 func (s *Server) allSnapshots() []model.DeviceState {
-	if s.opts.Runtime == nil {
-		return []model.DeviceState{}
-	}
 	states := s.opts.Runtime.Snapshots()
 	for i := range states {
 		states[i] = stateView(states[i])
@@ -93,10 +90,6 @@ func (s *Server) history(w http.ResponseWriter, r *http.Request) {
 			}
 			fields[key] = true
 		}
-	}
-	if s.opts.History == nil {
-		fail(w, 503, "history_unavailable", "历史服务不可用")
-		return
 	}
 	resolution := r.URL.Query().Get("resolution")
 	if resolution == "" {
@@ -271,10 +264,6 @@ func (s *Server) audit(w http.ResponseWriter, r *http.Request) {
 	page(w, items, next)
 }
 func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Bus == nil {
-		fail(w, 503, "stream_unavailable", "实时服务不可用")
-		return
-	}
 	ch, done, cancel := s.opts.Bus.SubscribeWithDone()
 	defer cancel()
 	var err error
@@ -334,7 +323,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			if _, exists := last[update.State.DeviceID]; !exists && s.opts.Runtime != nil {
+			if _, exists := last[update.State.DeviceID]; !exists {
 				// 全量同步中不存在的设备已停用或删除，不让旧队列重新引入它。
 				continue
 			}

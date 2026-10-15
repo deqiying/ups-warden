@@ -121,7 +121,10 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if err := a.startPipeline(); err != nil {
 		return nil, err
 	}
-	a.api = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Logger: a.logger})
+	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Logger: a.logger})
+	if err != nil {
+		return nil, err
+	}
 	return a, nil
 }
 

@@ -78,7 +78,7 @@ fields:
 
 统一目录包含 49 个基础字段、展开为 69 个字段实例；单源快照包含 64 个观测字段，5 个派生字段留给状态引擎。质量值使用 `good/invalid/unsupported/stale` 字符串；零值质量不等于 `good`。未映射观测字段为 `unsupported/not_mapped`。
 
-`Normalize(sourceID, raw, profile)` 是纯函数，返回独立 `SourceSnapshot`、有序 Trace 和错误。协议不匹配或 Profile 无效时整体失败；单字段解码失败只降低该字段质量。业务层只能消费统一快照，不能消费包含 OID、寄存器和原始值的 Trace。
+`Normalize(sourceID, raw, profile)` 是纯函数，返回独立 `SourceSnapshot`、有序 Trace 和错误。调用者须先通过 `Parse` / `Validate` 建立有效 Profile，并在使用期间保持只读；程序修改 Profile 后必须重新校验。归一化不逐轮重新校验配置；缺少 Profile 或协议不匹配时整体失败，单字段报文解码失败只降低该字段质量。采集 worker 独占加载后的 Profile，配置变更经停止旧 worker、重载校验再启用的流程生效。业务层只能消费统一快照，不能消费包含 OID、寄存器和原始值的 Trace。
 
 ## 读计划与推荐
 

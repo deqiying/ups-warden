@@ -5,8 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"sync"
 
 	"ups-warden/internal/auth"
@@ -24,7 +28,7 @@ type Runtime interface {
 	Snapshots() []model.DeviceState
 }
 
-// Options 指定已启动模块，API 不拥有其关闭生命周期。
+// Options 指定必需业务模块；仅 Logger 可省略。API 不拥有模块的关闭生命周期。
 type Options struct {
 	DB        *store.Store
 	Cipher    *secret.Cipher
@@ -44,13 +48,16 @@ type Server struct {
 }
 
 // New 创建 API handler；外层根路由须挂载 /api/，所有未知 API 也受认证拦截。
-func New(opts Options) *Server {
+func New(opts Options) (*Server, error) {
+	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil {
+		return nil, errors.New("api: 缺少必需模块")
+	}
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
 	s := &Server{opts: opts, mux: http.NewServeMux()}
 	s.routes()
-	return s
+	return s, nil
 }
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/v1/setup/status", s.setupStatus)
@@ -105,7 +112,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	defer func() {
 		if v := recover(); v != nil {
-			s.opts.Logger.Error("API panic，已隔离", "type", r.Method)
+			s.opts.Logger.Error("API panic，已隔离", "method", r.Method, "panic_type", fmt.Sprintf("%T", v), "stack", string(debug.Stack()))
 			fail(w, 500, "internal_error", "内部错误")
 		}
 	}()
@@ -153,7 +160,8 @@ func fail(w http.ResponseWriter, status int, code, message string) {
 	reply(w, status, map[string]any{"code": code, "message": message, "details": map[string]any{}})
 }
 func (s *Server) internal(w http.ResponseWriter, err error) {
-	s.opts.Logger.Error("API 存储或运行失败", "error_type", errorType(err))
+	_, file, line, _ := runtime.Caller(1)
+	s.opts.Logger.Error("API 存储或运行失败", "error_type", errorType(err), "caller", filepath.Base(file), "line", line)
 	fail(w, 500, "internal_error", "操作失败，请检查服务日志")
 }
 func errorType(err error) string {
@@ -163,5 +171,10 @@ func errorType(err error) string {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "timeout"
 	}
-	return "operation_failed"
+	// 只输出类型及 SQLite 数字码，不格式化可能含凭据的原始错误文本。
+	var code interface{ Code() int }
+	if errors.As(err, &code) {
+		return fmt.Sprintf("sqlite_%d", code.Code())
+	}
+	return fmt.Sprintf("%T", err)
 }

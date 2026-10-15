@@ -267,7 +267,7 @@ func TestPlanRunConstraints(t *testing.T) {
 	}
 }
 
-func TestRejectInconsistentSchema(t *testing.T) {
+func TestRejectInconsistentMigrationHistory(t *testing.T) {
 	for _, mutation := range []string{
 		"PRAGMA user_version=2",
 		"PRAGMA user_version=0",
@@ -275,9 +275,6 @@ func TestRejectInconsistentSchema(t *testing.T) {
 		"INSERT INTO schema_migrations VALUES (3,1)",
 		"UPDATE schema_migrations SET applied_at=0",
 		"DROP TABLE schema_migrations",
-		"DROP TABLE settings",
-		"DROP INDEX events_active",
-		"ALTER TABLE settings ADD COLUMN unexpected TEXT",
 	} {
 		t.Run(mutation, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "db.sqlite")
@@ -300,6 +297,25 @@ func TestRejectInconsistentSchema(t *testing.T) {
 				t.Fatalf("database resource leaked: %v", err)
 			}
 		})
+	}
+}
+
+func TestMigrationAllowsAdditionalIndex(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "db.sqlite")
+	s, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	execTest(t, s.Write(), "CREATE INDEX diagnostic_settings ON settings(value)")
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, err = Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 

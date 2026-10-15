@@ -29,6 +29,7 @@ type Params struct {
 
 // Source 是单个数据源配置。Factory 收到的 Host 已固定为 canonical IP。
 // Credential 是单个 community/password 字符串，不是 JSON；DB 密文 AAD 为 sources.secret。
+// worker 独占从 DB 加载的 Profile；Factory 只借用，不得修改。Test 调用期间调用者也不得修改 Profile。
 type Source struct {
 	ID, DeviceID          int64
 	Protocol, Host        string
@@ -113,9 +114,17 @@ func parseParams(text, protocol string) (Params, error) {
 	return p, nil
 }
 
+// ValidateTiming 统一 HTTP、持久化配置与采集入口的毫秒范围；超限拒绝，不做极值兼容。
+func ValidateTiming(pollMS, timeoutMS int64, retries int) error {
+	if pollMS < 200 || pollMS > 3600000 || timeoutMS < 1 || timeoutMS > 60000 || retries < 0 || retries > 10 {
+		return ErrConfig
+	}
+	return nil
+}
+
 func validate(source Source) (driver.ReadPlan, error) {
 	var empty driver.ReadPlan
-	if source.Profile == nil || source.Protocol != source.Profile.Protocol || source.Host == "" || source.Port < 1 || source.Port > 65535 || source.Timeout <= 0 || source.Timeout > time.Minute || source.PollInterval <= 0 || source.Retries < 0 {
+	if source.Profile == nil || source.Protocol != source.Profile.Protocol || source.Host == "" || source.Port < 1 || source.Port > 65535 || ValidateTiming(source.PollInterval.Milliseconds(), source.Timeout.Milliseconds(), source.Retries) != nil {
 		return empty, ErrConfig
 	}
 	switch source.Protocol {
@@ -211,8 +220,8 @@ func (s *Supervisor) load(ctx context.Context) ([]Source, error) {
 			return nil, ErrConflict
 		}
 		devices[source.DeviceID] = true
-		// 限制转换前的值，防止 duration 乘法溢出。
-		if poll <= 0 || poll > int64((1<<63-1)/int64(time.Millisecond)) || timeout <= 0 || timeout > 60000 {
+		// 先校验业务范围，再转换 duration；不接受机器整数极限作为配置。
+		if ValidateTiming(poll, timeout, source.Retries) != nil {
 			_ = rows.Close()
 			return nil, ErrConfig
 		}
@@ -260,9 +269,6 @@ func (s *Supervisor) load(ctx context.Context) ([]Source, error) {
 			return nil, ErrConfig
 		}
 		sources[i].Profile = p
-		if _, err := validate(sources[i]); err != nil {
-			return nil, err
-		}
 	}
 	return sources, nil
 }

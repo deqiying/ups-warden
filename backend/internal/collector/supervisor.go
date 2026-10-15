@@ -348,6 +348,8 @@ func errorCode(err error) string {
 	switch {
 	case err == nil:
 		return ""
+	case errors.Is(err, ErrPasswordWrong):
+		return "password_wrong"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "timeout"
 	case errors.Is(err, context.Canceled):

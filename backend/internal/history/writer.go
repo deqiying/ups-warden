@@ -45,6 +45,12 @@ type Writer struct {
 	flushGate chan struct{}
 	ran       atomic.Bool
 	dropped   atomic.Uint64
+
+	// 以下水位和最早脏分钟仅由 flushGate 保护，不随队列锁一起访问。
+	aggregateReady bool
+	aggregateUntil int64
+	dirty          bool
+	dirtyFrom      int64
 }
 
 // New 创建 writer，不启动后台任务，也不改变数据库 schema。
@@ -181,6 +187,14 @@ func (w *Writer) Flush(ctx context.Context) error {
 			w.opts.Logger.Error("历史批量写入失败，保留待写队列", "rows", n, "error", err)
 			return fmt.Errorf("history: flush: %w", err)
 		}
+		// 仅标记已提交的批次；与 Aggregate 共用串行锁，避免迟到标记被清除。
+		for _, s := range batch {
+			minute := time.UnixMilli(s.at).UTC().Truncate(time.Minute).UnixMilli()
+			if !w.dirty || minute < w.dirtyFrom {
+				w.dirtyFrom = minute
+			}
+			w.dirty = true
+		}
 		w.mu.Lock()
 		copy(w.queue, w.queue[n:])
 		clear(w.queue[len(w.queue)-n:])
@@ -191,7 +205,7 @@ func (w *Writer) Flush(ctx context.Context) error {
 	return nil
 }
 
-// Run 每秒或达到 200 行刷新，每分钟重算完整分钟，每小时清理。
+// Run 每秒或达到 200 行刷新，每分钟增量聚合完整分钟，每小时清理。
 // 失败通过日志报告并在后续周期重试；取消仅停止接收，保留未提交队列。
 func (w *Writer) Run(ctx context.Context) error {
 	if !w.ran.CompareAndSwap(false, true) {

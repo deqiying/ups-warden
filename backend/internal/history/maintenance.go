@@ -8,16 +8,31 @@ import (
 	"time"
 )
 
-// Aggregate 以明细为唯一依据，重算保留期内所有完整分钟，覆盖迟到样本和重启补算。
+// Aggregate 首次补算保留期内的完整分钟，之后只处理水位以来及迟到写入影响的分钟。
 // 每个设备/分钟单独事务，内存只持有单分钟统计；保留期边缘的部分分钟
-// 不重算，避免清理后以残缺明细覆盖已经完整的聚合。不需要新增迁移。
+// 不重算，避免清理后以残缺明细覆盖已经完整的聚合。新 Writer 会重新全量补算。
 func (w *Writer) Aggregate(ctx context.Context, now time.Time) error {
+	select {
+	case w.flushGate <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-w.flushGate }()
 	lower := now.Add(-w.opts.DetailRetention).UTC()
 	start := lower.Truncate(time.Minute)
 	if lower.After(start) {
 		start = start.Add(time.Minute)
 	}
 	end := now.UTC().Truncate(time.Minute)
+	if w.aggregateReady {
+		from := w.aggregateUntil
+		if w.dirty {
+			from = min(from, w.dirtyFrom)
+		}
+		if from > start.UnixMilli() {
+			start = time.UnixMilli(from)
+		}
+	}
 	// 使用明确的 UTC 时间桶表达式，也正确处理 Unix epoch 前时间。
 	rows, err := w.db.Read().QueryContext(ctx, `SELECT DISTINCT device_id, ts-((ts%60000+60000)%60000) AS bucket FROM history_sample WHERE ts>=? AND ts<? ORDER BY device_id,bucket`, start.UnixMilli(), end.UnixMilli())
 	if err != nil {
@@ -73,6 +88,16 @@ func (w *Writer) Aggregate(ctx context.Context, now time.Time) error {
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("history: aggregate rows: %w", err)
 	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("history: aggregate close rows: %w", err)
+	}
+	// 整轮成功才推进水位；失败保留原范围，重试可安全覆盖已提交的分钟。
+	w.aggregateReady = true
+	w.aggregateUntil = end.UnixMilli()
+	if w.dirty && w.dirtyFrom < w.aggregateUntil {
+		w.dirty = false
+	}
+	// 未完成分钟即使与本轮已处理样本同批提交，仍会由下一轮水位覆盖。
 	return nil
 }
 

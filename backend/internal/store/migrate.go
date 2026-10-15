@@ -7,10 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"maps"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -82,10 +80,6 @@ func (s *Store) migrateFS(ctx context.Context, files fs.FS) error {
 		} else if version != 0 {
 			return errors.New("store: schema version without migration history")
 		}
-		// 重放已应用脚本到独立内存库，拒绝缺表、改列、丢失索引或外部 DDL。
-		if err := validateSchema(ctx, tx, scripts[:version]); err != nil {
-			return err
-		}
 		for i := version; i < len(scripts); i++ {
 			if _, err := tx.ExecContext(ctx, scripts[i]); err != nil {
 				return fmt.Errorf("store: apply migration %q: %w", names[i], err)
@@ -99,51 +93,4 @@ func (s *Store) migrateFS(ctx context.Context, files fs.FS) error {
 		}
 		return nil
 	})
-}
-
-type schemaQuerier interface {
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-}
-
-func schema(ctx context.Context, db schemaQuerier) (map[string]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT type, name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	result := map[string]string{}
-	for rows.Next() {
-		var kind, name, ddl string
-		if err := rows.Scan(&kind, &name, &ddl); err != nil {
-			return nil, err
-		}
-		result[kind+":"+name] = strings.TrimSpace(ddl)
-	}
-	return result, rows.Err()
-}
-
-func validateSchema(ctx context.Context, tx *sql.Tx, scripts []string) (err error) {
-	reference, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		return fmt.Errorf("store: open schema reference: %w", err)
-	}
-	reference.SetMaxOpenConns(1)
-	defer func() { err = errors.Join(err, reference.Close()) }()
-	for _, script := range scripts {
-		if _, err := reference.ExecContext(ctx, script); err != nil {
-			return fmt.Errorf("store: build schema reference: %w", err)
-		}
-	}
-	want, err := schema(ctx, reference)
-	if err != nil {
-		return fmt.Errorf("store: read schema reference: %w", err)
-	}
-	got, err := schema(ctx, tx)
-	if err != nil {
-		return fmt.Errorf("store: inspect schema: %w", err)
-	}
-	if !maps.Equal(got, want) {
-		return errors.New("store: inconsistent schema: database DDL differs from migration history")
-	}
-	return nil
 }

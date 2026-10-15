@@ -145,19 +145,25 @@ func remoteIP(r *http.Request) string {
 func validText(s string, max int, required bool) bool {
 	return (!required || strings.TrimSpace(s) != "") && len(s) <= max && !strings.ContainsRune(s, 0)
 }
-func object(v any) map[string]any {
+func object(v any) (map[string]any, error) {
 	data, err := json.Marshal(v)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var result map[string]any
-	if json.Unmarshal(data, &result) != nil {
-		return nil
-	}
-	return result
+	err = json.Unmarshal(data, &result)
+	return result, err
 }
 func logChange(ctx context.Context, tx *sql.Tx, r *http.Request, kind, target string, before, after any) error {
-	return audit.Write(ctx, tx, audit.Record{UserID: current(r).User.ID, IP: remoteIP(r), Kind: kind, Target: target, Result: "success", Before: object(before), After: object(after)})
+	previous, err := object(before)
+	if err != nil {
+		return err
+	}
+	next, err := object(after)
+	if err != nil {
+		return err
+	}
+	return audit.Write(ctx, tx, audit.Record{UserID: current(r).User.ID, IP: remoteIP(r), Kind: kind, Target: target, Result: "success", Before: previous, After: next})
 }
 func (s *Server) storageError(w http.ResponseWriter, err error, kind string) {
 	switch {
@@ -179,11 +185,9 @@ func (s *Server) storageError(w http.ResponseWriter, err error, kind string) {
 func (s *Server) change(r *http.Request, ids []int64, fn func(*sql.Tx) error) error {
 	committed := false
 	apply := func() error { err := s.opts.DB.WithTx(r.Context(), fn); committed = err == nil; return err }
-	if s.opts.Runtime == nil {
-		return apply()
-	}
 	err := s.opts.Runtime.ChangeDevices(r.Context(), ids, apply)
 	if err != nil && committed {
+		s.opts.Logger.Error("配置已保存，恢复运行失败", "error_type", errorType(err), "device_ids", ids)
 		return savedRuntimeError{}
 	}
 	return err

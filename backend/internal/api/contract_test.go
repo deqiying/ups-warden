@@ -70,6 +70,7 @@ func TestStreamAlertClearWithoutRecoveryEvent(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		f := newAPI(t)
 		f.login(t)
+		f.s.opts.Runtime = &snapshotRuntime{states: []model.DeviceState{{DeviceID: 1, At: time.Now()}}}
 		w, cancel, _ := startStream(f)
 		defer cancel()
 		synctest.Wait()

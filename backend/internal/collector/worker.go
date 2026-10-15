@@ -28,13 +28,8 @@ func wait(ctx context.Context, delay time.Duration) bool {
 }
 
 func pollBudget(source Source) time.Duration {
-	// 分段乘法精确取 floor(0.9*interval)，极小周期至少保留 1ns。
-	interval := max(time.Nanosecond, source.PollInterval/10*9+source.PollInterval%10*9/10)
-	// 在乘法前比较商，避免 retries+1 和 duration 乘法溢出。
-	if source.Retries >= int(interval/source.Timeout) {
-		return interval
-	}
-	return min(interval, source.Timeout*time.Duration(source.Retries+1))
+	// 构造入口已限定周期和重试范围，直接计算即可；总预算最多占周期的 90%。
+	return min(source.PollInterval*9/10, source.Timeout*time.Duration(source.Retries+1))
 }
 func backoff(failures int) time.Duration {
 	if failures > 5 {
@@ -70,7 +65,7 @@ func pollDriver(ctx context.Context, d driver.Driver) (raw driver.RawData, err e
 		return raw, ctx.Err()
 	}
 	if err != nil {
-		return raw, ErrDriver
+		return raw, safeDriverError(err)
 	}
 	return raw, nil
 }
@@ -287,7 +282,7 @@ func probeDriver(ctx context.Context, d driver.Driver) (info driver.DeviceInfo, 
 		return info, raw, ctx.Err()
 	}
 	if err != nil {
-		return info, raw, ErrDriver
+		return info, raw, safeDriverError(err)
 	}
 	return info, raw, nil
 }

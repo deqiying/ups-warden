@@ -17,7 +17,7 @@
 {"code":"validation_failed","message":"配置校验失败","details":{}}
 ```
 
-常用稳定错误码：`unauthorized`、`invalid_credentials`、`rate_limited`、`origin_rejected`、`csrf_invalid`、`invalid_json`、`json_required`、`body_too_large`、`validation_failed`、`resource_conflict`、`confirmation_required`、`device_not_found`、`source_not_found`、`profile_not_found`、`profile_invalid`、`builtin_readonly`、`snapshot_unavailable`、`diagnostic_unavailable`、`source_busy`、`probe_failed`、`internal_error`。
+常用稳定错误码：`unauthorized`、`invalid_credentials`、`rate_limited`、`origin_rejected`、`csrf_invalid`、`invalid_json`、`json_required`、`body_too_large`、`validation_failed`、`resource_conflict`、`confirmation_required`、`device_not_found`、`source_not_found`、`profile_not_found`、`profile_invalid`、`builtin_readonly`、`snapshot_unavailable`、`diagnostic_unavailable`、`source_busy`、`source_password_wrong`、`probe_failed`、`internal_error`。
 
 **配置已提交而运行恢复失败**返回 503 / `configuration_saved_runtime_error`；此时配置确实已经保存，不能将错误理解为事务回滚。读取配置修正后再次 PATCH/启用即可重试装配。数据库或审计事务失败则保持旧配置，并尝试恢复旧运行。
 
@@ -73,10 +73,10 @@ Cookie 名 `ups_warden_session`，`HttpOnly; SameSite=Strict; Path=/`，直接 H
 - `profile_version` 默认 1；poll_ms 默认 3000、范围 200～3600000；timeout_ms 默认 1000、范围 1～60000；retries 默认 0、范围 0～10；enabled 默认 true。
 - SNMP params：`{"version":"2c"}` 或 `{"version":"1"}`；Modbus params：`{"unit_id":1}`（省略沿用 Profile）；AYI9 params：`{}`。
 - SNMP 凭据字段 `community`；AYI9 凭据字段 `password`。响应仅有 `community_set/password_set`，不返回明文、掩码或密文。更新省略/空串保留；清除使用 `clear_secrets:["community"]` 或 `["password"]`，不得同时提供新值。更换协议清除旧协议凭据。无 SNMP community 时驱动默认 public，无 AYI9 password 时用空串。
-- 列表中的可选 `status`：`last_ok_at, latency_ms, failures, error_code`；无活动 worker 时省略。地址和配置仅对已认证管理员可见。
+- 列表中的可选 `status`：`last_ok_at, latency_ms, failures, error_code`；无活动 worker 时省略。`error_code=password_wrong` 表示设备返回 AYI9 密码错误（103）。地址和配置仅对已认证管理员可见。
 - 保存执行离线配置/只读计划/驱动构造校验，不做额外 Probe；启用源的正常调度会按配置连接。DNS 必须解析为单个 IP，别名与 IPv4-mapped IPv6 共用同 IP 串行约束。
 
-测试请求使用相同 source 字段（不含 id/device_id/status），未指定 timeout_ms 时总限额 5 秒；与正常采集共用信号量。返回：`latency_ms, device_info, snapshot, recommendations, raw, trace`；失败仅返回稳定码（忙为 409，探测失败为 502），不回显设备错误原文。`raw` 有 `protocol, at, snmp, modbus, ayi9, errors`，Modbus 键为 `FC:地址`（例如 `3:28`）。Raw/Trace 是诊断，不是统一业务数据，不入历史或审计；已知凭据的设备回显也会过滤。
+测试请求使用相同 source 字段（不含 id/device_id/status），未指定 timeout_ms 时总限额 5 秒；与正常采集共用信号量。返回：`latency_ms, device_info, snapshot, recommendations, raw, trace`；失败仅返回稳定码（忙为 409 / `source_busy`，AYI9 密码错误为 502 / `source_password_wrong` 并提示“设备密码错误（103）”，其他探测失败为 502 / `probe_failed`），不回显凭据或设备错误原文。`raw` 有 `protocol, at, snmp, modbus, ayi9, errors`，Modbus 键为 `FC:地址`（例如 `3:28`）。Raw/Trace 是诊断，不是统一业务数据，不入历史或审计；已知凭据的设备回显也会过滤。
 
 `device_info`：`model, manufacturer, firmware, agent_version, identity`；`recommendations` 每项为 `key, score, reason`。Trace 每项为 `field, source?, raw?, decoded?, final, quality, reason?`；SNMP 字节字段使用 Base64，凭据过滤先解码再替换后编码，覆盖带前后缀的回显。
 

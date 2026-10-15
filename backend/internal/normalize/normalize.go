@@ -27,14 +27,12 @@ type Trace struct {
 }
 
 // Normalize 返回独立的统一快照和按字段排序的诊断记录，不修改 raw 或 p。
-// 非法 Profile 或协议不匹配返回错误；单个字段失败只降低该字段质量。
+// p 须已经 Parse/Validate 校验；调用者拥有它且使用期间不得修改，变更后须重新校验。
+// 不在每轮重验配置。协议不匹配返回错误，单个报文字段失败只降低该字段质量。
 // 派生字段由状态引擎产生，不出现在单数据源快照中。
 func Normalize(sourceID int64, raw driver.RawData, p *profile.Profile) (model.SourceSnapshot, []Trace, error) {
 	if p == nil {
 		return model.SourceSnapshot{}, nil, errors.New("归一化缺少 Profile")
-	}
-	if err := p.Validate(); err != nil {
-		return model.SourceSnapshot{}, nil, fmt.Errorf("归一化 Profile 无效: %w", err)
 	}
 	if raw.Protocol != p.Protocol {
 		return model.SourceSnapshot{}, nil, errors.New("原始协议与 Profile 不匹配")
@@ -198,14 +196,8 @@ func convert(raw any, m profile.Mapping, spec model.FieldSpec, p *profile.Profil
 			low, high = *m.Bit, *m.Bit
 		} else {
 			pieces := strings.Split(m.Bits, "-")
-			if len(pieces) != 2 {
-				return bad(spec, model.Invalid, model.ReasonDecodeError), decoded
-			}
 			low, _ = strconv.Atoi(pieces[0])
 			high, _ = strconv.Atoi(pieces[1])
-		}
-		if low < 0 || high < low || high > 15 {
-			return bad(spec, model.Invalid, model.ReasonDecodeError), decoded
 		}
 		value = float64((uint16(number) >> low) & uint16((uint32(1)<<(high-low+1))-1))
 	}
@@ -229,7 +221,7 @@ func convert(raw any, m profile.Mapping, spec model.FieldSpec, p *profile.Profil
 			key = strconv.FormatFloat(typed, 'f', -1, 64)
 		}
 		mapped, ok := m.Enum[key]
-		if !ok || !slices.Contains(spec.Enum, mapped) {
+		if !ok {
 			return bad(spec, model.Invalid, model.ReasonEnumUnmapped), decoded
 		}
 		return model.Field{Str: mapped, Quality: model.Good}, decoded
@@ -249,10 +241,7 @@ func convert(raw any, m profile.Mapping, spec model.FieldSpec, p *profile.Profil
 	if m.Scale != nil {
 		scale = *m.Scale
 	}
-	factor, ok := profile.UnitFactor(m.Unit, spec.Unit)
-	if !ok {
-		return bad(spec, model.Invalid, model.ReasonDecodeError), decoded
-	}
+	factor, _ := profile.UnitFactor(m.Unit, spec.Unit) // 单位组合已在 Profile 边界校验。
 	number = (number*scale + m.Offset) * factor
 	if math.IsNaN(number) || math.IsInf(number, 0) {
 		return bad(spec, model.Invalid, model.ReasonOutOfRange), decoded
