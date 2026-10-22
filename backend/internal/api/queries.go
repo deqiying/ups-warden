@@ -12,6 +12,7 @@ import (
 
 	"ups-warden/internal/history"
 	"ups-warden/internal/model"
+	"ups-warden/internal/plan"
 )
 
 func (s *Server) allSnapshots() []model.DeviceState {
@@ -300,7 +301,11 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		for _, state := range states {
 			last[state.DeviceID] = state.At
 		}
-		return send("sync", map[string]any{"schema_version": model.SchemaVersion, "devices": states, "alerts": items, "plan_runs": []any{}})
+		runs, e := plan.ActiveRuns(r.Context(), s.opts.DB)
+		if e != nil {
+			return e
+		}
+		return send("sync", map[string]any{"schema_version": model.SchemaVersion, "devices": states, "alerts": items, "plan_runs": runs})
 	}
 	if err = syncAll(); err != nil {
 		return
@@ -316,6 +321,13 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 		case update, ok := <-ch:
 			if !ok {
 				return
+			}
+			// 计划进度不属于单个设备快照，先于设备过滤推送。
+			if update.PlanProgress != nil {
+				if err = send("plan_progress", update.PlanProgress); err != nil {
+					return
+				}
+				continue
 			}
 			if update.NotifyFailed != nil {
 				if err = send("notify_failed", update.NotifyFailed); err != nil {

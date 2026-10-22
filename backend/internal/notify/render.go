@@ -5,6 +5,7 @@ import (
 	"errors"
 	"html"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,10 @@ type Template struct {
 	Body      string `json:"body"`
 }
 
-var templateEvents = []string{
+// planEvents 是关机计划通知事件；正文通过 {{detail}} 携带计划名称、运行 ID 与原因。
+var planEvents = []string{"plan_started", "plan_step_failed", "plan_cancelled", "plan_completed", "plan_resumed", "plan_aborted"}
+
+var templateEvents = append([]string{
 	model.EventMainsLost, model.EventMainsRestored,
 	model.EventBatteryLow, model.EventBatteryLowCleared, model.EventBatteryDepleted,
 	model.EventCommLost, model.EventCommRestored,
@@ -39,7 +43,7 @@ var templateEvents = []string{
 	model.EventUPSFault, model.EventUPSShuttingDown,
 	model.EventTemperatureHigh, model.EventSelfTestResult, "test",
 	"rule_triggered", "rule_recovered",
-}
+}, planEvents...)
 
 // DefaultTemplates 返回全部已知事件和测试事件的 JSON、HTML、纯文本模板的独立副本。
 func DefaultTemplates() []Template {
@@ -71,7 +75,20 @@ func DefaultTemplate(eventType, format string) (string, error) {
 		model.EventUPSShuttingDown: "UPS 正在关机", model.EventTemperatureHigh: "UPS 温度过高",
 		model.EventSelfTestResult: "UPS 自检结果", "test": "通知测试",
 		"rule_triggered": "规则条件命中", "rule_recovered": "规则条件恢复",
+		"plan_started": "关机计划开始", "plan_step_failed": "关机计划步骤失败",
+		"plan_cancelled": "关机计划已取消", "plan_completed": "关机计划已结束",
+		"plan_resumed": "关机计划重启后继续", "plan_aborted": "关机计划重启后终止",
 	}[eventType]
+	if slices.Contains(planEvents, eventType) {
+		switch format {
+		case "json":
+			return `{"title":"` + label + `","detail":"{{detail}}","device":{"id":"{{device.id}}","name":"{{device.name}}"},"event":{"type":"{{event.type}}","severity":"{{event.severity}}"},"time":"{{time}}"}`, nil
+		case "html":
+			return "<b>" + label + "</b>\n{{detail}}\n设备：{{device.name}}\n时间：{{time}}", nil
+		default:
+			return label + "\n{{detail}}\n设备：{{device.name}}\n时间：{{time}}", nil
+		}
+	}
 	switch format {
 	case "json":
 		return `{"title":"` + label + `","device":{"id":"{{device.id}}","name":"{{device.name}}"},"event":{"type":"{{event.type}}","severity":"{{event.severity}}"},"battery_capacity_pct":"{{battery_capacity_pct}}","on_battery_elapsed":"{{on_battery_elapsed_text}}","runtime_estimate":"{{runtime_estimate_text}}","time":"{{time}}"}`, nil
@@ -84,7 +101,7 @@ func DefaultTemplate(eventType, format string) (string, error) {
 
 func knownTemplateEvent(eventType string) bool {
 	_, ok := model.EventSeverity(eventType)
-	return ok || eventType == "test" || eventType == "rule_triggered" || eventType == "rule_recovered"
+	return ok || eventType == "test" || eventType == "rule_triggered" || eventType == "rule_recovered" || slices.Contains(planEvents, eventType)
 }
 
 func knownTemplateFormat(format string) bool {
@@ -237,6 +254,7 @@ func templateScalar(value any) (string, error) {
 
 // Variables 从统一模型生成扁平路径变量，不读取协议数据；非 Good 字段显示为 —。
 // 时间保持 at 的时区，计时在消费时刷新；每个 Duration 字段均提供中文 _text 变体。
+// detail 默认为空，仅计划通知由 Request.Detail 填充。
 func Variables(deviceName string, event model.Event, state model.DeviceState, at time.Time) map[string]any {
 	deviceID := state.DeviceID
 	if deviceID == 0 {
@@ -245,7 +263,7 @@ func Variables(deviceName string, event model.Event, state model.DeviceState, at
 	vars := map[string]any{
 		"device.name": deviceName, "device.id": deviceID,
 		"event.type": event.Type, "event.severity": string(event.Severity),
-		"time": at.Format(time.RFC3339),
+		"time": at.Format(time.RFC3339), "detail": "",
 	}
 	for _, key := range model.Keys() {
 		spec, _ := model.Lookup(key)

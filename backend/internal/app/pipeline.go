@@ -216,6 +216,7 @@ func (a *App) publish(u model.DeviceUpdate) {
 	if u.Sample {
 		a.history.Enqueue(u.State)
 	}
+	a.plans.Observe(u)
 	if err := a.rules.Enqueue(u); err != nil {
 		a.logger.Error("规则输入未被接受", "device_id", u.State.DeviceID, "error_type", fmt.Sprintf("%T", err))
 		a.mu.Lock()

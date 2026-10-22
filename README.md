@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 后端 **M0～M6 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，新建规则默认 dry-run。**真机 CP-1 待验收**。前端仍为脚手架、无业务页面；M7 关机编排、M8 系统与发布未实现，**本轮到 M6 停止**。下文分阶段关机流程仍是设计目标，本机模拟器验证不等于真实设备、渠道或主机验收。
+> 后端 **M0～M7 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，M7 提供[关机计划编排 API](docs/reference/shutdown-plans-api.md)，新建规则默认 dry-run。**真机 CP-1 待验收，CP-3 关机编排评审未完成**。前端仍为脚手架、无业务页面；M8 系统与发布未实现，**本轮到 M7 停止**。下文分阶段关机流程已由后端实现，但只经过本机模拟器与假主机验证，不等于真实设备、渠道或主机验收。
 
 ## 停电联动流程
 

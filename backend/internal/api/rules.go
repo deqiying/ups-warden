@@ -144,15 +144,13 @@ func (s *Server) saveRule(w http.ResponseWriter, r *http.Request, id int64) {
 		}
 		for _, refs := range [][]rule.ActionRef{item.Actions, item.RecoveryActions} {
 			for _, ref := range refs {
-				var kind string
-				if err := tx.QueryRowContext(r.Context(), "SELECT type FROM actions WHERE id=?", ref.ActionID).Scan(&kind); err != nil {
+				// 五种动作均可被规则引用；plan 动作只启动计划，编排与幂等由计划服务负责。
+				var exists int
+				if err := tx.QueryRowContext(r.Context(), "SELECT 1 FROM actions WHERE id=?", ref.ActionID).Scan(&exists); err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
 						return errValidation
 					}
 					return err
-				}
-				if kind != "notify" && kind != "http" && kind != "script" && kind != "ssh" {
-					return errValidation
 				}
 			}
 		}

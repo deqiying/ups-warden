@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态（同步至 2026-10-15）**：proposed（整套业务方案未完成；M0～M6 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M7～M8 未实现，本轮到 M6 停止，整篇不标为 implemented。
+> **状态（同步至 2026-10-22）**：proposed（整套业务方案未完成；M0～M7 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收，CP-3 关机编排演示与评审待完成）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M8 未实现，本轮到 M7 停止，整篇不标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前 M0～M6 代码已落地并通过本机验证；主服务装配采集/状态/历史、认证/审计/监控/SSE/静态 SPA、通知、规则与动作。启用数据源会自动采集；显式配置的规则按设备评估并派发动作，新规则默认 dry-run。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)、[监控契约](../../../../docs/reference/monitoring-api.md)、[通知契约](../../../../docs/reference/notifications-api.md)和[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)。前端仍无业务页面；M7 关机编排与 M8 系统发布待实现。CP-1、CP-2、真实渠道/主机、Linux 实机、race 与容量验收仍未完成。
+- 当前 M0～M7 代码已落地并通过本机验证；主服务装配采集/状态/历史、认证/审计/监控/SSE/静态 SPA、通知、规则、动作与关机计划编排。启用数据源会自动采集；显式配置的规则按设备评估并派发动作（含 plan 动作），新规则默认 dry-run。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)、[监控契约](../../../../docs/reference/monitoring-api.md)、[通知契约](../../../../docs/reference/notifications-api.md)、[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)和[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)。前端仍无业务页面；M8 系统发布待实现。CP-1、CP-2、CP-3、真实渠道/主机、Linux 实机、race 与容量验收仍未完成。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。
@@ -23,6 +23,7 @@
 - 历史聚合不再每分钟重扫整个保留期，改用固定大小的内存水位及最早 dirty 起点，具体行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)。未采用持久化水位、额外迁移或逐分钟 dirty 集合：启动一次补算已能覆盖重启缺口；迟到数据重算后缀是保持状态简单的取舍。首次补算和迟到重算的容量表现仍待验收。
 - M5 实施细化（2026-10-15）：保留统一渠道接口/内置注册表与每渠道内存队列，不绕过 M6 提前订阅并广播所有事件。Telegram 按目标独立重试、记录，避免部分成功后重复发送；Webhook URL/Header/签名密钥及 Telegram Token/代理整体加密，因 URL 路径和代理 userinfo 也可能携带秘密，不以仅删 query 代替保护。配置变更取消旧任务再提交，失败恢复旧配置；不采用重启自动重放，避免在没有接收端幂等协议时宣称 exactly-once。详细边界见第 12 节。
 - M6 实施细化（2026-10-15）：沿用已有表，不新增配置缓存、通用动作插件框架、持久化任务调度或自动重放。状态 actor 的每秒更新通过独立有界无损队列送规则，避免 SSE 有损扇出丢失联动；规则实例与命中日志同事务，提交后派发并关联 action_runs，进程中断的派发窗口不承诺 exactly-once。缺测不提供恢复证据，保留已消费边沿，避免重启/失联造成恢复与重复动作；规则作用范围/触发定义变更才重置实例，改名/动作/dry-run 保留边沿。HTTP 实际拨号固定本次校验 IP，禁代理和重定向；指纹候选仅内存五分钟并绑定地址/端口。ICMP 使用标准库与现有 x/sys 实现 IPv4 echo，未新增 x/net；复杂批处理参数不做转义兼容，明确要求使用 PowerShell。M7 计划模板只提供预填结构，不提前实现 plan 动作；护栏设置管理仍留 M8。
+- M7 实施细化（2026-10-22）：沿用初始 schema，不新增迁移、依赖、通用工作流引擎或持久化调度。`plan` 依赖 `action` / `host`，动作服务经 `SetPlans` 注入计划服务，避免反向依赖；规则只通过 `type:"plan"` 动作触发计划。步骤 write-ahead 复用动作执行记录事务，步骤 waiting→running 条件认领未命中即回滚、不执行。状态 actor 落库后先送计划 `Observe` 再入规则队列，市电恢复以去抖确认的周期结束为准。关闭顺序为规则 → 计划 → 动作，在途步骤保持 running，重启后记 unknown 且不重放；服务关闭期间到达的触发照常落库并在下次启动恢复，避免触发丢失。重启时周期已结束只在倒计时或 `cancel_pending` 时取消，`continue` 按 `on_restart` 处理。以下两项不额外持久化或加锁，作为已知边界提交 CP-3 评审：重启后市电恢复需重新去抖；倒计时恰好结束时的市电恢复按执行中策略处理。详见第 13 节与[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)。
 
 ---
 
@@ -666,11 +667,11 @@ fields:
 | 边沿触发 | 整体条件由假变真时触发一次；保持为真期间不重复触发；由真变假时执行恢复动作（FR-RULE-04/05） |
 | 冷却 | 距上次触发不足 `cooldown_s` 时跳过并记录"冷却中"；被跳过的边沿不会在冷却结束后补发 |
 | 持久化 | `rule_state` 保留边沿、冷却与事件配对；重启丢弃未确认计时，不把停机算成连续观测。已触发的条件不重复派发 |
-| 估算剩余时间警告 | M6 保存引用 `runtime_estimate` 的规则即返回 warnings，不阻止保存；M7 的 plan 动作暂不开放 |
+| 估算剩余时间警告 | M6 保存引用 `runtime_estimate` 的规则即返回 warnings，不阻止保存；M7 已开放 plan 动作 |
 | dry-run | 规则级 `dry_run=true` 时，下发给执行器的请求带 dry-run 标志（FR-RULE-07） |
 | 执行日志 | 每次命中与动作派发写 `rule_logs`：触发原因、引用字段当时的值与质量、动作结果引用（FR-RULE-09） |
 
-内置规则模板（FR-RULE-06）由 `GET /api/v1/rules/templates` 返回，默认 disabled + dry-run、动作列表为空，前端显式选择。关机计划模板标注 `requires_milestone=M7`，M6 不开放 plan 动作。当前接口与运行边界见[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)。
+内置规则模板（FR-RULE-06）由 `GET /api/v1/rules/templates` 返回，默认 disabled + dry-run、动作列表为空，前端显式选择。关机计划模板原标注 `requires_milestone=M7`；M7 起规则可引用 `type:"plan"` 动作（`config.plan_id`）触发计划。当前接口与运行边界见[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)与[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)。
 
 ---
 
@@ -769,6 +770,8 @@ type Message struct {
 
 ## 13. 关机计划编排（`plan`）
 
+M7 已按本节落地（2026-10-22，本机验证），当前契约见[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)；落地细化见第 0 节“M7 实施细化”，与原方案不同处在下文标注。
+
 ### 13.1 模型
 
 ```json
@@ -812,12 +815,12 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 - 非 dry-run 运行在 `(plan_id, outage_cycle_id)` 上有唯一约束：同一停电周期内同一计划只执行一次；周期结束后可再次触发。手动触发且不在停电周期内的运行不占用该约束（`outage_cycle_id` 为空）。
 - 同一计划任何时刻最多一个活动运行（含 dry-run），新的触发被跳过并记录。
 - **步骤 write-ahead**：执行外部命令前先提交 `status=running` 并 fsync（SQLite `synchronous=FULL`），之后才发出命令。重启时 `running` 状态的步骤记为 `unknown`，**不会重新执行**。宁可少执行一次，不重复发送关机命令。
-- 自关机阶段：执行前先把运行状态写为 `completed` 并在步骤上标记 `sent`，然后再执行本机关机动作，避免本机重启后继续该计划。
+- 自关机阶段：执行前先把运行状态写为终态（无错误时为 `completed`，此前有失败为 `completed_with_errors`）并在步骤上标记 `sent`，然后再执行本机关机动作，避免本机重启后继续该计划。
 
 ### 13.4 倒计时与取消（FR-PLAN-04/05）
 
 - 倒计时截止时刻 `countdown_until` 持久化；UI 通过 SSE 获得剩余秒数。
-- 取消来源：API `POST /plan-runs/{id}/cancel`（需要确认）、触发设备去抖后的 `mains_restored`。
+- 取消来源：API `POST /plan-runs/{id}/cancel`（需要确认）、触发设备去抖后的 `mains_restored`。M7 中，倒计时期间总是取消；执行中按 `on_mains_restored` 处理，只取消未开始的步骤，执行中的步骤结果落库后运行结束。
 - 已发出的关机命令不可撤回，日志如实记录"已发送"。
 
 ### 13.5 重启恢复（FR-IDEM-04、AC-07）
@@ -825,11 +828,13 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 启动时加载 `countdown` / `running` 状态的运行：
 
 - 触发设备仍处于同一停电周期：`resume` → 倒计时按剩余时间继续，或从第一个未开始的步骤继续；`abort` → 标记 `aborted`。两种情况都发送通知。
-- 停电周期已结束：标记 `cancelled`，原因"重启时市电已恢复"。
+- 停电周期已结束：倒计时中或 `cancel_pending` 时取消，原因“重启时市电已恢复”；M7 落地时细化为 `continue` 的执行中运行与在线行为一致，按 `on_restart` 处理。
+- 中断时 `running` 的步骤先记为 `unknown`；服务关闭期间到达的触发照常落库，留给下次启动恢复。
+- 已知边界（待 CP-3 评审）：状态引擎重启后清空市电恢复的待确认计时，恢复的运行在新的去抖窗口内仍继续执行。未为此持久化去抖计时，与在线去抖语义保持一致。
 
 ### 13.6 进度推送
 
-每次状态变化写库后通过 bus 发布 `plan_progress`（运行 ID、阶段、每台主机的步骤状态），满足 FR-PLAN-06。
+每次状态变化写库后通过 bus 发布 `plan_progress`（运行 ID、阶段、每台主机的步骤状态），满足 FR-PLAN-06。M7 实现为推送与查询 API 相同的完整运行视图。
 
 ---
 
@@ -918,7 +923,7 @@ countdown ──(倒计时结束)──▶ running(stage i) ──(全部阶段�
 
 ### 15.3 SSE（FR-API-03、FR-UI-01）
 
-- 连接建立先发送全量 `sync`（全部运行设备 `DeviceState`、活动告警，`plan_runs` 固定空数组），随后推送 `device_state`、`event`、`alert`；设备相关配置变更后再次 sync。M5 已增加落库后的 `notify_failed`，重连需查询通知日志补齐；`plan_progress` 留待 M7。重连重新全量同步，不做 `Last-Event-ID` 回放。
+- 连接建立先发送全量 `sync`（全部运行设备 `DeviceState`、活动告警，以及 M7 起全部活动计划运行的完整视图 `plan_runs`），随后推送 `device_state`、`event`、`alert`；设备相关配置变更后再次 sync。M5 已增加落库后的 `notify_failed`，重连需查询通知日志补齐；M7 已增加运行状态落库后的 `plan_progress`，已结束运行通过查询 API 获取。重连重新全量同步，不做 `Last-Event-ID` 回放。
 - 每 15 s 注释心跳重新认证，响应注销、改密撤销和绝对期限到期，不永久持有连接建立时的授权。
 - 每订阅者 256 缓冲，溢出独立失效信号通知立即断开，不排空积压更新；前端重连并获取全量 sync。
 - SSE 不设置整个长连接的全局写超时，但每帧用 `http.ResponseController` 设置 5 秒写期限，避免慢客户端无限占用。

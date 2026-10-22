@@ -18,6 +18,7 @@ import (
 )
 
 // Config 保存非敏感动作参数；HTTP URL、Header 和 Body 全部放入 Credentials。
+// PlanID 仅用于 plan 动作：触发时启动该关机计划，不在动作内编排阶段。
 type Config struct {
 	ChannelIDs     []int64  `json:"channel_ids,omitempty"`
 	HostID         int64    `json:"host_id,omitempty"`
@@ -27,6 +28,7 @@ type Config struct {
 	Args           []string `json:"args,omitempty"`
 	Command        string   `json:"command,omitempty"`
 	Shutdown       bool     `json:"shutdown,omitempty"`
+	PlanID         int64    `json:"plan_id,omitempty"`
 }
 
 // Credentials 是加密存储的 HTTP 配置，不得直接写入响应、预览或错误。
@@ -132,10 +134,14 @@ func Validate(r Record) error {
 		if c.HostID <= 0 || strings.TrimSpace(c.Command) == "" || len(c.Command) > 65536 || strings.ContainsRune(c.Command, 0) {
 			return errors.New("action: SSH 配置无效")
 		}
+	case "plan":
+		if c.PlanID <= 0 {
+			return errors.New("action: 请选择关机计划")
+		}
 	default:
-		return errors.New("action: 不支持的动作类型（plan 留待 M7）")
+		return errors.New("action: 不支持的动作类型")
 	}
-	if r.Type != "notify" && len(c.ChannelIDs) > 0 || r.Type != "http" && (hasHTTP || c.Method != "" || len(c.ExpectedStatus) > 0) || r.Type != "script" && (c.Script != "" || len(c.Args) > 0) || r.Type != "ssh" && (c.HostID != 0 || c.Command != "" || c.Shutdown) {
+	if r.Type != "notify" && len(c.ChannelIDs) > 0 || r.Type != "http" && (hasHTTP || c.Method != "" || len(c.ExpectedStatus) > 0) || r.Type != "script" && (c.Script != "" || len(c.Args) > 0) || r.Type != "ssh" && (c.HostID != 0 || c.Command != "" || c.Shutdown) || r.Type != "plan" && c.PlanID != 0 {
 		return errors.New("action: 配置与动作类型不匹配")
 	}
 	return nil

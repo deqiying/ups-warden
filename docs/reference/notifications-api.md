@@ -6,7 +6,7 @@
 
 M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日志和管理 API。所有端点以 `/api/v1` 为前缀，要求管理员会话；写操作遵循现有 CSRF、同源检查、严格 JSON 和配置审计约定。
 
-**通知服务不直接订阅设备事件，也不向所有启用渠道广播。** 除渠道测试外，M6 已通过显式规则与通知动作调用 `notify.Service.Enqueue`，只接受统一模型。配置与 dry-run 语义见[规则、动作与受控主机](rules-actions-hosts-api.md)。本机模拟停电通知通过测试，但不等同于真实渠道验收；前端仍无通知业务页面。
+**通知服务不直接订阅设备事件，也不向所有启用渠道广播。** 除渠道测试外，M6 已通过显式规则与通知动作调用 `notify.Service.Enqueue`，M7 关机计划向计划配置的渠道发送运行通知；均只接受统一模型。配置与 dry-run 语义见[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md#通知)。本机模拟停电通知通过测试，但不等同于真实渠道验收；前端仍无通知业务页面。
 
 - 每渠道一个工作协程、256 条等待队列；慢渠道不阻塞其他渠道。入队只表示接受，不表示送达；队列满拒绝本次请求，不静默丢弃已有任务。
 - 首次发送失败后额外重试 3 次，间隔 2、4、8 秒，单目标最多 4 次尝试。Telegram 429 的 `parameters.retry_after` 大于当前退避时采用该等待值，等待可取消。
@@ -98,10 +98,10 @@ M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日�
 
 ## 模板管理与渲染
 
-- `GET /notify-templates` 返回 `{items:[{event_type,format,body,customized}]}`：15 种统一模型事件、`test` 及 M6 条件规则的 `rule_triggered` / `rule_recovered`，每种有 json/html/text 默认模板，共 54 项。规则上下文不新增伪造的设备事件记录。
+- `GET /notify-templates` 返回 `{items:[{event_type,format,body,customized}]}`：15 种统一模型事件、`test`、M6 条件规则的 `rule_triggered` / `rule_recovered`，以及 M7 关机计划的 `plan_started` / `plan_step_failed` / `plan_cancelled` / `plan_completed` / `plan_resumed` / `plan_aborted`，每种有 json/html/text 默认模板，共 72 项。规则与计划上下文不新增伪造的设备事件记录。
 - `PUT /notify-templates` 写入一项 `{event_type,format,body}`，或通过 `{event_type,format,reset:true}` 删除覆盖、恢复默认；`reset:true` 不可同时提供非空 body。
 - 保存校验事件、格式、变量、语法和 JSON 合法性；未知变量或格式返回 422。模板及渲染输出各限 64 KiB。
-- 语法为严格 `{{path}}`，不执行函数、条件或方法，不接受占位符内空白。例如 `{{device.name}}`、`{{event.type}}`、`{{event.severity}}`、`{{device.id}}`、`{{battery_capacity_pct}}`、`{{input_voltage[1]}}`、`{{on_battery_elapsed}}`、`{{runtime_estimate}}`、`{{time}}`。
+- 语法为严格 `{{path}}`，不执行函数、条件或方法，不接受占位符内空白。例如 `{{device.name}}`、`{{event.type}}`、`{{event.severity}}`、`{{device.id}}`、`{{battery_capacity_pct}}`、`{{input_voltage[1]}}`、`{{on_battery_elapsed}}`、`{{runtime_estimate}}`、`{{time}}`、`{{detail}}`。`{{detail}}` 仅计划通知填充（计划名称、运行 ID、阶段/步骤与原因），其他事件渲染为空串。
 - 字段来自统一模型目录；按相字段必须使用 `[1]`～`[3]`。非 `good` 字段渲染为 `—`，不能当作零。所有 Duration 字段提供 `_text`，例如 `{{on_battery_elapsed_text}}` 显示 `12 分 30 秒`；时间采用进程本地时区 RFC3339，系统时区设置 API 尚未实现。
 - JSON 变量按**字符串内容**转义，模板自行加双引号；HTML 只转义变量值，固定标签由管理员编写；纯文本原样输出。
 - 渲染优先使用 Webhook 渠道 `body_template`，否则使用全局事件/格式模板；失败时回退该事件的内置默认模板，普通日志记录安全告警，发送结果 `template_fallback=true`。数据库读取失败不伪装成“无覆盖模板”；默认模板也不能渲染时拒绝入队。
@@ -114,7 +114,7 @@ M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日�
 
 | 字段 | 语义 |
 |---|---|
-| `id`、`channel_id`、`event_id` | 日志/渠道/关联事件 ID；测试消息和条件规则上下文 event_id 为 null |
+| `id`、`channel_id`、`event_id` | 日志/渠道/关联事件 ID；测试消息、条件规则与关机计划上下文 event_id 为 null |
 | `at` | 该目标完成时间，UTC RFC3339 |
 | `target` | Webhook 为 `webhook`，Telegram 为对应 Chat ID |
 | `summary` | 渲染内容脱敏后最多 200 个 Unicode 字符，覆盖原文及 JSON/HTML 转义的凭据形式 |

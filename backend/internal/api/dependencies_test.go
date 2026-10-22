@@ -26,6 +26,7 @@ func TestNewRequiresBusinessModules(t *testing.T) {
 		{"runtime", func(o *Options) { o.Runtime = nil }},
 		{"notify", func(o *Options) { o.Notify = nil }},
 		{"actions", func(o *Options) { o.Actions = nil }},
+		{"plans", func(o *Options) { o.Plans = nil }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			opts := f.s.opts

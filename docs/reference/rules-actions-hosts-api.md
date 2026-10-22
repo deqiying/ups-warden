@@ -1,12 +1,12 @@
 # 规则、动作与受控主机 API（M6）
 
-[返回文档导航](../README.md) · [监控与认证契约](monitoring-api.md) · [通知契约](notifications-api.md)
+[返回文档导航](../README.md) · [监控与认证契约](monitoring-api.md) · [通知契约](notifications-api.md) · [关机计划](shutdown-plans-api.md)
 
 ## 范围与安全边界
 
 M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机和执行记录。端点前缀均为 `/api/v1`；要求管理员会话，写操作遵循 CSRF、同源检查、严格 JSON 与审计约定。配置和审计同事务，审计失败不保存配置。测试只使用临时数据库、loopback 模拟器和假服务器。
 
-**M7 关机计划编排尚未实现**：没有阶段编排、等待离线、倒计时取消、计划幂等或自动恢复。`plan` 动作不能保存。关机模板仅作为待接入 M7 的表单数据，不代表关机计划可以运行。真实设备 CP-1、双方联调 CP-2、真实渠道/主机与 Linux 实机验收仍待执行。
+**关机计划编排见 [M7 关机计划 API](shutdown-plans-api.md)**：规则通过 `plan` 动作启动计划，阶段编排、等待离线、倒计时取消、周期幂等与重启恢复都由计划服务负责，本文只描述动作侧契约。真实设备 CP-1、双方联调 CP-2、CP-3 关机编排评审、真实渠道/主机与 Linux 实机验收仍待执行。
 
 - 新建规则默认 `dry_run=true`，不会自动生成规则或选择动作。内置模板默认还会 `enabled=false`。
 - dry-run 会保存执行记录和脱敏预览，不解析动作目标 DNS、不连接 SSH/HTTP、不启动脚本、不入通知队列。
@@ -67,10 +67,10 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 - 非 `good` 字段不能促成新命中；原因及字段值/质量写日志，只在原因变化时记录。质量不足本身不作为恢复证据：已触发实例保持边沿，直到所有 OR 分支都有可确定为假的条件，才执行恢复动作。这样缺测、失联、重启不会伪造恢复或重复触发。
 - 条件从假变真只触发一次。`cooldown_s` 为 0～604800，冷却内的边沿记为 `skipped_cooldown`，即使冷却结束也不补发；被跳过且未执行的边沿不产生恢复动作。
 - 事件规则使用状态层事件与 `Clears` 配对执行恢复动作；没有独立恢复事件类型的告警，通过内部清除标记传递，不改变 SSE 事件目录。已处理事件 ID 与时间共同去重，历史清理后复用 ID 不会屏蔽新事件。多个活动事件分别配对恢复，恢复不受触发冷却阻止。
-- 新建规则至少选择一个动作，每种动作列表最多 32 项，不允许同一列表重复 ID。只校验已存在的 M6 动作，不自动启用渠道或确认主机指纹。
+- 新建规则至少选择一个动作，每种动作列表最多 32 项，不允许同一列表重复 ID。只校验动作存在（含 `plan` 动作），不自动启用渠道或确认主机指纹。
 - 改名、切换 dry-run、修改动作列表/冷却不会重放已消费边沿。启停保留已消费边沿、清除未确认计时；修改 `scope` 或 `trigger` 会开始新实例，旧日志保留。
 - 保存包含 `runtime_estimate` 的规则返回顶层 `warnings` 提醒，不阻止保存；估算续航不应成为关机的唯一依据。
-- 模板包含停电、市电恢复、低电、通讯中断通知及 OR 关机条件。后者返回 `requires_milestone:"M7"`、`suggested_action_type:"plan"`，当前不能配置为 plan 动作。
+- 模板包含停电、市电恢复、低电、通讯中断通知及 OR 关机条件。关机模板返回 `suggested_action_type:"plan"`，需用户显式选择引用计划的 plan 动作；模板本身默认停用且 dry-run。
 
 ### 日志与持久化
 
@@ -94,7 +94,7 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 
 公共字段是 `name`、`type`、`timeout_s`、`config`。超时默认 30 秒，允许 1～3600。PUT 省略字段保留，传入 `config` 整体替换；改变 `type` 会清空旧类型配置与凭据。
 
-### 四种配置
+### 五种配置
 
 ```json
 {"name":"通知","type":"notify","config":{"channel_ids":[1]}}
@@ -119,6 +119,10 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 {"name":"SSH 测试动作","type":"ssh","config":{"host_id":1,"command":"echo ups-warden-ok","shutdown":false}}
 ```
 
+```json
+{"name":"启动关机计划","type":"plan","config":{"plan_id":1}}
+```
+
 上述 URL、脚本和命令仅为配置形状示例，不会自动创建目标或执行；不要将 HTTP URL 改为 UPS 网卡 WebUI。
 
 - `notify` 的渠道必须存在且启用。`queued` 只表示入通知队列，实际发送结果见 `/notify-logs`；多个渠道部分入队后失败不会回滚已经入队的任务。
@@ -126,6 +130,7 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 - HTTP 的 `url`、`headers`、`body_template` 整体加密存入 `actions.secret`；响应只返回 `url_set/headers_set/body_template_set`。省略或空串保留，`clear_secrets:["headers","body_template"]` 显式清除；必需 URL 清空后校验失败。审计记录轮换但不记录原文。
 - HTTP 护栏在保存和每次执行时读取所有 `sources.host`（包含停用源），解析后按 IP 比对；解析失败则拒绝。实际拨号使用本次检查的 IP，TLS 仍校验 URL 主机名，避免二次 DNS 解析绕过。`settings.http_action_guard_ups_hosts` 缺省为 true，开关管理 API 及关闭确认属于 M8；M6 不提供关闭入口，不建议直接修改数据库。
 - SSH 读取主机凭据并严格匹配指纹；`shutdown:true` 只影响命令已经被服务端接受后的断连结果，不跳过指纹、认证或超时检查。
+- `plan` 动作只保存 `plan_id`（计划必须存在），由规则触发时启动该计划，dry-run 规则创建 dry-run 运行。结果为 `started`、`skipped_active`、`skipped_executed`、`skipped_restored` 或 `failed`，计划本身的进度见 `/plan-runs`。plan 动作不能手动执行（`/actions/{id}/run` 返回 `422 / plan_confirmation_required`），须经 `POST /plans/{id}/run` 输入计划名称；也不能作为计划步骤。被 plan 动作引用的计划不能删除。
 
 ### 脚本目录与进程
 
@@ -147,7 +152,7 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 
 返回 `{accepted:true,run_id:123}`，不等于动作成功。同一动作不会并发执行；重入保存 `skipped_concurrent`。全局最多 32 个在途动作，超出记录 `skipped_capacity`，不进入无界队列。执行中的动作修改或删除返回 409 / `action_busy`。
 
-接受时先写 `action_runs.status=running`，手动触发审计与该记录同事务，失败则不执行。最终状态包括 `dry_run`、`queued`、`succeeded`（HTTP/脚本）、`success`（SSH）、`sent`、`failed`、`timeout`、`cancelled`、两种 skipped 和 `unknown`。启动将遗留 running 标为 unknown，不自动重放。
+接受时先写 `action_runs.status=running`，手动触发审计与该记录同事务，失败则不执行。最终状态包括 `dry_run`、`queued`、`succeeded`（HTTP/脚本）、`success`（SSH）、`sent`、`failed`、`timeout`、`cancelled`、两种 skipped、plan 动作的 `started` / `skipped_*` 和 `unknown`。启动将遗留 running 标为 unknown，不自动重放。计划步骤触发的执行记录 `trigger.type` 为 `plan`，并带 `plan_run_id`。
 
 执行记录返回 `id/action_id/trigger/dry_run/status/started_at/ended_at/exit_code/stdout/stderr/error/duration_ms`；stdout/stderr 各最多前 4 KiB。HTTP 敏感配置不进入预览，SSH 输出按已知主机凭据脱敏；管理员编写的脚本和命令仍应避免主动输出其他私有数据。
 
@@ -186,7 +191,7 @@ fetch 在主机公钥回调立即终止，不发送认证。候选指纹只存�
 
 未确认或指纹不匹配时拒绝认证与命令执行。测试命令固定 `echo ups-warden-ok`，不接受自定义文本，也不使用 sudo；请求体为 `{"confirm":true}`。普通动作启用 sudo 时添加 `sudo -n --`，要求目标主机自行配置 NOPASSWD，不传输 sudo 密码。
 
-仅在命令已获服务端接受、且 `shutdown:true` 时，EOF/连接重置/无退出状态可记录 `sent`；非零退出、发送前断连、取消或超时仍失败。**sent 不代表关机成功**，需要后续离线确认；自动等待离线由 M7 实现。
+仅在命令已获服务端接受、且 `shutdown:true` 时，EOF/连接重置/无退出状态可记录 `sent`；非零退出、发送前断连、取消或超时仍失败。**sent 不代表关机成功**，需要后续离线确认；关机计划阶段的 `offline_wait_s` 会对 SSH 步骤自动做在线检测，见[关机计划](shutdown-plans-api.md#运行状态机)。
 
 ### 在线检测
 

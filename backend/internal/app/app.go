@@ -23,6 +23,7 @@ import (
 	"ups-warden/internal/datalock"
 	"ups-warden/internal/history"
 	"ups-warden/internal/notify"
+	"ups-warden/internal/plan"
 	"ups-warden/internal/profile"
 	"ups-warden/internal/rule"
 	"ups-warden/internal/secret"
@@ -48,6 +49,7 @@ type App struct {
 	history       *history.Writer
 	notify        *notify.Service
 	actions       *action.Service
+	plans         *plan.Service
 	rules         *rule.Service
 	bus           bus.Bus
 	actors        map[int64]*state.Actor
@@ -132,11 +134,17 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if scriptDir == "" {
 		scriptDir = filepath.Join(c.DataDir, "scripts")
 	}
-	// 动作在规则队列排空后显式关闭，不随采集上下文提前取消。
+	// 动作与计划在规则队列排空后显式关闭，不随采集上下文提前取消。
 	a.actions, err = action.New(context.WithoutCancel(child), a.db, a.cipher, a.notify, scriptDir)
 	if err != nil {
 		return nil, err
 	}
+	// 计划恢复未结束的运行；须在规则与 API 接受触发前注入 plan 动作。
+	a.plans, err = plan.New(context.WithoutCancel(child), a.db, a.cipher, a.actions, a.notify, &a.bus, a.logger)
+	if err != nil {
+		return nil, err
+	}
+	a.actions.SetPlans(a.plans)
 	a.rules, err = rule.New(child, a.db, a.actions, a.logger)
 	if err != nil {
 		return nil, err
@@ -144,7 +152,7 @@ func open(ctx context.Context, c config.Config, logger *slog.Logger, encodedKey 
 	if err := a.startPipeline(); err != nil {
 		return nil, err
 	}
-	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Notify: a.notify, Actions: a.actions, Logger: a.logger})
+	a.api, err = api.New(api.Options{DB: a.db, Cipher: a.cipher, Auth: a.auth, Collector: a.collector, History: a.history, Bus: &a.bus, Runtime: a, Notify: a.notify, Actions: a.actions, Plans: a.plans, Logger: a.logger})
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +250,10 @@ func (a *App) Close() error {
 		}
 		if a.rules != nil {
 			a.closeErr = errors.Join(a.closeErr, a.rules.Close())
+		}
+		// 计划先于动作关闭：在途步骤保持 running，重启后记为 unknown 而不重放。
+		if a.plans != nil {
+			a.plans.Close()
 		}
 		if a.actions != nil {
 			a.closeErr = errors.Join(a.closeErr, a.actions.Close())

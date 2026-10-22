@@ -6,11 +6,10 @@ import "encoding/json"
 type Template struct {
 	Key                 string `json:"key"`
 	Rule                Record `json:"rule"`
-	RequiresMilestone   string `json:"requires_milestone,omitempty"`
 	SuggestedActionType string `json:"suggested_action_type"`
 }
 
-// Templates 返回五个需求模板，关机计划模板标注 M7，M6 不能创建 plan 动作。
+// Templates 返回五个需求模板；关机模板建议引用 plan 动作，由用户显式选择计划。
 func Templates() []Template {
 	items := []Template{}
 	for _, v := range []struct{ key, name, event string }{
@@ -22,7 +21,7 @@ func Templates() []Template {
 		items = append(items, Template{Key: v.key, SuggestedActionType: "notify", Rule: Record{Name: v.name, Enabled: false, DryRun: true, Scope: Scope{Type: "all"}, Trigger: Trigger{Type: "event", Events: []string{v.event}}, Actions: []ActionRef{}, RecoveryActions: []ActionRef{}}})
 	}
 	power := Condition{Field: "power_state", Op: "eq", Value: json.RawMessage(`"on_battery"`)}
-	items = append(items, Template{Key: "shutdown", RequiresMilestone: "M7", SuggestedActionType: "plan", Rule: Record{
+	items = append(items, Template{Key: "shutdown", SuggestedActionType: "plan", Rule: Record{
 		Name: "电池模式过久或电量低 → 关机计划", Enabled: false, DryRun: true, Scope: Scope{Type: "all"},
 		Trigger: Trigger{Type: "condition", AnyOf: []Group{
 			{AllOf: []Condition{power, {Field: "on_battery_elapsed", Op: "gte", Value: json.RawMessage(`600`)}}},

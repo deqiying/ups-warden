@@ -20,6 +20,7 @@ import (
 	"ups-warden/internal/history"
 	"ups-warden/internal/model"
 	"ups-warden/internal/notify"
+	"ups-warden/internal/plan"
 	"ups-warden/internal/secret"
 	"ups-warden/internal/store"
 )
@@ -41,6 +42,7 @@ type Options struct {
 	Runtime   Runtime
 	Notify    *notify.Service
 	Actions   *action.Service
+	Plans     *plan.Service
 	Logger    *slog.Logger
 }
 
@@ -53,7 +55,7 @@ type Server struct {
 
 // New 创建 API handler；外层根路由须挂载 /api/，所有未知 API 也受认证拦截。
 func New(opts Options) (*Server, error) {
-	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil || opts.Notify == nil || opts.Actions == nil {
+	if opts.DB == nil || opts.Cipher == nil || opts.Auth == nil || opts.Collector == nil || opts.History == nil || opts.Bus == nil || opts.Runtime == nil || opts.Notify == nil || opts.Actions == nil || opts.Plans == nil {
 		return nil, errors.New("api: 缺少必需模块")
 	}
 	if opts.Logger == nil {
@@ -113,6 +115,7 @@ func (s *Server) routes() {
 	s.ruleRoutes()
 	s.actionRoutes()
 	s.hostRoutes()
+	s.planRoutes()
 	s.mux.HandleFunc("GET /api/v1/stream", s.stream)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "not_found", "接口不存在") })
 }

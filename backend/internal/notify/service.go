@@ -25,10 +25,12 @@ var (
 )
 
 // Request 只携带统一模型；Event.ID=0 表示无持久化事件的测试消息。
+// Detail 填充模板变量 {{detail}}，仅计划通知使用，不得包含凭据。
 type Request struct {
 	DeviceName string
 	Event      model.Event
 	State      model.DeviceState
+	Detail     string
 }
 
 type job struct {
@@ -192,6 +194,7 @@ func (s *Service) Enqueue(ctx context.Context, id int64, r Request) error {
 		}
 	}
 	vars := Variables(r.DeviceName, r.Event, r.State, time.Now())
+	vars["detail"] = r.Detail
 	bodyTemplate := w.record.Config.BodyTemplate
 	var err error
 	if bodyTemplate == "" {

@@ -216,7 +216,7 @@ func (s *Server) deleteChannel(w http.ResponseWriter, r *http.Request) {
 	err = s.opts.Notify.Change(r.Context(), id, func() (int64, error) {
 		return id, s.opts.DB.WithTx(r.Context(), func(tx *sql.Tx) error {
 			var referenced int
-			if err := tx.QueryRowContext(r.Context(), `SELECT count(*) FROM actions,json_each(actions.config,'$.channel_ids') WHERE actions.type='notify' AND json_each.value=?`, id).Scan(&referenced); err != nil {
+			if err := tx.QueryRowContext(r.Context(), `SELECT (SELECT count(*) FROM actions,json_each(actions.config,'$.channel_ids') WHERE actions.type='notify' AND json_each.value=?) + (SELECT count(*) FROM plans,json_each(plans.config,'$.notify_channel_ids') WHERE json_each.value=?)`, id, id).Scan(&referenced); err != nil {
 				return err
 			}
 			if referenced > 0 {

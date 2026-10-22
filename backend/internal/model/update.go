@@ -37,6 +37,8 @@ type DeviceUpdate struct {
 	AlertsChanged bool                `json:"-"`
 	Resync        bool                `json:"-"`
 	NotifyFailed  *NotificationResult `json:"-"`
+	// PlanProgress 在计划运行状态落库后发布，仅供 SSE plan_progress 推送。
+	PlanProgress *PlanRun `json:"-"`
 }
 
 // CloneState 复制含指针和字段 map 的状态，防止订阅者修改 actor 内部数据。
@@ -76,6 +78,10 @@ func CloneUpdate(u DeviceUpdate) DeviceUpdate {
 			v.EventID = &id
 		}
 		u.NotifyFailed = &v
+	}
+	if u.PlanProgress != nil {
+		v := ClonePlanRun(*u.PlanProgress)
+		u.PlanProgress = &v
 	}
 	u.Events = cloneEvents(u.Events)
 	u.ClearedEvents = cloneEvents(u.ClearedEvents)

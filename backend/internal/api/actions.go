@@ -287,6 +287,16 @@ func (s *Server) runAction(w http.ResponseWriter, r *http.Request) {
 		fail(w, 422, "validation_failed", "设备 ID 无效")
 		return
 	}
+	// plan 动作会启动关机计划，必须走要求输入计划名称的 /plans/{id}/run。
+	var kind string
+	if err := s.opts.DB.Read().QueryRowContext(r.Context(), "SELECT type FROM actions WHERE id=?", id).Scan(&kind); err != nil {
+		s.storageError(w, err, "action")
+		return
+	}
+	if kind == "plan" {
+		fail(w, 422, "plan_confirmation_required", "plan 动作请通过 POST /api/v1/plans/{id}/run 输入计划名称后执行")
+		return
+	}
 	req := action.Request{ActionID: id, DryRun: in.DryRun, Trigger: action.Trigger{Type: "manual", UserID: current(r).User.ID}, Event: model.Event{Type: "test", Severity: model.SeverityInfo, At: time.Now()}}
 	if in.DeviceID > 0 {
 		found := false

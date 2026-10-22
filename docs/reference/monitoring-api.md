@@ -4,7 +4,7 @@
 
 ## 范围与版本
 
-当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知及 M6 规则、动作、主机已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)；M7 关机计划与 M8 系统设置 API 未实现；前端仍为脚手架。
+当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知、M6 规则/动作/主机及 M7 关机计划已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md)；M8 系统设置 API 未实现；前端仍为脚手架。
 
 - 下述路径除 `/healthz` 外均以 `/api/v1` 为前缀。
 - 请求/响应 JSON、UTF-8，字段 snake_case，时间 RFC3339 UTC，ID 为整数，Profile 使用字符串 key。
@@ -116,15 +116,16 @@ data: {"schema_version":1,"devices":[],"alerts":[],"plan_runs":[]}
 
 | 事件名 | data |
 |---|---|
-| `sync` | 全量 devices（DeviceState）、活动 alerts（Event 视图）、plan_runs（M4 固定空数组） |
+| `sync` | 全量 devices（DeviceState）、活动 alerts（Event 视图）、plan_runs（倒计时或执行中的关机计划运行完整视图） |
 | `device_state` | 单个 DeviceState |
 | `event` | 新业务事件 `id,device_id,type,severity,at,active,clears,summary`，按 id 去重 |
 | `alert` | `{device_id,items:[活动 Event 视图]}`，替换该设备的活动告警列表；空数组表示全部解除 |
 | `notify_failed` | M5 单目标最终失败的通知日志；字段及查询补偿见[通知契约](notifications-api.md#通知日志与-sse) |
+| `plan_progress` | M7 关机计划运行状态落库后的完整运行视图（含 steps），字段见[关机计划](shutdown-plans-api.md#运行记录与-sse) |
 
 设备/数据源/Profile 配置新增、修改、禁用、删除后也会发送 sync，前端用全量替换设备/告警集合。先订阅后读取快照，连接建立边界可能重复事件，前端按 event.id 去重；已同步的较新状态不会被队列内较旧状态覆盖，已移除设备的积压更新不会重新引入该设备。告警清除即使不产生独立恢复事件，也会发送 alert 更新。通知配置修改不触发设备 sync。
 
-每 15 秒注释心跳；每次心跳重新认证，注销、改密撤销或绝对期限到期后最长一个心跳周期关闭流。每订阅者 256 条缓冲，溢出通过独立信号使订阅失效，不排空积压帧；正在写入的帧最多等待 5 秒期限。前端断开后重连并等待 sync，不把断流期间当作连续有效观测。`notify_failed` 已在 M5 接入，重连后通过通知日志补齐；M7 的 `plan_progress` 尚不产生。
+每 15 秒注释心跳；每次心跳重新认证，注销、改密撤销或绝对期限到期后最长一个心跳周期关闭流。每订阅者 256 条缓冲，溢出通过独立信号使订阅失效，不排空积压帧；正在写入的帧最多等待 5 秒期限。前端断开后重连并等待 sync，不把断流期间当作连续有效观测。`notify_failed` 重连后通过通知日志补齐；`plan_progress` 以重连 sync 的 `plan_runs` 为准，已结束运行通过 `/plan-runs` 查询。
 
 ## WebUI 与开发联调
 
