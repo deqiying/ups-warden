@@ -361,13 +361,25 @@ func first4K(s string) string {
 // ScriptDir 返回配置的只读脚本目录，API 仅用于列出可选文件。
 func (s *Service) ScriptDir() string { return s.scriptDir }
 
-// Close 取消并等待全部在途执行与结果持久化；写日志失败通过返回值报告。
+// closeGrace 是关闭时等待在途动作自然结束的上限（NFR-04），超时后取消剩余动作。
+var closeGrace = 10 * time.Second
+
+// Close 停止接受新任务，最多等待 closeGrace 让在途动作完成，随后取消剩余动作，
+// 并等待全部结果持久化；写日志失败通过返回值报告。
 func (s *Service) Close() error {
 	s.mu.Lock()
 	s.closed = true
-	s.cancel()
 	s.mu.Unlock()
-	s.wg.Wait()
+	done := make(chan struct{})
+	go func() { s.wg.Wait(); close(done) }()
+	timer := time.NewTimer(closeGrace)
+	select {
+	case <-done:
+	case <-timer.C:
+	}
+	timer.Stop()
+	s.cancel()
+	<-done
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.closeErr

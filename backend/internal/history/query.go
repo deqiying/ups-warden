@@ -134,7 +134,8 @@ func (w *Writer) Query(ctx context.Context, q Query) (Result, error) {
 	resolution := q.Resolution
 	if resolution == "" || resolution == "auto" {
 		resolution = "1m"
-		if q.To.Sub(q.From) <= 6*time.Hour && !q.From.Before(time.Now().Add(-w.opts.DetailRetention)) {
+		detailRetention, _, _ := w.retention()
+		if q.To.Sub(q.From) <= 6*time.Hour && !q.From.Before(time.Now().Add(-detailRetention)) {
 			resolution = "raw"
 		}
 	}

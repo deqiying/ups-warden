@@ -35,6 +35,10 @@ func run() (err error) {
 	if err != nil {
 		return err
 	}
+	if c.Version {
+		fmt.Println(version)
+		return nil
+	}
 	logger, output, err := logging.New(c, os.Stderr)
 	if err != nil {
 		return err

@@ -20,11 +20,16 @@ type recorder struct {
 	mu       sync.Mutex
 	requests []action.Request
 	fail     bool
+	panic    bool
 }
 
 func (r *recorder) Submit(_ context.Context, request action.Request) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.panic {
+		r.panic = false
+		panic("fixture-panic")
+	}
 	if r.fail {
 		return 0, errors.New("fixture-dispatch-failure")
 	}
@@ -169,6 +174,28 @@ func TestScopesDispatchFailureAndDisabledDevice(t *testing.T) {
 	u.State.Fields["low_battery"] = model.Field{Quality: model.Good}
 	if err := s.Process(t.Context(), u); err != nil || sink.count() != 0 {
 		t.Fatal("禁用设备触发恢复", err)
+	}
+}
+
+// NFR-04：单个输入处理 panic 被隔离并丢弃，规则队列继续处理后续输入。
+func TestPanicInputIsDroppedAndQueueContinues(t *testing.T) {
+	r := conditionRule(Condition{Field: "low_battery", Op: "eq", Value: json.RawMessage(`true`)})
+	_, s, sink := ruleFixture(t, r)
+	sink.panic = true
+	u := update(time.Now(), "low_battery", model.Field{Bool: true, Quality: model.Good})
+	if err := s.Enqueue(u); err != nil {
+		t.Fatal(err)
+	}
+	u.State.DeviceID = 2
+	if err := s.Enqueue(u); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for sink.count() != 1 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if sink.count() != 1 || sink.requests[0].State.DeviceID != 2 {
+		t.Fatal("panic 后队列未继续处理", sink.count())
 	}
 }
 func TestQueueCopiesInputAndDrainsOnClose(t *testing.T) {

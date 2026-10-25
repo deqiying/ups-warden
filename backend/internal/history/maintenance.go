@@ -18,7 +18,8 @@ func (w *Writer) Aggregate(ctx context.Context, now time.Time) error {
 		return ctx.Err()
 	}
 	defer func() { <-w.flushGate }()
-	lower := now.Add(-w.opts.DetailRetention).UTC()
+	detailRetention, _, _ := w.retention()
+	lower := now.Add(-detailRetention).UTC()
 	start := lower.Truncate(time.Minute)
 	if lower.After(start) {
 		start = start.Add(time.Minute)
@@ -112,9 +113,10 @@ type cleanupTarget struct {
 // 只清理已结束日志，保留活动事件、活动周期，以及仍被外键引用的事件/周期。
 // 本方法不自动聚合；调用方应在删除明细前先 Aggregate。
 func (w *Writer) Cleanup(ctx context.Context, now time.Time) error {
-	detail := now.Add(-w.opts.DetailRetention).UnixMilli()
-	aggregate := now.Add(-w.opts.AggregateRetention).UnixMilli()
-	logs := now.Add(-w.opts.LogRetention).UnixMilli()
+	detailRetention, aggregateRetention, logRetention := w.retention()
+	detail := now.Add(-detailRetention).UnixMilli()
+	aggregate := now.Add(-aggregateRetention).UnixMilli()
+	logs := now.Add(-logRetention).UnixMilli()
 	targets := []cleanupTarget{
 		{"history_sample", "ts < ?", detail},
 		{"history_1m", "bucket < ?", aggregate},

@@ -19,6 +19,8 @@ type Config struct {
 	LogFile   string
 	LogFormat string
 	ScriptDir string
+	// Version 为 true 时只输出版本号并退出，不读取数据目录。
+	Version bool
 }
 
 // Parse 使用独立 FlagSet，便于测试且不修改进程全局参数。
@@ -39,6 +41,7 @@ func Parse(args []string, getenv func(string) string, output io.Writer) (Config,
 	fs.StringVar(&c.LogFile, "log-file", env("LOG_FILE", ""), "滚动日志文件；空值使用 stderr（UPS_WARDEN_LOG_FILE）")
 	fs.StringVar(&c.LogFormat, "log-format", env("LOG_FORMAT", "text"), "日志格式 text|json（UPS_WARDEN_LOG_FORMAT）")
 	fs.StringVar(&c.ScriptDir, "script-dir", env("SCRIPT_DIR", ""), "脚本目录；默认 <data>/scripts（UPS_WARDEN_SCRIPT_DIR）")
+	fs.BoolVar(&c.Version, "version", false, "输出版本号并退出")
 	if err := fs.Parse(args); err != nil {
 		return c, err
 	}

@@ -29,8 +29,11 @@ type Config struct {
 func DefaultConfig() Config { return Config{10, 60, 50, 3, "hold", 300, 30, 5, 90, 5} }
 
 // ParseConfig 严格读取单个 JSON 配置；显式零确认时长合法，其他约束由 Validate 执行。
-func ParseConfig(data []byte) (Config, error) {
-	c := DefaultConfig()
+func ParseConfig(data []byte) (Config, error) { return ParseConfigWith(DefaultConfig(), data) }
+
+// ParseConfigWith 与 ParseConfig 相同，但省略的字段取 base（系统设置中的设备默认值）。
+func ParseConfigWith(base Config, data []byte) (Config, error) {
+	c := base
 	if len(data) > 16*1024 {
 		return c, errors.New("设备配置超过 16 KiB")
 	}

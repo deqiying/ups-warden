@@ -10,12 +10,16 @@ import (
 	"ups-warden/internal/collector"
 	"ups-warden/internal/history"
 	"ups-warden/internal/model"
+	"ups-warden/internal/settings"
 	"ups-warden/internal/state"
 )
 
 func (a *App) startPipeline() error {
-	var err error
-	a.history, err = history.New(a.db, history.Options{Logger: a.logger})
+	current, err := settings.Load(a.ctx, a.db.Read())
+	if err != nil {
+		return err
+	}
+	a.history, err = history.New(a.db, history.Options{Logger: a.logger, DetailRetention: settings.Days(current.DetailRetentionDays), AggregateRetention: settings.Days(current.AggregateRetentionDays), LogRetention: settings.Days(current.LogRetentionDays)})
 	if err != nil {
 		return err
 	}

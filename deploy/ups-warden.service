@@ -1,0 +1,29 @@
+# UPS Warden systemd unit 示例，安装步骤见 docs/guides/deployment.md。
+# 二进制放 /usr/local/bin/ups-warden；数据目录由 StateDirectory 创建为 /var/lib/ups-warden（0700）。
+[Unit]
+Description=UPS Warden
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=ups-warden
+Group=ups-warden
+StateDirectory=ups-warden
+StateDirectoryMode=0700
+# 默认只监听本机；需要局域网访问时改为 0.0.0.0:8080 并配合防火墙。
+Environment=UPS_WARDEN_LISTEN=127.0.0.1:8080
+Environment=UPS_WARDEN_DATA_DIR=/var/lib/ups-warden
+# 可选：从仅 root 可读的文件注入 UPS_WARDEN_MASTER_KEY。
+# EnvironmentFile=-/etc/ups-warden/env
+ExecStart=/usr/local/bin/ups-warden
+Restart=on-failure
+RestartSec=5s
+# SIGTERM 后最坏依次等待 HTTP 10 s、在途动作 10 s、历史落盘 10 s，留出余量。
+TimeoutStopSec=45s
+# ICMP 在线检测优先使用非特权 ping socket（需 net.ipv4.ping_group_range 覆盖本服务组）；
+# 不便修改时可取消注释授予 raw socket 能力，或改用 TCP 检测。
+# AmbientCapabilities=CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

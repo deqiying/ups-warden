@@ -128,7 +128,7 @@ M6 提供规则评估、通知 / HTTP / 本地脚本 / SSH 动作、受控主机
 - `notify` 的渠道必须存在且启用。`queued` 只表示入通知队列，实际发送结果见 `/notify-logs`；多个渠道部分入队后失败不会回滚已经入队的任务。
 - HTTP 方法支持 GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS，默认 POST；状态码默认 2xx。Body 使用通知同款变量及 JSON 字符串转义，URL 不支持模板；重定向一律拒绝，不使用环境 HTTP 代理，不保存响应正文，避免凭据回显。
 - HTTP 的 `url`、`headers`、`body_template` 整体加密存入 `actions.secret`；响应只返回 `url_set/headers_set/body_template_set`。省略或空串保留，`clear_secrets:["headers","body_template"]` 显式清除；必需 URL 清空后校验失败。审计记录轮换但不记录原文。
-- HTTP 护栏在保存和每次执行时读取所有 `sources.host`（包含停用源），解析后按 IP 比对；解析失败则拒绝。实际拨号使用本次检查的 IP，TLS 仍校验 URL 主机名，避免二次 DNS 解析绕过。`settings.http_action_guard_ups_hosts` 缺省为 true，开关管理 API 及关闭确认属于 M8；M6 不提供关闭入口，不建议直接修改数据库。
+- HTTP 护栏在保存和每次执行时读取所有 `sources.host`（包含停用源），解析后按 IP 比对；解析失败则拒绝。实际拨号使用本次检查的 IP，TLS 仍校验 URL 主机名，避免二次 DNS 解析绕过。`settings.http_action_guard_ups_hosts` 缺省为 true，通过[系统设置 API](settings-api.md) 管理；从开启改为关闭必须携带 `confirm_disable_guard:true` 并写审计，不要直接修改数据库。
 - SSH 读取主机凭据并严格匹配指纹；`shutdown:true` 只影响命令已经被服务端接受后的断连结果，不跳过指纹、认证或超时检查。
 - `plan` 动作只保存 `plan_id`（计划必须存在），由规则触发时启动该计划，dry-run 规则创建 dry-run 运行。结果为 `started`、`skipped_active`、`skipped_executed`、`skipped_restored` 或 `failed`，计划本身的进度见 `/plan-runs`。plan 动作不能手动执行（`/actions/{id}/run` 返回 `422 / plan_confirmation_required`），须经 `POST /plans/{id}/run` 输入计划名称；也不能作为计划步骤。被 plan 动作引用的计划不能删除。
 
@@ -201,4 +201,4 @@ TCP 仅探测配置的单个端口，不做扫描；连接成功表示在线。I
 
 规则、动作与主机有纯逻辑、临时 SQLite、loopback HTTP/SSH 和临时脚本测试。app 集成验证模拟器 → 归一化 → 状态确认 → 规则 → 通知动作 → 假 Webhook，两秒内送达；dry-run 不产生外发；恢复通知、日志关联与重启不重放均有断言。
 
-关闭开始时先解除规则满队列反压，防止状态 actor 被发布操作卡住；之后依次等待采集/状态停止、规则排空、动作取消并记录、历史/通知结束，最后关闭数据库。无法接受或持久化的输入通过日志和 Close 错误报告，不伪装成成功。设备暂停或配置重载在旧更新处理完后清除未确认计时，保留边沿和冷却。真实 UPS、真实渠道/主机、Linux 实机、ICMP 权限环境、race 和容量验收不能由这些本机测试替代。
+关闭开始时先解除规则满队列反压，防止状态 actor 被发布操作卡住；之后依次等待采集/状态停止、规则排空、在途动作最多 10 秒自然完成（超时再取消并记录）、历史/通知结束，最后关闭数据库。规则处理单条输入时 panic 会被隔离：记录堆栈并丢弃该输入（不重试，避免确定性 panic 阻塞队列），后续输入继续处理；计划驱动或步骤协程 panic 只记录堆栈、不终止进程，该运行保留已持久化状态，待下次启动按 `on_restart` 处理。无法接受或持久化的输入通过日志和 Close 错误报告，不伪装成成功。设备暂停或配置重载在旧更新处理完后清除未确认计时，保留边沿和冷却。真实 UPS、真实渠道/主机、Linux 实机、ICMP 权限环境、race 和容量验收不能由这些本机测试替代。

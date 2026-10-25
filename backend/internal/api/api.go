@@ -116,6 +116,7 @@ func (s *Server) routes() {
 	s.actionRoutes()
 	s.hostRoutes()
 	s.planRoutes()
+	s.settingsRoutes()
 	s.mux.HandleFunc("GET /api/v1/stream", s.stream)
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fail(w, 404, "not_found", "接口不存在") })
 }

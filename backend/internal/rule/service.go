@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -125,7 +126,17 @@ func (s *Service) ResetTimers(ctx context.Context, ids []int64) error {
 	}
 }
 
-func (s *Service) processInput(ctx context.Context, in input) error {
+// errPanic 表示处理单个输入时 panic；该输入被丢弃而不重试，避免确定性 panic 卡住队列。
+var errPanic = errors.New("rule: 处理输入 panic")
+
+func (s *Service) processInput(ctx context.Context, in input) (err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			// panic 值可能含设备数据，只记录类型与堆栈。
+			err = fmt.Errorf("%w（%T）", errPanic, v)
+			s.logger.Error("规则处理 panic，已隔离并丢弃该输入", "device_id", in.update.State.DeviceID, "stack", string(debug.Stack()))
+		}
+	}()
 	if in.ack == nil {
 		return s.Process(ctx, in.update)
 	}
@@ -176,7 +187,7 @@ func (s *Service) run() {
 				pending = nil
 				break
 			}
-			if err == nil {
+			if err == nil || errors.Is(err, errPanic) {
 				pending = nil
 				break
 			}

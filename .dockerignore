@@ -1,0 +1,17 @@
+# 构建上下文只需要 frontend、backend、scripts；排除缓存、依赖、运行数据与本机产物。
+.git
+.cache
+.idea
+.vscode
+.agents
+assets
+data
+docs
+**/node_modules
+frontend/dist
+backend/data
+backend/internal/webui/dist/*
+!backend/internal/webui/dist/.gitkeep
+*.exe
+*.test
+*.log

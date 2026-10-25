@@ -4,11 +4,11 @@
 
 ## 范围与版本
 
-当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知、M6 规则/动作/主机及 M7 关机计划已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md)；M8 系统设置 API 未实现；前端仍为脚手架。
+当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知、M6 规则/动作/主机、M7 关机计划及 M8 系统设置已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md)、[系统设置](settings-api.md)；前端仍为脚手架。
 
 - 下述路径除 `/healthz` 外均以 `/api/v1` 为前缀。
 - 请求/响应 JSON、UTF-8，字段 snake_case，时间 RFC3339 UTC，ID 为整数，Profile 使用字符串 key。
-- JSON 请求必须设置 `Content-Type: application/json`；最大 512 KiB，拒绝未知字段、重复键、null、过深结构及尾随 JSON。PATCH 只覆盖显式字段；设备 config 是整个对象替换，省略子字段采用默认值。
+- JSON 请求必须设置 `Content-Type: application/json`；最大 512 KiB，拒绝未知字段、重复键、null、过深结构及尾随 JSON。PATCH 只覆盖显式字段；设备 config 是整个对象替换，省略子字段采用[系统设置](settings-api.md) `device_defaults` 的当前值。
 - 设备、数据源、用户、事件、告警、审计列表按 ID 降序，`limit=50`，范围 1～200；`before` 为排他的正整数游标。响应 `{"items":[],"next_before":0}`，0 表示无下一页。Profile 列表按 key 排序一次返回，快照返回全部运行设备。
 - 删除要求 JSON `{"confirm":true}`，不能靠 HTTP DELETE 方法本身代替确认。
 - 成功创建 201，读取/更新/删除 200；未知资源 404，约束/引用冲突 409，语义校验 422，限速 429。错误不包含凭据、SQL 或外部错误原文。

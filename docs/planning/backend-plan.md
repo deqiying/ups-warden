@@ -4,7 +4,7 @@
 > **日期**：2026-10-11
 > **依据**：[《需求文档》v0.3](requirements.md)、[《后端实现方案》v0.2](../../.agents/notes/proposed/architecture/2026-10-11-backend-design.md)
 > **范围**：后端首版（P0）从脚手架到可发布版本的开发顺序、任务拆分、交付物、完成标准与风险；P1 只列出待排期清单
-> **状态（同步至 2026-10-22）**：M0～M7 已实现并通过本机验证；M7 交付关机计划配置、倒计时与阶段编排、取消与市电恢复、停电周期幂等、重启恢复、进度 SSE 与计划通知。真实设备 CP-1 待项目方验收；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排演示与评审未完成。M8 未实现，**本轮到 M7 停止，不推进后续阶段**。D1~D10 评审和既有脱敏 fixture 证据保留；开发测试不访问真实设备、渠道或主机。人日仍为原单人粗略估算，不以自动化实现耗时换算后续工期。
+> **状态（同步至 2026-10-25）**：M0～M8 已实现并通过本机验证；M8 交付系统设置 API、AC 自动化套件、32/100 台模拟器压测、优雅关闭与 panic 隔离、三平台交叉编译与版本注入、Dockerfile/compose/systemd 示例及部署文档。真实设备 CP-1 待项目方验收；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排演示与评审未完成；CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证。D1~D10 评审和既有脱敏 fixture 证据保留；开发测试不访问真实设备、渠道或主机。人日仍为原单人粗略估算，不以自动化实现耗时换算后续工期。
 > **阅读入口**：[文档导航](../README.md) · [当前开发指南](../guides/development.md)
 
 ---
@@ -34,7 +34,7 @@
 
 ## 2. 里程碑总览
 
-表中列出目标交付物。M0、M1、M3、M5、M6、M7 已满足本机完成标准，其中 M7 仍待 CP-3 关机编排演示与评审；M2 已完成代码与本机自动化验证，但仍待 CP-1 真机验收。M4 已通过本机验证并交付 CP-2 后端契约，双方联调仍待验收；M8 仅为原规划，本轮不推进。实证见各自“实施记录”，不能把代码落地或本机验证等同于全部验收完成。
+表中列出目标交付物。M0、M1、M3、M5、M6、M7、M8 已满足本机完成标准，其中 M7 仍待 CP-3 关机编排演示与评审，M8 仍待 Docker 镜像运行验证与 CP-4 真机验收；M2 已完成代码与本机自动化验证，但仍待 CP-1 真机验收。M4 已通过本机验证并交付 CP-2 后端契约，双方联调仍待验收。实证见各自“实施记录”，不能把代码落地或本机验证等同于全部验收完成。
 
 | 里程碑 | 内容 | 估算（人日） | 依赖 | 关键交付 |
 |---|---|---|---|---|
@@ -288,6 +288,18 @@ M0 ─▶ M1 ─▶ M2 ─▶ M3 ─▶ M4 ─┬─▶ M5 ─▶ M6 ─▶ M7 �
 | B8-7 | 文档：部署说明、启动参数、Profile 编写指南、安全说明（主密钥备份、Windows 权限、Docker 自关机限制）；README 同步现状 | — |
 
 **完成标准**：AC 自动化套件全部通过；压测满足 NFR-01/02/03；三平台二进制可启动；Docker 镜像可运行并完成一次模拟器端到端演示；项目方完成真机验收（检查点 CP-4）。
+
+**实施记录（2026-10-25；B8-1～B8-7 本机完成，Docker 运行与 CP-4 未验证）**：
+
+- B8-1：新增 `internal/settings`，`settings` 表每键一行 JSON，未写入取默认值，已保存值无效则启动失败。`GET/PATCH /api/v1/settings` 沿用 PATCH 约定（不提供 PUT），合并后整体校验；护栏由开改关需 `confirm_disable_guard:true`，保存与 `settings.update` 审计同事务，提交后 `History.SetRetention` 立即生效。设备新建/PATCH 的省略阈值改取 `device_defaults`（`state.ParseConfigWith`），已保存设备不随默认值变化。设置变更不经 `ChangeDevices`，不重建运行时。内嵌 `time/tzdata` 使时区校验跨平台一致。无新增依赖或迁移。契约见[系统设置 API](../reference/settings-api.md)。
+- B8-2：`internal/acceptance` 经 HTTP API 黑盒覆盖 AC-02/03/04/05 通知/08/10/11 模拟器部分；AC-05 计划部分、AC-06、AC-07、AC-09 沿用 app 中可控时钟的集成测试，`mise run backend:acceptance` 统一运行。AC-01 与 AC-11 真机抓包留 CP-4。映射见[验收与压测](../guides/acceptance.md)。
+- B8-3：`TestLoad`（`mise run backend:load`）把模拟器放在子进程、每台独立 loopback 地址。Windows amd64 16 核实测：32 台空闲 Go 内存峰值 29.2 MiB、CPU 为单核 3.12%；100 台 39.5 MiB、4.89%；SSE p99 1 ms；全部设备同时停电均确认并送达，通知最大延迟 3 / 4 ms。首次试跑发现初始化/登录的 argon2id（64 MiB）一次性峰值会使 3 台设备也测得约 140 MiB，压测改为空闲阶段前 `FreeOSMemory` 只测稳态，并在文档记录该峰值。CPU 只报告不断言，4 核 ARM64 待复测。共享 notify 动作在并发停电下未出现 `skipped_concurrent`。
+- B8-4：动作 `Close` 先等待在途动作最多 10 s（`closeGrace`）再取消；规则单条输入 panic 被 recover 并丢弃（不重试），队列继续；计划驱动与步骤协程 panic 记录堆栈后隔离，运行保留持久化状态待重启恢复。新增在途动作等待、规则 panic 丢弃的测试；计划 panic 隔离未单独构造测试。Windows 发布二进制收到 CTRL_BREAK 后记录“开始优雅关闭/服务已停止”并以 0 退出。
+- B8-5：`--version` 与 `main.version` 注入；`mise run backend:release` 输出 linux/amd64、linux/arm64（静态 ELF）与 windows/amd64，版本取 `VERSION` 或 `git describe`。Windows 二进制已验证 `--version`、`/healthz` 与内嵌 WebUI 200；Linux 二进制未在实机运行。
+- B8-6：根目录多阶段 `Dockerfile`（Node 构建前端 → Go 按 `TARGETOS/TARGETARCH` 交叉编译 → `alpine:3` 非 root、`/data` 卷）、`.dockerignore`、`compose.yaml`（数据卷、`stop_grace_period: 45s`、ping socket / `NET_RAW` 说明、容器不能关闭宿主机）与 `deploy/ups-warden.service`（`StateDirectory`、`TimeoutStopSec=45s`）。停止超时按最坏 HTTP 10 s + 动作 10 s + 历史落盘 10 s 计算。**开发机无 Docker/Podman，镜像构建与运行、模拟器端到端演示未执行。**
+- B8-7：新增[部署指南](../guides/deployment.md)、[验收与压测](../guides/acceptance.md)、[系统设置 API](../reference/settings-api.md)；同步 README、文档导航、AGENTS、开发指南、监控/规则契约与采集文档中的设备默认值和保留期说明。Profile 编写沿用现有 [Profile 与归一化](../guides/profiles.md)。
+- 检查：`mise run backend:check`（gofmt、vet、全量测试）、`backend:acceptance`、`backend:load`（32、100）、`backend:release` 均通过。
+- 验收边界：未连接真实 UPS、渠道或受控主机，未执行真实关机；CP-1、CP-2、CP-3、CP-4、Docker 镜像、Linux/ARM64 实机、ICMP 权限环境、race 与长时间容量验收仍未完成。前端仍无业务页面。
 
 ---
 

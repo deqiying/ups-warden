@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于已实现并通过本机验证的 M0～M7 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排；M2 真机 CP-1、CP-2 双方联调待验收，CP-3 关机编排评审未完成。M8 系统发布未实现，本轮到 M7 停止。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
+本文适用于已实现并通过本机验证的 M0～M8 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排，M8 提供系统设置 API、验收/压测任务与发布产物；M2 真机 CP-1、CP-2 双方联调待验收，CP-3 关机编排评审与 CP-4 首版真机验收未完成。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)、[系统设置](../reference/settings-api.md)；部署见[部署指南](deployment.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
 
 ## 1. 工具链与工作目录
 
@@ -49,6 +49,7 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden
 | `--log-file` | `UPS_WARDEN_LOG_FILE` | 空 | 空时写 stderr；指定后写滚动文件，20 MB、最多 5 份备份 |
 | `--log-format` | `UPS_WARDEN_LOG_FORMAT` | `text` | `text` 或 `json` |
 | `--script-dir` | `UPS_WARDEN_SCRIPT_DIR` | `<data-dir>/scripts` | M6 脚本动作目录；由管理员放置脚本，服务不自动创建或在线编辑 |
+| `--version` | — | — | 输出构建时注入的版本号并退出（`go run` 为 `dev`） |
 
 例如在 **`backend/`** 目录启用调试日志并更改端口：
 
@@ -58,8 +59,8 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden --lis
 
 - 已知敏感属性键和 `secret.String` 自动掩码；不得把原始凭据插入日志消息、任意结构体或错误字符串中。采集层保留安全的 AYI9 错误码，不传播原始包装文本；API 内部错误记录类型、SQLite 数字码和调用位置，panic 记录类型与堆栈，不输出原始值。
 - 无效参数、日志文件打不开、目录锁冲突、主密钥错误、数据库迁移失败、渠道/动作/计划/规则配置损坏、监听失败或关闭失败均使进程非零退出。API 在构造时要求 DB、Cipher、Auth、Collector、History、Bus、Runtime、Notify、Actions、Plans 全部提供，不支持缺失模块的静默降级。
-- 入口处理 `os.Interrupt` / `SIGTERM`，HTTP 优雅关闭最多等待 10 秒，超时强制关闭连接；请求头超时为 5 秒。后台任务必须响应 context 取消；错误或 panic 以 1～30 秒指数退避重启，正常返回不重启，HTTP 异常退出则结束进程。
-- TLS、脚本编辑等 P1 参数尚未实现。
+- 入口处理 `os.Interrupt` / `SIGTERM`，HTTP 优雅关闭最多等待 10 秒，超时强制关闭连接；请求头超时为 5 秒。随后在途动作最多再等待 10 秒自然完成，超时取消并记录结果（NFR-04）。后台任务必须响应 context 取消；错误或 panic 以 1～30 秒指数退避重启，正常返回不重启，HTTP 异常退出则结束进程。
+- 保留期、设备默认阈值、时区、语言与 HTTP 动作护栏是运行期设置，见[系统设置 API](../reference/settings-api.md)。TLS、脚本编辑等 P1 参数尚未实现。
 
 ### 数据目录与主密钥
 
@@ -150,6 +151,16 @@ M6 测试覆盖两层规则条件、持续时长/冷却/恢复/质量/重启去�
 
 M7 测试覆盖计划校验、阶段串行/阶段内并行、单步超时、失败不阻塞、dry-run 无副作用、单活动运行与停电周期幂等、倒计时与执行中的市电恢复、执行中/阶段延迟中注入重启不重放、resume/abort、自关机前置标记，以及 API 的确认、冲突码、审计、引用保护和 SSE。app 集成以 loopback 模拟器、本机假 SSH 主机、假 HTTP 受控端和假 Webhook 验证 AC-05 计划部分、AC-06、AC-07。详见[关机计划契约](../reference/shutdown-plans-api.md)。未执行真实关机，CP-3 评审未完成。
 
+M8 测试覆盖系统设置的校验、保存/读取、无效存储值、PATCH 合并、护栏关闭确认与审计、设备默认值来源；动作关闭等待在途动作；规则输入 panic 被丢弃且队列继续。`internal/acceptance` 经 HTTP API 黑盒覆盖 AC-02/03/04/05 通知/08/10/11 模拟器部分，`TestLoad` 默认跳过。在仓库根目录：
+
+```bash
+mise run backend:acceptance   # AC 套件（含 app 中的 AC-05 计划/06/07/09 用例）
+mise run backend:load         # 32/100 台压测
+VERSION=v0.8.0 mise run backend:release
+```
+
+AC 映射、压测方法与实测数据见[验收与压测](acceptance.md)，发布与部署见[部署指南](deployment.md)。计划协程的 panic 隔离未单独构造测试。
+
 本机 `upssim` 与显式 `upsprobe` 的参数、安全边界及示例见[协议驱动与本机模拟器](protocol-drivers.md)。主服务会自动采集启用数据源；勿用含真实设备配置的数据目录做开发冒烟。
 
 在仓库根目录可单独执行短时 fuzz；所有输入均离线，不连接设备：
@@ -170,7 +181,7 @@ mise x -- pnpm build
 - `check` 调用 `vp check`，覆盖格式、lint 与配置启用的类型检查。
 - `test` 调用 `vp test run`；现有 [App.test.tsx](../../frontend/src/App.test.tsx) 使用服务端渲染检查项目名称，不是浏览器端到端测试。
 - `build` 执行 `tsc -b && vp build`，产物位于 `frontend/dist/`；单独 pnpm build 不复制/嵌入，根目录 `mise run webui:build` 完成安全复制，`mise run backend:build` 再构建内嵌二进制。
-- 当前没有统一前后端发布任务、文档构建或专用链接检查脚本。仅修改文档时核对路径、相对链接、参数和示例，不为验证文档访问真实设备。
+- `backend:release` 输出 linux/amd64、linux/arm64、windows/amd64 三个内嵌 WebUI 的二进制到 `.cache/build/release/`。当前没有文档构建或专用链接检查脚本；仅修改文档时核对路径、相对链接、参数和示例，不为验证文档访问真实设备。
 
 ## 5. 常见排查与安全边界
 

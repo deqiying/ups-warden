@@ -5,13 +5,13 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态（同步至 2026-10-22）**：proposed（整套业务方案未完成；M0～M7 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收，CP-3 关机编排演示与评审待完成）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；M8 未实现，本轮到 M7 停止，整篇不标为 implemented。
+> **状态（同步至 2026-10-25）**：proposed（整套业务方案未完成验收；M0～M8 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收，CP-3 关机编排演示与评审待完成，CP-4 首版真机验收与 Docker 镜像运行未验证）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；检查点未完成，整篇不标为 implemented。
 
 ---
 
 ## 0. 现状与约定
 
-- 当前 M0～M7 代码已落地并通过本机验证；主服务装配采集/状态/历史、认证/审计/监控/SSE/静态 SPA、通知、规则、动作与关机计划编排。启用数据源会自动采集；显式配置的规则按设备评估并派发动作（含 plan 动作），新规则默认 dry-run。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)、[监控契约](../../../../docs/reference/monitoring-api.md)、[通知契约](../../../../docs/reference/notifications-api.md)、[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)和[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)。前端仍无业务页面；M8 系统发布待实现。CP-1、CP-2、CP-3、真实渠道/主机、Linux 实机、race 与容量验收仍未完成。
+- 当前 M0～M8 代码已落地并通过本机验证；主服务装配采集/状态/历史、认证/审计/监控/SSE/静态 SPA、通知、规则、动作、关机计划编排与系统设置。启用数据源会自动采集；显式配置的规则按设备评估并派发动作（含 plan 动作），新规则默认 dry-run。当前行为见[采集、状态与历史](../../../../docs/guides/collection-state-history.md)、[监控契约](../../../../docs/reference/monitoring-api.md)、[通知契约](../../../../docs/reference/notifications-api.md)、[M6 契约](../../../../docs/reference/rules-actions-hosts-api.md)、[关机计划 API](../../../../docs/reference/shutdown-plans-api.md)、[系统设置 API](../../../../docs/reference/settings-api.md)和[部署指南](../../../../docs/guides/deployment.md)。前端仍无业务页面。CP-1、CP-2、CP-3、CP-4、真实渠道/主机、Docker 镜像、Linux 实机、race 与长时间容量验收仍未完成。
 - 文中 `FR-*` / `SEC-*` / `NFR-*` / `AC-*` 编号均指需求文档中的条目。
 - 「统一字段」指需求文档 5.1 定义的字段名，例如 `battery_capacity_pct`、`input_voltage[1]`。
 - 本记录沿用原有中文方案格式，集中保留技术选择、备选理由、D1~D10 与验收策略，不重复拆成多篇 Note。模块落地时同步当前 docs，并据实际完成范围更新状态；未完成整套方案前，不把整篇改为 implemented。

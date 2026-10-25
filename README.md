@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 后端 **M0～M7 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，M7 提供[关机计划编排 API](docs/reference/shutdown-plans-api.md)，新建规则默认 dry-run。**真机 CP-1 待验收，CP-3 关机编排评审未完成**。前端仍为脚手架、无业务页面；M8 系统与发布未实现，**本轮到 M7 停止**。下文分阶段关机流程已由后端实现，但只经过本机模拟器与假主机验证，不等于真实设备、渠道或主机验收。
+> 后端 **M0～M8 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，M7 提供[关机计划编排 API](docs/reference/shutdown-plans-api.md)，M8 提供[系统设置 API](docs/reference/settings-api.md)、[验收与压测](docs/guides/acceptance.md)和[部署产物](docs/guides/deployment.md)，新建规则默认 dry-run。**真机 CP-1/CP-4 待验收，CP-3 关机编排评审未完成，Docker 镜像与 Linux 实机运行未验证**。前端仍为脚手架、无业务页面。下文分阶段关机流程已由后端实现，但只经过本机模拟器与假主机验证，不等于真实设备、渠道或主机验收。
 
 ## 停电联动流程
 
@@ -59,7 +59,7 @@ mise install
 (cd frontend && mise x -- pnpm dev)
 ```
 
-启动参数、初始化与会话、代理设置、测试与内嵌构建命令见[开发指南](docs/guides/development.md)。已激活 mise 的 shell 可以省略 `mise x --`。主服务会自动采集数据库中启用的数据源；无用户时 setup token 仅在主进程 stderr 输出一次，不要公开终端日志。
+启动参数、初始化与会话、代理设置、测试与内嵌构建命令见[开发指南](docs/guides/development.md)；发布二进制、Docker 与 systemd 部署见[部署指南](docs/guides/deployment.md)。已激活 mise 的 shell 可以省略 `mise x --`。主服务会自动采集数据库中启用的数据源；无用户时 setup token 仅在主进程 stderr 输出一次，不要公开终端日志。
 
 ## 目录结构
 
@@ -69,6 +69,7 @@ frontend/   React 19 + TypeScript 7 + Vite+ 前端
 assets/     README 视觉资产
 docs/       开发指南、需求计划、协议证据与设计稿
 .agents/notes/  架构方案与决策记录
+deploy/     systemd unit 示例（Dockerfile、compose.yaml 在根目录）
 mise.toml   工具链版本与缓存目录
 ```
 

@@ -45,3 +45,39 @@ depends = ["webui:build"]
 dir = "backend"
 env.CGO_ENABLED = "0"
 run = "go build -trimpath -o ../.cache/build/ ./cmd/ups-warden"
+
+[tasks."backend:release"]
+description = "交叉编译 linux/amd64、linux/arm64、windows/amd64 发布二进制（内嵌 WebUI，注入版本号）"
+depends = ["webui:build"]
+dir = "backend"
+shell = "bash -c"
+env.CGO_ENABLED = "0"
+run = '''
+set -eu
+# 版本号优先取 VERSION 环境变量，其次 git describe。
+version="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
+out=../.cache/build/release
+mkdir -p "$out"
+for target in linux/amd64 linux/arm64 windows/amd64; do
+  os="${target%/*}"
+  arch="${target#*/}"
+  ext=""
+  if [ "$os" = windows ]; then ext=".exe"; fi
+  GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$out/ups-warden-$os-$arch$ext" ./cmd/ups-warden
+  printf '%s %s\n' "$version" "$out/ups-warden-$os-$arch$ext"
+done
+'''
+
+[tasks."backend:acceptance"]
+description = "运行 AC-01~11 中可自动化部分的验收测试（模拟器，不访问真实设备）"
+dir = "backend"
+shell = "bash -c"
+# acceptance 为经 HTTP API 的黑盒用例；app 中的用例使用可控时钟覆盖计划编排、dry-run 与重启。
+run = "go test -count=1 -v -run '^(TestAcceptance.*|TestLoopbackPipelineFlashLostRestart|TestM6OutageNotificationAndDryRun|TestM7.*)$' ./internal/acceptance ./internal/app"
+
+[tasks."backend:load"]
+description = "压测：模拟器 32 / 100 台设备、3 s 轮询，输出内存、CPU、通知与 SSE 延迟"
+dir = "backend"
+env.UPS_WARDEN_LOAD = "32,100"
+shell = "bash -c"
+run = "go test -count=1 -v -timeout 30m -run '^TestLoad$' ./internal/acceptance"

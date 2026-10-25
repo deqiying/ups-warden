@@ -4,7 +4,7 @@
 
 ## 项目现状
 
-后端 **M0～M7 已实现并通过本机验证**；M4 认证/审计/监控 API/SSE/SPA 与 M5 通知已交付，M6 提供规则、通知联动、HTTP/脚本/SSH 动作、主机指纹/在线检测与管理 API，M7 提供关机计划编排（倒计时、阶段串行/阶段内并行、等待离线、取消与市电恢复、停电周期幂等、重启恢复与 SSE 进度）。**CP-1 真机验收未完成，CP-2 双方联调待验收，CP-3 关机编排评审未完成**。主服务会自动采集启用源并评估启用规则；开发测试必须使用临时数据库与本机模拟器，不得使用本地真实设备配置启动测试。新建规则默认 dry-run；手动动作需 confirm，手动执行计划需输入计划名称，禁止在开发中执行真实关机。前端仍为脚手架、无业务页面；M8 系统与发布未实现，本轮到 M7 停止。HTTP 护栏默认开启，设置管理留 M8。当前契约见[监控](docs/reference/monitoring-api.md)、[通知](docs/reference/notifications-api.md)、[规则、动作与受控主机](docs/reference/rules-actions-hosts-api.md)、[关机计划](docs/reference/shutdown-plans-api.md)。不要把本机/模拟器验证描述为真机、真实渠道/主机、Linux 实机或双方联调验收。
+后端 **M0～M8 已实现并通过本机验证**；M4 认证/审计/监控 API/SSE/SPA 与 M5 通知已交付，M6 提供规则、通知联动、HTTP/脚本/SSH 动作、主机指纹/在线检测与管理 API，M7 提供关机计划编排（倒计时、阶段串行/阶段内并行、等待离线、取消与市电恢复、停电周期幂等、重启恢复与 SSE 进度），M8 提供系统设置 API（含 HTTP 护栏开关）、AC 自动化套件与压测、优雅关闭与 panic 隔离、三平台交叉编译及 Docker/compose/systemd 示例。**CP-1 真机验收未完成，CP-2 双方联调待验收，CP-3 关机编排评审未完成，CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证**。主服务会自动采集启用源并评估启用规则；开发测试必须使用临时数据库与本机模拟器，不得使用本地真实设备配置启动测试。新建规则默认 dry-run；手动动作需 confirm，手动执行计划需输入计划名称，禁止在开发中执行真实关机。前端仍为脚手架、无业务页面。当前契约见[监控](docs/reference/monitoring-api.md)、[通知](docs/reference/notifications-api.md)、[规则、动作与受控主机](docs/reference/rules-actions-hosts-api.md)、[关机计划](docs/reference/shutdown-plans-api.md)、[系统设置](docs/reference/settings-api.md)；部署见[部署指南](docs/guides/deployment.md)，验收与压测见[验收与压测](docs/guides/acceptance.md)。不要把本机/模拟器验证描述为真机、真实渠道/主机、Linux 实机或双方联调验收。
 
 README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技能。
 
@@ -13,6 +13,7 @@ README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技�
 ```text
 backend/    Go 后端（module: ups-warden），入口 cmd/ups-warden，内部包放 internal/
 frontend/   React 19 + TypeScript 7 + Vite+ 前端
+deploy/     systemd unit 示例；Dockerfile、compose.yaml 在根目录
 .cache/     mise 管理的 Go / Node / npm / pnpm 缓存（不提交）
 mise.toml   项目工具链与缓存目录的唯一来源
 ```
@@ -37,6 +38,9 @@ gofmt -l .
 # 后端统一检查与本机构建（在仓库根目录执行）
 mise run backend:check
 mise run backend:build
+mise run backend:acceptance       # AC 自动化套件（模拟器）
+mise run backend:load             # 32/100 台模拟器压测，约 3 分钟
+mise run backend:release          # 交叉编译三平台，VERSION=... 注入版本号
 
 # 前端（在 frontend/ 下执行）
 pnpm install

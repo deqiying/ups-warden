@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -384,6 +385,7 @@ func (s *Service) drive(r *run) {
 		s.mu.Unlock()
 		s.wg.Done()
 	}()
+	defer s.isolate(r)
 	if r.countdown != nil {
 		if !s.sleep(r, time.Until(*r.countdown)) {
 			if s.ctx.Err() == nil {
@@ -432,7 +434,7 @@ func (s *Service) drive(r *run) {
 		var wg sync.WaitGroup
 		for _, step := range steps {
 			if step.Status == "waiting" {
-				wg.Go(func() { s.runStep(r, st, step) })
+				wg.Go(func() { defer s.isolate(r); s.runStep(r, st, step) })
 			}
 		}
 		wg.Wait()
@@ -444,6 +446,14 @@ func (s *Service) drive(r *run) {
 		}
 	}
 	s.retry("finish", r.id, func(ctx context.Context) error { return s.finish(ctx, r, "") })
+}
+
+// isolate 须直接 defer：隔离运行与步骤协程中的 panic，只记录类型与堆栈。
+// 运行保留当前持久化状态，由下次启动按 on_restart 恢复，不在本进程内重放。
+func (s *Service) isolate(r *run) {
+	if v := recover(); v != nil {
+		s.logger.Error("关机计划运行 panic，已隔离；运行保留当前状态待重启恢复", "run_id", r.id, "panic_type", fmt.Sprintf("%T", v), "stack", string(debug.Stack()))
+	}
 }
 
 // request 构造步骤动作请求；步骤超时覆盖动作自身超时，dry-run 随运行。

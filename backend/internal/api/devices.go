@@ -91,7 +91,9 @@ func (s *Server) getDevice(w http.ResponseWriter, r *http.Request) {
 	}
 	reply(w, 200, d)
 }
-func applyDevice(d *device, in deviceInput) error {
+
+// applyDevice 应用显式字段；config 整体替换，省略的阈值字段取 defaults（系统设置）。
+func applyDevice(d *device, in deviceInput, defaults state.Config) error {
 	if in.Name != nil {
 		d.Name = *in.Name
 	}
@@ -108,7 +110,7 @@ func applyDevice(d *device, in deviceInput) error {
 		d.Enabled = *in.Enabled
 	}
 	if in.Config != nil {
-		cfg, err := state.ParseConfig(in.Config)
+		cfg, err := state.ParseConfigWith(defaults, in.Config)
 		if err != nil {
 			return errValidation
 		}
@@ -129,14 +131,19 @@ func (s *Server) createDevice(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &in) {
 		return
 	}
-	d := device{Enabled: true, Tags: []string{}, Config: state.DefaultConfig()}
-	if err := applyDevice(&d, in); err != nil {
+	defaults, err := s.deviceDefaults(r)
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	d := device{Enabled: true, Tags: []string{}, Config: defaults}
+	if err := applyDevice(&d, in, defaults); err != nil {
 		s.storageError(w, err, "device")
 		return
 	}
 	s.changes.Lock()
 	defer s.changes.Unlock()
-	err := s.change(r, nil, func(tx *sql.Tx) error {
+	err = s.change(r, nil, func(tx *sql.Tx) error {
 		tags, _ := json.Marshal(d.Tags)
 		cfg, _ := json.Marshal(d.Config)
 		result, err := tx.ExecContext(r.Context(), "INSERT INTO devices(name,note,location,tags,enabled,config) VALUES(?,?,?,?,?,?)", d.Name, d.Note, d.Location, string(tags), d.Enabled, string(cfg))
@@ -191,7 +198,12 @@ func (s *Server) saveDevice(w http.ResponseWriter, r *http.Request, id int64, in
 		return
 	}
 	d := old
-	if err = applyDevice(&d, in); err != nil {
+	defaults, err := s.deviceDefaults(r)
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	if err = applyDevice(&d, in, defaults); err != nil {
 		s.storageError(w, err, "device")
 		return
 	}

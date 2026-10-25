@@ -35,16 +35,17 @@ type sample struct {
 // Writer 的队列（含失败待重试批次）最多 1024 行。Run 只能调用一次；
 // Run 取消不丢弃队列，可用独立 context 调用 Close 重试刷新。
 type Writer struct {
-	db        *store.Store
-	opts      Options
-	mu        sync.Mutex
-	queue     []sample
-	closed    bool
-	stop      chan struct{}
-	wake      chan struct{}
-	flushGate chan struct{}
-	ran       atomic.Bool
-	dropped   atomic.Uint64
+	db          *store.Store
+	opts        Options
+	retentionMu sync.RWMutex // 保护 opts 中的三个保留期，系统设置可在运行中修改。
+	mu          sync.Mutex
+	queue       []sample
+	closed      bool
+	stop        chan struct{}
+	wake        chan struct{}
+	flushGate   chan struct{}
+	ran         atomic.Bool
+	dropped     atomic.Uint64
 
 	// 以下水位和最早脏分钟仅由 flushGate 保护，不随队列锁一起访问。
 	aggregateReady bool
@@ -129,6 +130,19 @@ func (w *Writer) Enqueue(state model.DeviceState) bool {
 
 // Dropped 返回因队列满而拒绝的样本总数。
 func (w *Writer) Dropped() uint64 { return w.dropped.Load() }
+
+// SetRetention 更新保留期，下一次聚合、清理和查询生效；参数须为正值。
+func (w *Writer) SetRetention(detail, aggregate, logs time.Duration) {
+	w.retentionMu.Lock()
+	defer w.retentionMu.Unlock()
+	w.opts.DetailRetention, w.opts.AggregateRetention, w.opts.LogRetention = detail, aggregate, logs
+}
+
+func (w *Writer) retention() (detail, aggregate, logs time.Duration) {
+	w.retentionMu.RLock()
+	defer w.retentionMu.RUnlock()
+	return w.opts.DetailRetention, w.opts.AggregateRetention, w.opts.LogRetention
+}
 
 func (w *Writer) stopAccepting() {
 	w.mu.Lock()

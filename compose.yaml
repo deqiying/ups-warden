@@ -1,0 +1,30 @@
+# UPS Warden 部署示例：docker compose up -d --build
+# 首次启动后执行 docker compose logs ups-warden 获取一次性初始化 token（只输出到 stderr，勿公开日志）。
+services:
+  ups-warden:
+    build:
+      context: .
+      args:
+        VERSION: dev
+    image: ups-warden:dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 数据库与 master.key 都在此卷中；必须备份 master.key（或改用 UPS_WARDEN_MASTER_KEY），丢失后已加密凭据无法解密。
+      - ups-warden-data:/data
+    environment:
+      UPS_WARDEN_LOG_FORMAT: json
+      # UPS_WARDEN_MASTER_KEY: <Base64 编码的 32 字节密钥>
+    # 优雅关闭最坏依次等待 HTTP 10 s、在途动作 10 s、历史落盘 10 s；Docker 默认 10 s 不够。
+    stop_grace_period: 45s
+    # ICMP 在线检测：容器内以非 root 运行，默认使用非特权 ping socket（Docker 默认放开容器内
+    # net.ipv4.ping_group_range）。若宿主运行时未放开，可取消下面的注释并以 root 运行，
+    # 或改用 TCP 在线检测；非 root 进程即使加 NET_RAW 也没有有效 capability。
+    # cap_add:
+    #   - NET_RAW
+    # user: "0:0"
+    # 注意：容器无法关闭自身所在宿主机，宿主机关机请配置 SSH 动作连接宿主机执行。
+
+volumes:
+  ups-warden-data:

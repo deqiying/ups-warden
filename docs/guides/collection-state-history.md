@@ -30,7 +30,7 @@ M4 API 通过 app 的 `ChangeDevices` 串行协调动态配置：暂停相关 co
 
 实现入口：[`internal/state`](../../backend/internal/state/engine.go)。状态层只消费统一模型，不导入驱动或 Profile。
 
-`devices.config` 是单层 JSON 对象（最大 16 KiB），可省略字段使用默认值；拒绝未知/重复键、null、非法类型和范围。默认配置如下：
+`devices.config` 是单层 JSON 对象（最大 16 KiB），拒绝未知/重复键、null、非法类型和范围。经 API 新建或 PATCH 设备时，省略字段取[系统设置](../reference/settings-api.md) `device_defaults` 的当前值并整体保存；已保存的设备配置是完整对象，之后修改系统默认值不会改变已有设备。内置默认值（系统设置未修改时生效）如下：
 
 ```json
 {
@@ -79,7 +79,7 @@ M4 API 通过 app 的 `ChangeDevices` 串行协调动态配置：暂停相关 co
 - 仅写目录标记 `History=true` 且质量 good 的统一数值；不保存原始报文、OID、寄存器、QAD/RTD 段、凭据、Reason 或 Trace。
 - 每秒或累计 200 行批量写入；每事务最多 200 行，失败保留有界待写队列。时钟 tick 和失败采集不制造历史测量点。
 - 完整分钟聚合 min/max/avg/count：每个 Writer 首次补算明细保留期，随后按成功水位与已提交样本的最早 dirty 分钟重算到当前完整分钟边界；迟到与同时间戳覆盖都会标记 dirty。只保留固定大小的内存水位，重启重新补算，不新增表或持久化水位。不完整当前分钟暂不聚合；明细保留期边缘的部分分钟不覆盖已有完整聚合。
-- 默认明细 7 天、分钟聚合 90 天、日志 365 天；每小时聚合后分批清理，每批最多 5000 行。活动事件、活动周期及仍被引用的记录不删除；无 `cleared_at` 的非活动恢复事件按 `started_at` 判断过期。
+- 保留期取自[系统设置](../reference/settings-api.md)，默认明细 7 天、分钟聚合 90 天、日志 365 天；启动时读取，PATCH 成功后立即作用于下一轮聚合/清理及 auto 分辨率判断。每小时聚合后分批清理，每批最多 5000 行。活动事件、活动周期及仍被引用的记录不删除；无 `cleared_at` 的非活动恢复事件按 `started_at` 判断过期。
 - `Query{DeviceID, From, To, Resolution, MaxPoints}` 使用 `[From, To)`。`Resolution` 为 `raw`、`1m`、`auto`；auto 在范围 ≤6 小时且 From 位于明细保留期内时选 raw，否则 1m。
 - 默认及最大 1000 点，按时间桶降采样并按 count 加权平均；1m 的范围边界按分钟起点判断，不拆分部分分钟。
 - 查询只读取已提交数据，不隐式 Flush；显式调用 Cleanup 前应先 Aggregate。Flush 与 Aggregate 共用可取消的串行 gate，只有提交成功才标记 dirty、整轮聚合成功才推进水位。正常轮次不重算未受影响的旧分钟；迟到数据会重算从最早 dirty 起的后续区间，首次补算或失败重试仍可能覆盖整个保留期。尚未进行满容量性能验收。

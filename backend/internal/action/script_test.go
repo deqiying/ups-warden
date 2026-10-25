@@ -44,7 +44,30 @@ func TestScriptEnvironmentArgumentsAndOutput(t *testing.T) {
 		t.Fatalf("输出截断/退出码 %+v", v)
 	}
 }
+
+// shortGrace 让 Close 立即进入“宽限期已到 → 取消”路径，验证取消与进程树终止。
+func shortGrace(t *testing.T) {
+	old := closeGrace
+	closeGrace = 100 * time.Millisecond
+	t.Cleanup(func() { closeGrace = old })
+}
+
+func TestCloseWaitsForInFlightAction(t *testing.T) {
+	s := fixture(t)
+	script := writeScript(t, s.scriptDir, "sleep 1\n", "Start-Sleep -Seconds 1\n")
+	id := add(t, s, Record{Name: "short sleeper", Type: "script", TimeoutS: 30, Config: Config{Script: script}})
+	run := submit(t, s, id, false)
+	time.Sleep(100 * time.Millisecond)
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if v := await(t, s, run); v.status != "succeeded" {
+		t.Fatal("关闭未等待在途动作完成", v)
+	}
+}
+
 func TestScriptServiceTimeoutAndClose(t *testing.T) {
+	shortGrace(t)
 	for _, closeService := range []bool{false, true} {
 		t.Run(map[bool]string{false: "timeout", true: "close"}[closeService], func(t *testing.T) {
 			s := fixture(t)
@@ -89,6 +112,7 @@ func TestWindowsBatchMetacharactersNeverExecute(t *testing.T) {
 }
 
 func TestScriptCloseTerminatesOwnProcessTree(t *testing.T) {
+	shortGrace(t)
 	s := fixture(t)
 	childName := "child.sh"
 	child := "printf ready > child-ready\nsleep 3\nprintf leaked > child-survived\n"
