@@ -180,6 +180,17 @@ func TestAYI9PhasesAndState(t *testing.T) {
 	if s.Fields["native_runtime_remaining"].Reason != model.ReasonInvalidValue {
 		t.Fatal("ET1K原生0剩余时间应无效")
 	}
+	if f := s.Fields["nominal_battery_voltage"]; f.Quality != model.Invalid || f.Reason != model.ReasonInvalidValue {
+		t.Fatalf("ET1K额定电池电压0应无效: %+v", f)
+	}
+	raw.AYI9.RTD[7] = "24.0"
+	if s, _, err = Normalize(1, raw, p); err != nil || s.Fields["nominal_battery_voltage"].Quality != model.Good || s.Fields["nominal_battery_voltage"].Num != 24 {
+		t.Fatalf("非零额定电池电压应保持有效: %+v %v", s.Fields["nominal_battery_voltage"], err)
+	}
+	raw = ayi9Raw()
+	if s, _, err = Normalize(1, raw, p); err != nil {
+		t.Fatal(err)
+	}
 	for _, key := range []string{"input_voltage[2]", "output_current[2]", "output_load_pct[3]"} {
 		if s.Fields[key].Reason != model.ReasonPhaseInactive {
 			t.Errorf("无效相未屏蔽: %s %+v", key, s.Fields[key])

@@ -48,5 +48,6 @@ fields:
   - {field: nominal_input_voltage, source: {cmd: RTD, index: 3}, type: number_string}
   - {field: nominal_output_voltage, source: {cmd: RTD, index: 4}, type: number_string}
   - {field: nominal_output_freq, source: {cmd: RTD, index: 6}, type: number_string}
-  - {field: nominal_battery_voltage, source: {cmd: RTD, index: 7}, type: number_string}
+  # 2026-10-14 样本与 2026-10-27 CP-1 真机在市电/电池阶段 RTD[7] 恒为 0.0，额定电池电压不可能为 0，按无效处理。
+  - {field: nominal_battery_voltage, source: {cmd: RTD, index: 7}, type: number_string, invalid: {values: [0]}}
   - {field: rated_va, source: {cmd: RTD, index: 9}, type: si_number}

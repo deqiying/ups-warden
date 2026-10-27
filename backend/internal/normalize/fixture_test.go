@@ -128,6 +128,9 @@ func TestET1KFixtureRegression(t *testing.T) {
 			if ayi9.Fields["manufacturer"].Reason != model.ReasonPlaceholder {
 				t.Fatal("厂商占位符未识别")
 			}
+			if ayi9.Fields["nominal_battery_voltage"].Reason != model.ReasonInvalidValue {
+				t.Fatal("ET1K额定电池电压0.0必须无效")
+			}
 			if len(traces) != 64 {
 				t.Fatalf("观测字段Trace数量 %d", len(traces))
 			}
