@@ -4,7 +4,7 @@
 
 ## 当前范围
 
-M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。M3 已将采集调度与状态接入主服务，启动 `ups-warden` 会连接数据库中启用的数据源，见[采集、状态与历史](collection-state-history.md)；M4 已开放设备/源管理及只读连接 test/raw HTTP API，见[监控 API 与 SSE 契约](../reference/monitoring-api.md)。CP-2 双方联调与真实设备 CP-1 均待验收；开发测试只用临时数据库和 loopback 模拟器，模拟器通过不等于真机兼容性已经确认。
+M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三协议本机模拟器和显式执行的 `upsprobe` 工具。M3 已将采集调度与状态接入主服务，启动 `ups-warden` 会连接数据库中启用的数据源，见[采集、状态与历史](collection-state-history.md)；M4 已开放设备/源管理及只读连接 test/raw HTTP API，见[监控 API 与 SSE 契约](../reference/monitoring-api.md)。CP-1 三协议只读冒烟已于 2026-10-27 在 ET1K 真机通过（见[单次只读冒烟](#单次只读冒烟)），AYI9 错误密码响应核验与独立面板比对待完成；CP-2 双方联调待验收。开发测试只用临时数据库和 loopback 模拟器，模拟器通过不等于真机兼容性已经确认。
 
 驱动只消费 `driver.ReadPlan`，不依赖 Profile 或具体型号。调用者先编译 Profile，再通过对应包的 `New(Config, plan)` 创建实例；构造函数不联网，`Probe` / `Poll` 才建立连接。业务层只消费归一化结果，不能把 `RawData` 或协议诊断用于规则判断。
 
@@ -28,13 +28,13 @@ M2 提供只读 SNMP v1/v2c、Modbus TCP、AYI9 JSON 驱动、发送护栏、三
 
 遍历结束的 `endOfMibView` 可能复用最后一个 OID；驱动保留此前的有效值，不将末尾正常字段覆盖成不支持。
 
-SNMP 的 v1 `noSuchName` 按 `error-index` 剔除并重试，不支持的 OID 缓存到重连。bulk 回退记录 `Kind=fallback` 诊断；回退仍可能无有效观测，不伪装为正常数据。`Probe` 只从已读取的 UPS-MIB 身份字段提取信息，不额外枚举身份地址。
+SNMP 的 v1 `noSuchName` 按 `error-index` 剔除并重试，不支持的 OID 缓存到重连。v2c 的 `noSuchInstance` / `noSuchObject` 记为块级 `unsupported` 诊断：ET1K 真机对 `upsIdentAttachedDevices`、`upsTest`、`upsControl` 下共 12 个 OID 都这样返回，属于正常现象。bulk 回退记录 `Kind=fallback` 诊断；回退仍可能无有效观测，不伪装为正常数据。`Probe` 只从已读取的 UPS-MIB 身份字段提取信息，不额外枚举身份地址。
 
 Modbus 异常响应包含异常码，记录为块级 `unsupported`。响应头/功能码/长度不匹配按传输失败处理，关闭连接；成功块保留，未读块记录失败。驱动不做字节序、缩放和物理含义转换，这些仍由 Profile 与归一化负责。
 
 AYI9 每次 Poll 读取 QAD；建连后及到期时读取 RTD，默认周期 10 分钟，范围 1 秒～365 天。RTD 缓存返回独立副本，携带实际刷新时间；刷新失败不将旧数据冒充本轮成功观测。QAD 必须有 23 段，RTD 必须有 10 段，坏段数保留原文并标记失败。QAD/RTD 的非空 UID 不一致时两者均失效并断开连接。
 
-`*ayi9.DeviceError` 提供设备错误码；`errors.Is(err, ayi9.ErrPasswordWrong)` 可识别 103。兼容 `value` 为数字或数字字符串，以及 `code` 字段；`FAILED` 无具体码时为 Code=0。实际网卡的错误响应格式仍须 CP-1 核验，不能把模拟器格式当作真机证据。
+`*ayi9.DeviceError` 提供设备错误码；`errors.Is(err, ayi9.ErrPasswordWrong)` 可识别 103。兼容 `value` 为数字或数字字符串，以及 `code` 字段；`FAILED` 无具体码时为 Code=0。CP-1 只验证了无密码的正常读取，实际网卡的错误响应格式尚未核验，不能把模拟器格式当作真机证据。
 
 ## 本机模拟器
 
@@ -95,7 +95,7 @@ mise x -- go -C backend run ./cmd/upsprobe --profile et1k-snmp --confirm-readonl
 
 输出 JSON 包括 Profile、时间、质量统计及固定核心电气字段，便于与面板比对；无地址、UID、凭据或原始报文。无有效核心字段、密码错误、连接失败均非零退出。字段目录中的 `num` / `bool` 零值可能省略，应结合目录类型和 `quality` 解释，不能将缺失值自动当作 Good。
 
-真实 CP-1 还需要三协议各一次 Probe、面板比对及经授权的错误 pass 响应核验。自动化测试和本轮开发不执行这些真实设备操作，既有市电/电池 fixture 也不能替代新驱动的真机验收。
+CP-1 已于 2026-10-27 经项目方授权，在 ET1K 上用本工具完成市电、断电、恢复三个阶段的三协议 Probe，使用默认端口 SNMP UDP 161、Modbus TCP 502、AYI9 TCP 2390；地址和凭据仍只通过本地环境变量提供。结果和发现见[开发计划 M2 实施记录](../planning/backend-plan.md)与 [Profile 指南](profiles.md#回归证据与限制)。还剩两项：经单独授权的错误 pass 响应核验，以及与设备本体面板的独立比对（网卡 Web 页面数据与 AYI9 同源）。自动化测试不访问真实设备，冒烟只能按授权手动执行；既有市电/电池 fixture 也不能替代真机验收。
 
 ## 检查
 

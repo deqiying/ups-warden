@@ -131,4 +131,4 @@ M5 提供 Webhook、Telegram、模板、独立发送队列、重试、通知日�
 
 通知测试使用临时 SQLite、内存 `httptest` handler、loopback 假服务器和 `synctest`。覆盖请求内容/签名、两类渠道、代理、重定向拒绝、2/4/8 秒重试、429、Token 脱敏、模板质量/转义/回退、队列边界/隔离、逐目标结果、配置审计回滚、取消落库、重启不重放、SSE 和迁移保留旧日志；具体执行证据见[开发计划 M5](../planning/backend-plan.md#m5-通知4-人日)。
 
-未连接真实 UPS 或真实 Webhook/Telegram。CP-1 真机、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成；真实通知投递需另行提供测试目标并明确授权。
+未连接真实 UPS 或真实 Webhook/Telegram。CP-1 剩余项、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成；真实通知投递需另行提供测试目标并明确授权。

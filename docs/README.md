@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-后端 **M0～M8 已实现并通过本机验证**；M6 提供规则、通知联动、HTTP/脚本/SSH 动作、受控主机与执行记录，M7 提供关机计划编排、取消/市电恢复、停电周期幂等、重启恢复与 SSE 进度，M8 提供系统设置 API、AC 自动化套件与 32/100 台压测、优雅关闭与 panic 隔离、三平台交叉编译与 Docker/systemd 部署示例，验证证据见[开发计划](planning/backend-plan.md)。M2 真机检查点 CP-1 待验收；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排评审未完成；CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证。前端仍为脚手架、无业务页面。自动联动需要显式配置规则与动作，默认 dry-run；本机验证不代替真实设备、渠道或主机验收。
+后端 **M0～M8 已实现并通过本机验证**；M6 提供规则、通知联动、HTTP/脚本/SSH 动作、受控主机与执行记录，M7 提供关机计划编排、取消/市电恢复、停电周期幂等、重启恢复与 SSE 进度，M8 提供系统设置 API、AC 自动化套件与 32/100 台压测、优雅关闭与 panic 隔离、三平台交叉编译与 Docker/systemd 部署示例，验证证据见[开发计划](planning/backend-plan.md)。M2 真机检查点 CP-1 的三协议只读冒烟已于 2026-10-27 通过，错误密码核验与独立面板比对待完成；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排评审未完成；CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证。前端仍为脚手架、无业务页面。自动联动需要显式配置规则与动作，默认 dry-run；本机验证不代替真实设备、渠道或主机验收。
 
 | 模块 | 已有实现 | 尚未实现 |
 |---|---|---|
@@ -22,7 +22,7 @@
 | 发布、Docker / systemd 部署、主密钥备份与权限 | [部署指南](guides/deployment.md) | M8 产物；Docker 与 Linux 实机未验证 |
 | 运行 AC 自动化套件、压测及查看实测结果 | [验收与压测](guides/acceptance.md) | M8 本机模拟器结果；不替代 CP-1/CP-4 真机验收 |
 | 理解字段映射、只读计划与离线回归 | [Profile 与归一化](guides/profiles.md) | 当前 M1 契约与 ET1K 采样限制；不是联网驱动 |
-| 本机测试三协议、理解发送护栏或运行只读冒烟 | [协议驱动与本机模拟器](guides/protocol-drivers.md) | M2 当前行为；真实设备 CP-1 尚未执行 |
+| 本机测试三协议、理解发送护栏或运行只读冒烟 | [协议驱动与本机模拟器](guides/protocol-drivers.md) | M2 当前行为；CP-1 只读冒烟已通过，错误密码核验待完成 |
 | 理解采集调度、状态去抖、重启恢复与历史查询 | [采集、状态与历史](guides/collection-state-history.md) | M3 内部契约与 M4 动态配置生命周期 |
 | 联调初始化、管理、监控查询与实时推送 | [监控 API 与 SSE 契约](reference/monitoring-api.md) | M4 / CP-2 后端契约交付，双方联调待验收 |
 | 配置通知渠道、测试消息、模板与失败查询 | [通知服务与 API 契约](reference/notifications-api.md) | M5 通知及 M6 规则上下文；真实外部渠道未验收 |
@@ -31,7 +31,7 @@
 | 修改保留期、设备默认阈值、时区语言或 HTTP 动作护栏 | [系统设置 API](reference/settings-api.md) | M8 本机验证 |
 | 了解功能目标、优先级、字段和验收要求 | [需求文档](planning/requirements.md) | v0.3 草案；已确认项与待确认项按正文区分 |
 | 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0～M8 代码已落地，真机与评审检查点未完成 |
-| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3/M5/M6/M7/M8 已完成本机验证；M2 待 CP-1；M4 实现/CP-2 联调待验收；M7 待 CP-3；M8 待 CP-4 |
+| 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3/M5/M6/M7/M8 已完成本机验证；M2 的 CP-1 只读冒烟通过、剩余项待完成；M4 实现/CP-2 联调待验收；M7 待 CP-3；M8 待 CP-4 |
 | 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
 | 评审设备状态页的视觉设计 | [设备状态页静态设计稿](design/device-status.html) | 独立 HTML 原型，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |

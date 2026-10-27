@@ -19,7 +19,7 @@ mise run backend:load         # 32 / 100 台压测，约 3 分钟
 
 | AC | 自动化用例 | 覆盖范围 |
 |---|---|---|
-| AC-01 ET1K 三协议与面板一致 | — | 需真机，CP-1/CP-4 人工验收；离线回归见 [Profile 指南](profiles.md) 的 ET1K fixture |
+| AC-01 ET1K 三协议与面板一致 | — | 需真机；CP-1 已确认三协议读数互相一致，与设备本体面板的独立比对留 CP-4；离线回归见 [Profile 指南](profiles.md) 的 ET1K fixture |
 | AC-02 RFC 1628 通用 Profile | `TestAcceptanceProtocolsAndReadOnly` | 经 API 接入 SNMP 模拟器，标准字段值正确，未实现字段为 `unsupported` |
 | AC-03 自定义 Profile 接入新寄存器表 | `TestAcceptanceProtocolsAndReadOnly` | 经 API 导入自定义 Modbus Profile（FC04 新寄存器表），不改代码采集成功 |
 | AC-04 5 s 闪断 | `TestAcceptanceOutageNotificationAndCommLoss`、`TestLoopbackPipelineFlashLostRestart` | 短于确认时长的停电不产生 `mains_lost`、不触发规则 |

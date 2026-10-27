@@ -101,7 +101,7 @@
 | 存储 | SQLite（**默认假设**） | 内嵌、零运维；推荐纯 Go 实现（如 `modernc.org/sqlite`），避免 cgo，方便交叉编译 |
 | 实时推送 | SSE（**默认假设**） | 服务端向浏览器单向推送快照和事件 |
 
-需求草案最初列出的依赖候选为 SNMP `gosnmp`、Modbus TCP 客户端库、SSH `golang.org/x/crypto/ssh`。后续[后端方案](../../.agents/notes/proposed/architecture/2026-10-11-backend-design.md)第 2.1、21.1 节记录了 SNMP / Modbus 改为自研最小只读子集的评审决定及理由；M2 已实现该只读子集与本机验证，真机 CP-1 待验收。原候选列表不是当前依赖清单。
+需求草案最初列出的依赖候选为 SNMP `gosnmp`、Modbus TCP 客户端库、SSH `golang.org/x/crypto/ssh`。后续[后端方案](../../.agents/notes/proposed/architecture/2026-10-11-backend-design.md)第 2.1、21.1 节记录了 SNMP / Modbus 改为自研最小只读子集的评审决定及理由；M2 已实现该只读子集与本机验证，真机 CP-1 三协议只读冒烟已于 2026-10-27 通过。原候选列表不是当前依赖清单。
 
 ### 3.2 逻辑架构
 

@@ -5,7 +5,7 @@
 > **依据**：[《需求文档》v0.3](../../../../docs/planning/requirements.md)、[《协议支持探测报告》](../../../../docs/reference/protocols/et1k-probe-report.md)
 > **范围**：后端（`backend/`，Go module `ups-warden`）首版（P0）的实现方案；P1 只说明在本设计中的落点，不展开实现细节
 > **配套**：[《后端开发计划》](../../../../docs/planning/backend-plan.md) · [文档导航](../../../../docs/README.md) · [当前开发指南](../../../../docs/guides/development.md)
-> **状态（同步至 2026-10-25）**：proposed（整套业务方案未完成验收；M0～M8 代码与本机验证已完成，CP-1 真机待验收，CP-2 契约已交付、双方联调待验收，CP-3 关机编排演示与评审待完成，CP-4 首版真机验收与 Docker 镜像运行未验证）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；检查点未完成，整篇不标为 implemented。
+> **状态（同步至 2026-10-27）**：proposed（整套业务方案未完成验收；M0～M8 代码与本机验证已完成，CP-1 三协议只读冒烟已通过、错误密码核验与独立面板比对待完成，CP-2 契约已交付、双方联调待验收，CP-3 关机编排演示与评审待完成，CP-4 首版真机验收与 Docker 镜像运行未验证）。D1~D10 的 2026-10-11 评审记录保留（第 21.1 节），实际范围见[开发计划实施记录](../../../../docs/planning/backend-plan.md)；检查点未完成，整篇不标为 implemented。
 
 ---
 

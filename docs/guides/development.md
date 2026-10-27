@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于已实现并通过本机验证的 M0～M8 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排，M8 提供系统设置 API、验收/压测任务与发布产物；M2 真机 CP-1、CP-2 双方联调待验收，CP-3 关机编排评审与 CP-4 首版真机验收未完成。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)、[系统设置](../reference/settings-api.md)；部署见[部署指南](deployment.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
+本文适用于已实现并通过本机验证的 M0～M8 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排，M8 提供系统设置 API、验收/压测任务与发布产物；M2 真机 CP-1 只读冒烟已通过（错误密码核验与独立面板比对待完成），CP-2 双方联调待验收，CP-3 关机编排评审与 CP-4 首版真机验收未完成。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)、[系统设置](../reference/settings-api.md)；部署见[部署指南](deployment.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
 
 ## 1. 工具链与工作目录
 
@@ -143,7 +143,7 @@ mise x -- go test ./...
 
 后端测试覆盖配置、日志与脱敏、主密钥、目录锁、SQLite、app 生命周期及包依赖边界；M1 覆盖 Profile、归一化与 60 组 ET1K 离线回归；M2 覆盖三协议与只读护栏；M3 覆盖采集/状态/事件/历史、重启与事务边界。时间逻辑使用 `testing/synctest` 或注入场景时钟。Linux 交叉编译不能替代 Linux 实机运行验证。
 
-M4 测试覆盖 auth/audit/API/webui 与 app 集成，包括初始化并发、会话与限速、CSRF/Origin、凭据不回显、配置审计/动态运行协调、Profile 引用、监控查询及 SSE/静态托管边界。后端全量检查、无缓存测试、重复回归、JSON fuzz、前端 check/test/build、内嵌构建和 Windows 临时数据库 + 三协议 loopback 冒烟已通过，详细证据见[开发计划 M4 实施记录](../planning/backend-plan.md)。CP-1 真机、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成。
+M4 测试覆盖 auth/audit/API/webui 与 app 集成，包括初始化并发、会话与限速、CSRF/Origin、凭据不回显、配置审计/动态运行协调、Profile 引用、监控查询及 SSE/静态托管边界。后端全量检查、无缓存测试、重复回归、JSON fuzz、前端 check/test/build、内嵌构建和 Windows 临时数据库 + 三协议 loopback 冒烟已通过，详细证据见[开发计划 M4 实施记录](../planning/backend-plan.md)。CP-1 剩余的错误密码核验与独立面板比对、CP-2 双方联调、Linux 实机、race 与容量验收仍未完成。
 
 M5 测试覆盖模板/转义/回退、Webhook 签名与 Telegram 多目标/代理/429、队列边界与精确重试时序、通知日志/失败 SSE、凭据保护、审计回滚及 app 重启/取消。测试只使用临时数据库、内存 HTTP handler 和 loopback 假服务器；未使用真实通知渠道。详见[通知契约](../reference/notifications-api.md)和[开发计划 M5 实施记录](../planning/backend-plan.md)。
 
