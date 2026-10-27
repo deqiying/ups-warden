@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>设计规范 · UPS Warden</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .doc { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 56px; max-width: 1180px; margin: 0 auto; padding: 48px 32px 140px; }
+  .doc-toc { position: sticky; top: 32px; align-self: start; display: grid; gap: 1px; }
+  .doc-toc .eyebrow { padding: 0 10px 6px; }
+  .doc-toc a { display: block; padding: 5px 10px; border-radius: 7px; color: var(--label-2); font-size: 0.875rem; transition: background-color var(--dur-quick) var(--ease-standard); }
+  .doc-toc a:hover { background: var(--hover); color: var(--label); text-decoration: none; }
+  .doc-toc a:active { background: var(--fill); }
+
+  .doc-hero { display: flex; gap: 20px; align-items: center; padding-bottom: 8px; }
+  .doc-hero .app-icon-lg { width: 64px; height: 64px; border-radius: 15px; flex: none; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #5fe07b 0%, #28b44f 55%, #12913a 100%); box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.35), 0 8px 24px rgba(36,160,70,.25); }
+  .doc-hero .app-icon-lg .i { width: 34px; height: 34px; stroke-width: 2; }
+  .doc-hero h1 { font: 700 2.5rem/1.08 var(--font-display); letter-spacing: -0.026em; }
+  .doc-hero p { margin-top: 6px; color: var(--label-2); font-size: 1.0625rem; }
+
+  .doc-sec { padding-top: 64px; scroll-margin-top: 16px; }
+  .doc-h { font: 700 1.75rem/1.18 var(--font-display); letter-spacing: -0.018em; }
+  .doc-lead { margin: 8px 0 22px; color: var(--label-2); max-width: 700px; font-size: 0.9375rem; }
+  .doc-h3 { font: 600 1.0625rem/1.3 var(--font-text); letter-spacing: -0.012em; margin: 28px 0 12px; }
+  .note { font-size: 0.8125rem; color: var(--label-2); line-height: 1.5; margin-top: 10px; max-width: 760px; }
+
+  .principles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .principle { padding: 18px 18px 16px; }
+  .principle .sev { margin-bottom: 12px; }
+  .principle h3 { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
+  .principle p { margin-top: 6px; font-size: 0.8125rem; color: var(--label-2); line-height: 1.5; }
+
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+  .sw { border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-card), var(--hairline-card); }
+  .sw .chip { height: 60px; background: var(--c); display: flex; align-items: flex-end; padding: 8px 10px; }
+  /* 色块上的标签演示「-ink 文字 + -tint 底」在卡片表面上的实际效果 */
+  .sw .chip span { font: 600 0.6875rem var(--font-text); padding: 3px 8px; border-radius: 6px; background: linear-gradient(var(--t), var(--t)), var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .sw .meta { padding: 10px 12px 12px; }
+  .sw .name { font-size: 0.8125rem; font-weight: 600; }
+  .sw .hex { font: 0.6875rem var(--font-mono); color: var(--label-2); margin-top: 2px; }
+  .sw .use { font-size: 0.75rem; color: var(--label-2); margin-top: 6px; line-height: 1.4; }
+  .neutrals .chip { height: 44px; box-shadow: inset 0 -0.5px 0 var(--separator); }
+
+  .sem-table td:first-child { width: 150px; }
+  .sem-table .pill { white-space: nowrap; }
+
+  .type-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 20px; align-items: baseline; padding: 14px 18px; }
+  .type-row + .type-row { box-shadow: inset 0 0.5px 0 var(--separator); }
+  .type-row .spec { font-size: 0.75rem; color: var(--label-2); line-height: 1.45; }
+  .type-row .spec b { display: block; font-size: 0.8125rem; color: var(--label); font-weight: 600; }
+  .stacks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .stack-card { padding: 16px 18px; }
+  .stack-card .big { font-size: 2rem; line-height: 1.1; margin: 6px 0 8px; }
+  .stack-card code { display: block; font-size: 0.6875rem; color: var(--label-2); line-height: 1.5; white-space: normal; }
+
+  .mat-stage { position: relative; height: 300px; border-radius: 20px; overflow: hidden; background: radial-gradient(420px 260px at 18% 30%, #ff9f0a, transparent 70%), radial-gradient(380px 260px at 70% 20%, #0a84ff, transparent 70%), radial-gradient(420px 300px at 60% 95%, #30d158, transparent 70%), radial-gradient(300px 200px at 95% 70%, #bf5af2, transparent 70%), var(--bg); }
+  .mat-stage .lines { position: absolute; inset: 24px; display: grid; gap: 14px; align-content: start; font: 700 1.5rem/1 var(--font-display); color: var(--label); opacity: 0.6; letter-spacing: -0.02em; }
+  .mat { position: absolute; display: grid; align-content: end; padding: 12px 14px; font-size: 0.8125rem; font-weight: 600; color: var(--label); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); }
+  .mat small { display: block; font: 500 0.6875rem var(--font-mono); color: var(--label-2); margin-top: 2px; }
+  .mat-side { left: 0; top: 0; bottom: 0; width: 28%; background: var(--material-sidebar); box-shadow: inset -0.5px 0 0 var(--separator-strong); }
+  .mat-bar { left: 28%; right: 0; top: 0; height: 64px; background: var(--material-bar); box-shadow: 0 0.5px 0 var(--separator-strong); }
+  .mat-chip { right: 24px; bottom: 24px; width: 200px; height: 64px; border-radius: 999px; background: var(--material-chip); box-shadow: var(--shadow-float); align-content: center; padding-left: 22px; }
+  .mat-thick { left: 36%; top: 92px; width: 30%; height: 150px; border-radius: 16px; background: var(--material-thick); box-shadow: var(--shadow-sheet); -webkit-backdrop-filter: blur(40px) saturate(180%); backdrop-filter: blur(40px) saturate(180%); }
+  .elev { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+  .elev div { height: 96px; border-radius: 14px; background: var(--surface); display: grid; place-items: center; font-size: 0.75rem; color: var(--label-2); text-align: center; line-height: 1.5; }
+  .elev code { color: var(--label); }
+
+  .radii { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .radii div { display: grid; justify-items: center; gap: 8px; font-size: 0.75rem; color: var(--label-2); }
+  .radii i { display: block; width: 72px; height: 72px; background: var(--accent-tint); box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .spaces { display: grid; gap: 8px; }
+  .spaces div { display: grid; grid-template-columns: 80px auto 1fr; gap: 12px; align-items: center; font-size: 0.75rem; color: var(--label-2); }
+  .spaces i { display: block; height: 12px; border-radius: 3px; background: var(--indigo); opacity: .8; }
+
+  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .specimen { padding: 18px; }
+  .specimen .lbl { font-size: 0.75rem; font-weight: 600; color: var(--label-2); margin-bottom: 12px; display: flex; justify-content: space-between; gap: 8px; }
+  .specimen .lbl code { font-weight: 500; color: var(--label-3); }
+  .specimen .demo { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .specimen .use { margin-top: 12px; font-size: 0.75rem; color: var(--label-2); line-height: 1.5; }
+  .specimen.wide { grid-column: 1 / -1; }
+
+  .quality { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .q { padding: 16px 18px; }
+  .q .metric-value { font-size: 1.75rem; }
+  .q .why { margin-top: 10px; font-size: 0.75rem; color: var(--label-2); line-height: 1.45; }
+  .q .tagline { display: flex; align-items: center; gap: 6px; font-size: 0.6875rem; font-weight: 600; color: var(--label-2); margin-bottom: 8px; text-transform: none; }
+  .q .tagline code { color: var(--label-3); font-weight: 500; }
+
+  .rules-list { display: grid; gap: 10px; counter-reset: r; }
+  .rules-list li { list-style: none; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 0.875rem; line-height: 1.5; }
+  .rules-list li::before { counter-increment: r; content: counter(r); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 0.6875rem var(--font-rounded); background: var(--fill); margin-top: 1px; }
+  .rules-list b { font-weight: 600; }
+  .rules-list span { color: var(--label-2); }
+  ul.rules-list { padding: 0; margin: 0; }
+
+  .safety { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .safety .card { padding: 18px; }
+  .safety h3 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 4px; }
+  .safety p { font-size: 0.8125rem; color: var(--label-2); line-height: 1.5; }
+  .safety .demo { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .words { display: grid; grid-template-columns: auto auto; gap: 6px 14px; margin-top: 12px; font-size: 0.8125rem; }
+  .words .no { color: var(--red-ink); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--red) 50%, transparent); }
+  .words .yes { color: var(--green-ink); font-weight: 600; }
+
+  .curves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .curve { padding: 16px 18px; }
+  .curve svg { width: 100%; height: 120px; display: block; margin: 4px 0 10px; overflow: visible; }
+  .curve .grid-l { stroke: var(--separator-strong); stroke-width: 0.6; fill: none; }
+  .curve .path { fill: none; stroke: var(--c); stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .curve .name { font-weight: 600; font-size: 0.875rem; }
+  .curve code { font-size: 0.6875rem; color: var(--label-2); }
+  .curve p { font-size: 0.75rem; color: var(--label-2); margin-top: 6px; line-height: 1.45; }
+  .motion-demo { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; padding: 18px; }
+  .track-demo { position: relative; flex: 1 1 280px; height: 44px; border-radius: 22px; background: var(--fill-3); box-shadow: inset 0 0 0 0.5px var(--separator); cursor: pointer; }
+  .track-demo .puck { position: absolute; top: 4px; left: 4px; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); box-shadow: 0 2px 8px rgba(0,113,227,.35); transition: transform var(--dur-sheet) var(--ease-out); }
+  .track-demo.is-end .puck { transform: translateX(calc(var(--w, 280px) - 44px)); }
+
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .icons div { display: grid; justify-items: center; gap: 8px; padding: 14px 6px 10px; border-radius: 12px; background: var(--surface); box-shadow: var(--hairline-card); font: 0.625rem var(--font-mono); color: var(--label-2); text-align: center; word-break: break-all; }
+  .icons .i { width: 24px; height: 24px; color: var(--label); }
+
+  .layout-fig { padding: 18px; }
+  .layout-fig svg { width: 100%; height: auto; display: block; }
+  .layout-fig text { font: 11px var(--font-text); fill: var(--label-2); }
+  .layout-fig .b { font-weight: 600; fill: var(--label); }
+
+  @media (max-width: 1100px) {
+    .principles, .stacks, .curves { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .quality, .elev { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    .doc { grid-template-columns: minmax(0, 1fr); padding: 28px 16px 120px; gap: 0; }
+    .doc-toc { display: none; }
+    .doc-hero h1 { font-size: 2rem; }
+    .principles, .stacks, .curves, .gallery, .safety, .quality, .elev { grid-template-columns: minmax(0, 1fr); }
+    .type-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .sem-table, .sem-table tbody { display: block; }
+    .sem-table thead { display: none; }
+    .sem-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; padding: 12px 16px; border-bottom: 0.5px solid var(--separator); }
+    .sem-table tr:last-child { border-bottom: 0; }
+    .sem-table td { padding: 0; border: 0; }
+    .sem-table td:first-child { width: auto; font-weight: 600; }
+    .sem-table td:nth-child(3) { grid-column: 1 / -1; }
+    .mat-stage { height: 340px; }
+    .mat-thick { left: 32%; width: 60%; }
+    .mat-chip { width: 160px; right: 14px; }
+  }
+</style>
+</head>
+<body data-page="foundations">
+<div class="doc">
+  <nav class="doc-toc" aria-label="规范目录">
+    <div class="eyebrow">设计规范</div>
+    <a href="#principles">原则</a>
+    <a href="#color">颜色</a>
+    <a href="#status">状态语义</a>
+    <a href="#type">字体</a>
+    <a href="#material">材质与层级</a>
+    <a href="#shape">形状、间距与布局</a>
+    <a href="#components">组件</a>
+    <a href="#quality">数据质量</a>
+    <a href="#safety">安全交互</a>
+    <a href="#motion">动效</a>
+    <a href="#icons">图标</a>
+    <a href="#a11y">无障碍</a>
+    <a href="index.html" style="margin-top:12px">← 全部效果图</a>
+  </nav>
+
+  <main>
+    <header class="doc-hero">
+      <span class="app-icon-lg"><svg class="i"><use href="#i-bolt"/></svg></span>
+      <div>
+        <h1>UPS Warden 设计规范</h1>
+        <p>以 Apple 生产环境的网页与 macOS 设计语言为基准，为 UPS 监控与关机编排定制。所有效果图共用这里的 token 与组件。</p>
+      </div>
+    </header>
+
+    <!-- ============ 原则 ============ -->
+    <section class="doc-sec" id="principles">
+      <h2 class="doc-h">原则</h2>
+      <p class="doc-lead">这是一个会真的关掉服务器的工具。每个设计决定先服务「安全、可预期」，再谈效率和美观。</p>
+      <div class="principles">
+        <div class="card principle"><span class="sev sev-ok"><svg class="i"><use href="#i-eye"/></svg></span><h3>状态一眼可读</h3><p>供电状态同时用颜色、图标和文字表达，不只依赖颜色。最紧急的信息永远排在最前面。</p></div>
+        <div class="card principle"><span class="sev sev-info"><svg class="i"><use href="#i-question"/></svg></span><h3>未知不是零</h3><p>无效、过期或未采集的读数显示「—」并说明原因；推算出的值标注「估算」。宁可空着，也不显示一个错误的数字。</p></div>
+        <div class="card principle"><span class="sev sev-warning"><svg class="i"><use href="#i-shield"/></svg></span><h3>危险操作有摩擦</h3><p>新规则默认 dry-run；真实执行要显式选择；手动执行计划需输入计划名称。确认对话框只留给不可逆的操作。</p></div>
+        <div class="card principle"><span class="sev sev-ok"><svg class="i"><use href="#i-check"/></svg></span><h3>如实反馈</h3><p>「已入队」不等于「已送达」，「已发送关机命令」不等于「已关机」。文案只陈述系统确认过的事实。</p></div>
+        <div class="card principle"><span class="sev sev-info"><svg class="i"><use href="#i-bolt"/></svg></span><h3>按下即响应</h3><p>按钮在按下时就给出反馈；动画从当前值出发，随时可以被打断和反向，不锁定输入。</p></div>
+        <div class="card principle"><span class="sev sev-critical"><svg class="i"><use href="#i-minus"/></svg></span><h3>克制</h3><p>每个视图最多一个蓝色主按钮；红色只用于严重告警和破坏性操作。颜色用得越少，出现时越有分量。</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 颜色 ============ -->
+    <section class="doc-sec" id="color">
+      <h2 class="doc-h">颜色</h2>
+      <p class="doc-lead">采用 Apple 系统色。每种颜色有三个变体：实色用于图标和指示，<code>-ink</code> 用于浅底上的文字（满足对比度），<code>-tint</code> 用作背景。色块随浅色/深色外观自动切换。</p>
+      <div class="swatches">
+        <div class="sw" style="--c:var(--green);--t:var(--green-tint);--ink:var(--green-ink)"><div class="chip"><span>市电正常</span></div><div class="meta"><div class="name">绿色 <code>--green</code></div><div class="hex">#34C759 / #30D158</div><div class="use">市电供电、成功、在线、已送达</div></div></div>
+        <div class="sw" style="--c:var(--orange);--t:var(--orange-tint);--ink:var(--orange-ink)"><div class="chip"><span>电池供电</span></div><div class="meta"><div class="name">橙色 <code>--orange</code></div><div class="hex">#FF9500 / #FF9F0A</div><div class="use">电池供电、关机倒计时、即将真实执行、估算值</div></div></div>
+        <div class="sw" style="--c:var(--yellow);--t:var(--yellow-tint);--ink:var(--yellow-ink)"><div class="chip"><span>待确认</span></div><div class="meta"><div class="name">黄色 <code>--yellow</code></div><div class="hex">#FFCC00 / #FFD60A</div><div class="use">停电确认中、旁路、需要留意但未生效</div></div></div>
+        <div class="sw" style="--c:var(--red);--t:var(--red-tint);--ink:var(--red-ink)"><div class="chip"><span>严重</span></div><div class="meta"><div class="name">红色 <code>--red</code></div><div class="hex">#FF3B30 / #FF453A</div><div class="use">严重告警、失败、删除、关闭本机</div></div></div>
+        <div class="sw" style="--c:var(--indigo);--t:var(--indigo-tint);--ink:var(--indigo-ink)"><div class="chip"><span>Dry-run</span></div><div class="meta"><div class="name">靛蓝 <code>--indigo</code></div><div class="hex">#5856D6 / #5E5CE6</div><div class="use">Dry-run 预演、模板变量。只表示「不会真的执行」</div></div></div>
+        <div class="sw" style="--c:var(--gray);--t:var(--gray-tint);--ink:var(--gray-ink)"><div class="chip"><span>失联</span></div><div class="meta"><div class="name">灰色 <code>--gray</code></div><div class="hex">#8E8E93</div><div class="use">通讯中断、过期读数、已停用</div></div></div>
+        <div class="sw" style="--c:var(--accent);--t:var(--accent-tint);--ink:var(--link)"><div class="chip"><span>主操作</span></div><div class="meta"><div class="name">强调蓝 <code>--accent</code></div><div class="hex">#0071E3 / #0A84FF</div><div class="use">主按钮、选中、链接、焦点环。从不表示状态</div></div></div>
+        <div class="sw" style="--c:var(--teal);--t:var(--fill);--ink:var(--label)"><div class="chip"><span>辅助</span></div><div class="meta"><div class="name">辅助色</div><div class="hex">teal · brown · purple</div><div class="use">只用于导航和类型图标的底色，不承载状态</div></div></div>
+      </div>
+
+      <h3 class="doc-h3">中性色</h3>
+      <div class="swatches neutrals">
+        <div class="sw" style="--c:var(--bg)"><div class="chip"></div><div class="meta"><div class="name"><code>--bg</code></div><div class="hex">#F5F5F7 / #000000</div><div class="use">页面底色</div></div></div>
+        <div class="sw" style="--c:var(--surface)"><div class="chip"></div><div class="meta"><div class="name"><code>--surface</code></div><div class="hex">#FFFFFF / #1C1C1E</div><div class="use">卡片、分组列表</div></div></div>
+        <div class="sw" style="--c:var(--label)"><div class="chip"></div><div class="meta"><div class="name"><code>--label</code></div><div class="hex">#1D1D1F / #F5F5F7</div><div class="use">正文、数值</div></div></div>
+        <div class="sw" style="--c:var(--label-2)"><div class="chip"></div><div class="meta"><div class="name"><code>--label-2</code></div><div class="hex">#6E6E73 / #A1A1A6</div><div class="use">说明文字、标签</div></div></div>
+        <div class="sw" style="--c:var(--label-3)"><div class="chip"></div><div class="meta"><div class="name"><code>--label-3</code></div><div class="hex">#86868B</div><div class="use">占位、「—」、过期值</div></div></div>
+        <div class="sw" style="--c:var(--fill)"><div class="chip"></div><div class="meta"><div class="name"><code>--fill</code></div><div class="hex">rgba(120,120,128,.12)</div><div class="use">输入框、灰色按钮、轨道</div></div></div>
+      </div>
+    </section>
+
+    <!-- ============ 状态语义 ============ -->
+    <section class="doc-sec" id="status">
+      <h2 class="doc-h">状态语义</h2>
+      <p class="doc-lead">同一种状态在所有页面使用同一组颜色、图标和措辞。设备卡片、列表、详情、告警和通知都遵循这张表。</p>
+      <div class="card">
+        <table class="table sem-table">
+          <thead><tr><th>状态</th><th>外观</th><th>含义与依据</th></tr></thead>
+          <tbody>
+            <tr><td>市电供电</td><td><span class="pill pill-green"><span class="dot"></span>市电</span></td><td class="t-callout muted">已确认由市电供电。</td></tr>
+            <tr><td>停电确认中</td><td><span class="pill pill-yellow"><svg class="i"><use href="#i-hourglass"/></svg>确认中 6 / 10 秒</span></td><td class="t-callout muted">首次观测到电池供电，未满停电确认时长；此时不触发任何规则。</td></tr>
+            <tr><td>电池供电</td><td><span class="pill pill-orange"><svg class="i"><use href="#i-battery"/></svg>电池供电 10:13</span></td><td class="t-callout muted">停电已确认，计时从首次电池观测开始，随时间更新。</td></tr>
+            <tr><td>旁路</td><td><span class="pill pill-yellow"><svg class="i"><use href="#i-alert"/></svg>旁路</span></td><td class="t-callout muted">UPS 不再提供保护。属于警告，不是停电。</td></tr>
+            <tr><td>通讯中断</td><td><span class="pill"><svg class="i"><use href="#i-antenna"/></svg>失联 3 分钟</span></td><td class="t-callout muted">连续采集失败达到阈值。读数置灰并标注最后成功时间；供电状态按失联策略处理。</td></tr>
+            <tr><td>严重</td><td><span class="pill pill-red"><svg class="i"><use href="#i-alert"/></svg>电池耗尽</span></td><td class="t-callout muted">电池耗尽、UPS 故障、UPS 正在关机，以及失败的关机步骤。</td></tr>
+            <tr><td>Dry-run</td><td><span class="pill pill-indigo"><svg class="i"><use href="#i-flask"/></svg>Dry-run</span></td><td class="t-callout muted">只记录将要执行的内容，不连接主机、不发送请求。</td></tr>
+            <tr><td>已停用</td><td><span class="pill" style="opacity:.6">已停用</span></td><td class="t-callout muted">不采集、不评估。整行降低不透明度，但仍可编辑。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">告警严重度沿用后端的 info / warning / critical：<span class="sev sev-info" style="width:20px;height:20px;vertical-align:-5px"><svg class="i" style="width:11px;height:11px"><use href="#i-info"/></svg></span> 信息、<span class="sev sev-warning" style="width:20px;height:20px;vertical-align:-5px"><svg class="i" style="width:11px;height:11px"><use href="#i-alert"/></svg></span> 警告、<span class="sev sev-critical" style="width:20px;height:20px;vertical-align:-5px"><svg class="i" style="width:11px;height:11px"><use href="#i-alert"/></svg></span> 严重。告警没有「确认」操作，条件解除后自动结束。</p>
+    </section>
+
+    <!-- ============ 字体 ============ -->
+    <section class="doc-sec" id="type">
+      <h2 class="doc-h">字体</h2>
+      <p class="doc-lead">使用系统字体：Apple 设备上为 SF Pro 与苹方，其他平台回退到各自的系统字体，不加载任何网络字体。字距随字号变化：标题收紧，小字略放宽。</p>
+      <div class="stacks">
+        <div class="card stack-card"><div class="eyebrow">文本与标题</div><div class="big" style="font-family:var(--font-text)">市电 Aa 89</div><code>-apple-system, "SF Pro", "PingFang SC", "Segoe UI", "Microsoft YaHei"</code></div>
+        <div class="card stack-card"><div class="eyebrow">指标数字</div><div class="big" style="font:600 2rem/1.1 var(--font-rounded);font-variant-numeric:tabular-nums">89% 10:13</div><code>ui-rounded, "SF Pro Rounded"；等宽数字，跳动时不抖</code></div>
+        <div class="card stack-card"><div class="eyebrow">标识与代码</div><div class="big" style="font-family:var(--font-mono);font-size:1.5rem">ups-a.lan</div><code>ui-monospace, "SF Mono", Menlo, Consolas；主机名、指纹、字段键</code></div>
+      </div>
+      <div class="card mt-4">
+        <div class="type-row"><div class="spec"><b>Large Title</b>34 / 700 · 行高 1.12 · −0.022em</div><div class="t-large">关机计划</div></div>
+        <div class="type-row"><div class="spec"><b>Title 1</b>28 / 700 · 1.18 · −0.018em</div><div class="t-title1">机房 UPS-A</div></div>
+        <div class="type-row"><div class="spec"><b>Title 2</b>22 / 700 · 1.24 · −0.014em</div><div class="t-title2">市电中断</div></div>
+        <div class="type-row"><div class="spec"><b>Title 3</b>19 / 600 · 1.28 · −0.01em</div><div class="t-title3">阶段 2 · NAS 与业务</div></div>
+        <div class="type-row"><div class="spec"><b>Headline</b>17 / 600 · 1.3</div><div class="t-headline">测试消息已加入队列</div></div>
+        <div class="type-row"><div class="spec"><b>Body</b>15 / 400 · 1.47 · −0.008em</div><div class="t-body">倒计时结束后开始阶段 1，市电恢复确认后自动取消。</div></div>
+        <div class="type-row"><div class="spec"><b>Subhead</b>13 / 400 · 1.38</div><div class="t-subhead">按顺序分别发送，最多 32 个</div></div>
+        <div class="type-row"><div class="spec"><b>Footnote</b>12 / 400 · 1.34 · 0</div><div class="t-footnote muted">14:17:40 起 · 失联策略「保持」</div></div>
+        <div class="type-row"><div class="spec"><b>Caption</b>11 / 400 · 1.27 · +0.012em</div><div class="t-caption muted">放电速率 1.1 %/min</div></div>
+        <div class="type-row"><div class="spec"><b>Metric</b>36 / 600 Rounded · 1.0 · −0.024em</div><div class="t-metric">89<small>%</small></div></div>
+      </div>
+      <p class="note">字号用 rem 定义，跟随浏览器文字大小设置。层级靠字重、字号与行高的组合建立，不靠颜色。单位与数值之间用较小的常规字重（「89<small>%</small>」），让数字本身最醒目。</p>
+    </section>
+
+    <!-- ============ 材质 ============ -->
+    <section class="doc-sec" id="material">
+      <h2 class="doc-h">材质与层级</h2>
+      <p class="doc-lead">半透明材质是浮在内容上方的功能层：内容从下方滚过，结构仍然清晰。结构区域用更重的材质，交互浮层更轻；不要把半透明层叠在另一层半透明层上。</p>
+      <div class="mat-stage" aria-hidden="true">
+        <div class="lines"><span>机房 UPS-A　电池供电　89%</span><span>倒计时 00:47　阶段 1 / 3</span><span>NAS-01 等待离线　01:12</span><span>值班群　已送达</span><span>运维平台　HTTP 502</span></div>
+        <div class="mat mat-side">侧栏<small>--material-sidebar</small></div>
+        <div class="mat mat-bar">工具栏<small>--material-bar</small></div>
+        <div class="mat mat-thick">表单浮层<small>--material-thick · blur 40</small></div>
+        <div class="mat mat-chip">浮动控件<small>--material-chip</small></div>
+      </div>
+      <h3 class="doc-h3">层级与阴影</h3>
+      <div class="elev">
+        <div style="box-shadow:var(--hairline-card)">平铺<br><code>--hairline-card</code></div>
+        <div style="box-shadow:var(--shadow-card),var(--hairline-card)">卡片<br><code>--shadow-card</code></div>
+        <div style="box-shadow:var(--shadow-float)">浮层、弹出菜单<br><code>--shadow-float</code></div>
+        <div style="box-shadow:var(--shadow-sheet)">表单、对话框<br><code>--shadow-sheet</code></div>
+      </div>
+      <p class="note">模态任务（确认对话框、编辑表单）配合遮罩 <code>--scrim</code> 压暗背景；非阻塞的提示（toast）不加遮罩，不打断当前操作。工具栏只有在内容滚到其下方时才出现边缘效果，而不是常驻分隔线。深色外观下阴影几乎不可见，改用 0.5px 亮边勾勒层级。</p>
+    </section>
+
+    <!-- ============ 形状、间距与布局 ============ -->
+    <section class="doc-sec" id="shape">
+      <h2 class="doc-h">形状、间距与布局</h2>
+      <p class="doc-lead">圆角随容器尺寸增大：小控件 6–8px，卡片 18px，表单浮层 22px，按钮与状态标签为胶囊形。间距以 4px 为基数。</p>
+      <div class="gallery">
+        <div class="card specimen"><div class="lbl">圆角</div>
+          <div class="radii">
+            <div><i style="border-radius:var(--r-xs);width:40px;height:40px"></i>6 · xs</div>
+            <div><i style="border-radius:var(--r-sm);width:48px;height:48px"></i>8 · sm</div>
+            <div><i style="border-radius:var(--r-md);width:56px;height:56px"></i>12 · md</div>
+            <div><i style="border-radius:var(--r-lg)"></i>18 · lg</div>
+            <div><i style="border-radius:var(--r-pill);width:88px;height:36px"></i>胶囊</div>
+          </div>
+        </div>
+        <div class="card specimen"><div class="lbl">间距</div>
+          <div class="spaces">
+            <div><code>--sp-1</code><i style="width:4px"></i>4px · 图标与文字</div>
+            <div><code>--sp-2</code><i style="width:8px"></i>8px · 控件之间</div>
+            <div><code>--sp-3</code><i style="width:12px"></i>12px · 行内元素</div>
+            <div><code>--sp-4</code><i style="width:16px"></i>16px · 行内边距</div>
+            <div><code>--sp-6</code><i style="width:24px"></i>24px · 卡片之间</div>
+            <div><code>--sp-8</code><i style="width:32px"></i>32px · 页面区块</div>
+          </div>
+        </div>
+        <div class="card specimen wide layout-fig"><div class="lbl">页面结构 <code>≥ 861px 侧栏 · ≤ 860px 底部标签栏</code></div>
+          <svg viewBox="0 0 760 250" role="img" aria-label="桌面端与窄屏的页面结构示意">
+            <rect x="0.5" y="0.5" width="500" height="249" rx="12" fill="var(--bg)" stroke="var(--separator-strong)"/>
+            <path d="M12.5 0.5h108v249h-108a12 12 0 0 1-12-12v-225a12 12 0 0 1 12-12z" fill="var(--material-sidebar)" stroke="var(--separator-strong)"/>
+            <text x="16" y="24" class="b">侧栏 248</text><text x="16" y="40">导航分组 · 告警计数</text><text x="16" y="232">连接状态 · 账户</text>
+            <rect x="120.5" y="0.5" width="380" height="34" fill="var(--material-bar)" stroke="var(--separator)"/>
+            <text x="134" y="22" class="b">工具栏 52 · 半透明</text><text x="378" y="22">主操作</text>
+            <rect x="420" y="10" width="68" height="16" rx="8" fill="var(--accent)"/>
+            <text x="134" y="62" class="b" style="font-size:16px">大标题</text><text x="134" y="78">页面说明</text>
+            <rect x="134" y="92" width="110" height="140" rx="8" fill="var(--surface)" stroke="var(--separator)"/>
+            <text x="144" y="112" class="b">列表 320 / 240</text><text x="144" y="128">主从分栏</text>
+            <rect x="254" y="92" width="234" height="140" rx="8" fill="var(--surface)" stroke="var(--separator)"/>
+            <text x="266" y="112" class="b">详情</text><text x="266" y="128">内容最宽 1240</text>
+            <rect x="560.5" y="0.5" width="130" height="249" rx="18" fill="var(--bg)" stroke="var(--separator-strong)"/>
+            <text x="574" y="30" class="b" style="font-size:14px">大标题</text>
+            <rect x="574" y="44" width="104" height="60" rx="8" fill="var(--surface)" stroke="var(--separator)"/><text x="582" y="64">单列卡片</text>
+            <rect x="574" y="112" width="104" height="60" rx="8" fill="var(--surface)" stroke="var(--separator)"/><text x="582" y="132">表格重排为</text><text x="582" y="146">两行列表</text>
+            <path d="M561 210h129v27a12 12 0 0 1-12 12h-105a12 12 0 0 1-12-12z" fill="var(--material-bar)" stroke="var(--separator)"/>
+            <text x="574" y="232" class="b">标签栏 · 5 项</text>
+            <text x="704" y="126">≤ 860px</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 组件 ============ -->
+    <section class="doc-sec" id="components">
+      <h2 class="doc-h">组件</h2>
+      <p class="doc-lead">组件的形态与 macOS 一致，按下时立即缩放到 97%。下面都是真实可点的样式，可在浅色与深色之间切换查看。</p>
+      <div class="gallery">
+        <div class="card specimen"><div class="lbl">按钮 <code>.btn</code></div>
+          <div class="demo">
+            <button class="btn btn-primary" type="button">保存</button>
+            <button class="btn btn-tinted" type="button">重新测试</button>
+            <button class="btn btn-gray" type="button">取消</button>
+            <button class="btn btn-plain" type="button">恢复默认</button>
+          </div>
+          <div class="demo mt-3">
+            <button class="btn btn-danger" type="button">关闭护栏</button>
+            <button class="btn btn-danger-tinted btn-sm" type="button"><svg class="i"><use href="#i-trash"/></svg>删除渠道</button>
+            <button class="btn btn-primary" type="button" disabled>保存</button>
+            <button class="btn btn-gray btn-icon btn-sm" type="button" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+          </div>
+          <div class="use">主按钮每个视图最多一个。破坏性操作用红色；表单未修改时主按钮禁用。</div>
+        </div>
+        <div class="card specimen"><div class="lbl">分段控件与开关 <code>.seg · .switch</code></div>
+          <div class="demo">
+            <div class="seg"><button type="button" aria-pressed="true">渠道</button><button type="button">模板</button><button type="button">发送记录</button></div>
+          </div>
+          <div class="demo mt-3">
+            <button class="switch" role="switch" aria-checked="true" aria-label="启用"></button><span class="t-subhead">启用</span>
+            <button class="switch is-indigo" role="switch" aria-checked="true" aria-label="Dry-run"></button><span class="t-subhead">Dry-run</span>
+            <button class="switch switch-sm" role="switch" aria-checked="false" aria-label="小号开关"></button>
+          </div>
+          <div class="use">分段控件的滑块从当前位置滑向目标。Dry-run 开关用靛蓝色，与「启用」的绿色区分。</div>
+        </div>
+        <div class="card specimen"><div class="lbl">输入 <code>.input · .select · .stepper · .token</code></div>
+          <div class="demo">
+            <input class="input" value="机房关机" aria-label="名称" style="width:160px">
+            <span class="select" style="min-width:150px">Asia/Shanghai<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+            <div class="stepper"><span class="val">60</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div>
+          </div>
+          <div class="demo mt-3">
+            <span class="token mono">-100198765432<span class="x"><svg class="i"><use href="#i-x"/></svg></span></span>
+            <span class="token token-add">添加</span>
+            <input class="input is-invalid" value="{{ device.location }}" aria-label="模板" style="width:180px">
+          </div>
+          <div class="use">数值用步进器并标注单位与范围。错误在输入时就地提示，不等到提交。</div>
+        </div>
+        <div class="card specimen"><div class="lbl">标签与严重度 <code>.pill · .badge · .sev</code></div>
+          <div class="demo">
+            <span class="pill pill-green"><span class="dot"></span>市电</span>
+            <span class="pill pill-orange"><svg class="i"><use href="#i-battery"/></svg>电池供电</span>
+            <span class="pill pill-red pill-sm">失败 · HTTP 502</span>
+            <span class="pill pill-solid-red pill-sm">严重</span>
+          </div>
+          <div class="demo mt-3">
+            <span class="badge badge-orange">估算</span><span class="badge badge-indigo">Dry-run</span><span class="badge badge-yellow">默认模板</span><span class="badge badge-blue">你</span><span class="badge">已停用</span>
+            <span class="sev sev-critical"><svg class="i"><use href="#i-alert"/></svg></span><span class="sev sev-warning"><svg class="i"><use href="#i-alert"/></svg></span><span class="sev sev-info"><svg class="i"><use href="#i-info"/></svg></span><span class="sev sev-ok"><svg class="i"><use href="#i-check"/></svg></span>
+          </div>
+          <div class="use">胶囊（pill）表示对象的当前状态；小标记（badge）补充属性。实心红色只用于正在发生的严重告警。</div>
+        </div>
+        <div class="card specimen wide"><div class="lbl">横幅 <code>.banner</code></div>
+          <div class="grid cols-2" style="gap:10px">
+            <div class="banner banner-neutral"><svg class="i banner-icon"><use href="#i-info"/></svg><div><div class="banner-title" style="font-size:.875rem">只影响新设备</div><div class="banner-text">现有设备各自保存了完整配置。</div></div></div>
+            <div class="banner banner-indigo"><svg class="i banner-icon"><use href="#i-flask"/></svg><div><div class="banner-title" style="font-size:.875rem">Dry-run</div><div class="banner-text">命中时只记录将要执行的动作，不会真的执行。</div></div></div>
+            <div class="banner banner-warning"><svg class="i banner-icon"><use href="#i-antenna"/></svg><div><div class="banner-title" style="font-size:.875rem">通讯中断</div><div class="banner-text">最后成功采集于 14:17:31，下方为旧值。</div></div></div>
+            <div class="banner banner-critical"><svg class="i banner-icon"><use href="#i-x-circle"/></svg><div><div class="banner-title" style="font-size:.875rem">保存会被拒绝</div><div class="banner-text">第 5 行：占位符内不能有空白。</div></div></div>
+          </div>
+          <div class="use">横幅放在它所解释的内容上方，说明原因和后果。不要用横幅承载可以在控件旁就地说明的信息。</div>
+        </div>
+        <div class="card specimen"><div class="lbl">分组列表 <code>.list · .row</code></div>
+          <div class="list has-icons" style="box-shadow:inset 0 0 0 .5px var(--separator)">
+            <div class="row is-link"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-power"/></svg></span><div class="row-main"><div class="row-title">机房关机</div><div class="row-sub">3 个阶段 · 6 个步骤</div></div><svg class="i row-chevron"><use href="#i-chev-right"/></svg></div>
+            <div class="row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-clock"/></svg></span><div class="row-main"><div class="row-title">倒计时</div></div><span class="row-value">60 秒</span></div>
+          </div>
+          <div class="use">macOS 系统设置式的分组列表：标签在左，值或控件在右；分隔线从文字处开始。</div>
+        </div>
+        <div class="card specimen"><div class="lbl">指标 <code>.metric · .meter · .ring</code></div>
+          <div class="demo" style="gap:22px;align-items:center">
+            <div class="ring-wrap" style="width:64px;height:64px"><svg class="ring" viewBox="0 0 64 64" width="64" height="64"><circle class="track" cx="32" cy="32" r="28" stroke-width="5"/><circle class="bar" cx="32" cy="32" r="28" stroke-width="5" pathLength="100" stroke-dasharray="78 100" style="stroke:var(--orange)"/></svg><div class="ring-center"><span style="font:600 .9375rem var(--font-rounded)">47</span></div></div>
+            <div class="metric"><span class="metric-label">电量</span><span class="metric-value">89<small>%</small></span></div>
+            <div class="metric" style="flex:1;min-width:120px"><span class="metric-label">负载 L1 · 92%</span><span class="meter"><span style="width:92%;--c:var(--orange)"></span></span></div>
+          </div>
+          <div class="use">圆环只用于有明确终点的倒计时；电量和负载用数值加细条。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 数据质量 ============ -->
+    <section class="doc-sec" id="quality">
+      <h2 class="doc-h">数据质量</h2>
+      <p class="doc-lead">后端的每个字段都带质量标记。界面必须如实呈现质量，而不是只显示数值——尤其在决定是否关机的时候。</p>
+      <div class="quality">
+        <div class="card q"><div class="tagline"><span class="sev sev-ok" style="width:16px;height:16px"><svg class="i" style="width:9px;height:9px"><use href="#i-check"/></svg></span>正常 <code>good</code></div><div class="metric-value">27<small>%</small></div><div class="why">按原样显示。</div></div>
+        <div class="card q"><div class="tagline"><span class="sev sev-warning" style="width:16px;height:16px"><svg class="i" style="width:9px;height:9px"><use href="#i-clock"/></svg></span>估算</div><div class="metric-value">约 81<small>分钟</small></div><div class="why"><span class="badge badge-orange">估算</span> 由最近 10 分钟的电量下降推算，加「约」并标注来源。</div></div>
+        <div class="card q"><div class="tagline"><span class="sev" style="width:16px;height:16px;background:var(--gray-tint);color:var(--gray-ink)"><svg class="i" style="width:9px;height:9px"><use href="#i-antenna"/></svg></span>过期 <code>stale</code></div><div class="metric-value is-stale">34<small>%</small></div><div class="why">通讯中断后保留旧值并置灰，注明「14:17:31 的读数」。不参与新的告警判断。</div></div>
+        <div class="card q"><div class="tagline"><span class="sev" style="width:16px;height:16px;background:var(--gray-tint);color:var(--gray-ink)"><svg class="i" style="width:9px;height:9px"><use href="#i-minus"/></svg></span>无效 / 未知</div><div class="metric-value na">—</div><div class="why">显示「—」和原因，例如「Profile 未映射」「仅电池供电时估算」。绝不显示为 0。</div></div>
+      </div>
+      <ul class="rules-list mt-6">
+        <li><div><b>不把未知当零。</b><span>剩余时间未知不是「0 分钟」，电压未采集不是「0 V」。图表中缺失的采样留空，不连线。</span></div></li>
+        <li><div><b>时间同时给相对和绝对值。</b><span>「3 分钟前（14:17:31）」。按设置中的时区显示，持续时长随时间刷新。</span></div></li>
+        <li><div><b>停电计时从首次电池观测算起。</b><span>确认期间显示「确认中 6 / 10 秒」，确认后显示已放电时长；短暂闪断不出现在告警中。</span></div></li>
+        <li><div><b>恢复市电不等于电池已充满。</b><span>市电恢复后电量仍按实际读数显示，不自动回到 100%。</span></div></li>
+      </ul>
+    </section>
+
+    <!-- ============ 安全交互 ============ -->
+    <section class="doc-sec" id="safety">
+      <h2 class="doc-h">安全交互</h2>
+      <p class="doc-lead">摩擦只加在会产生真实后果的地方。日常编辑保持轻快；关机、关闭保护和真实执行需要明确的意图。</p>
+      <div class="safety">
+        <div class="card"><h3>默认 dry-run</h3><p>新规则和从模板创建的规则默认启用 dry-run；手动执行动作或计划时，方式默认选中「Dry-run 预演」，请求中总是显式携带 dry_run。</p>
+          <div class="demo"><div class="seg"><button type="button" aria-pressed="true"><svg class="i" style="width:13px;height:13px"><use href="#i-flask"/></svg>Dry-run 预演</button><button type="button">真实执行</button></div></div></div>
+        <div class="card"><h3>关闭保护要确认，打开不用</h3><p>关闭 dry-run、关闭 HTTP 护栏前弹出说明后果的确认框；重新打开立即生效。确认框的破坏性按钮写明动作，例如「关闭护栏」，而不是「确定」。</p>
+          <div class="demo"><button class="btn btn-gray btn-sm" type="button">保持开启</button><button class="btn btn-danger btn-sm" type="button">关闭护栏</button></div></div>
+        <div class="card"><h3>输入名称才能执行</h3><p>手动运行关机计划时，必须输入完整的计划名称，按钮才可用。名称不预先填入。</p>
+          <div class="demo"><input class="input" placeholder="计划名称" aria-label="计划名称" style="width:160px"><button class="btn btn-danger btn-sm" type="button" disabled>立即执行</button></div></div>
+        <div class="card"><h3>说清为什么不能</h3><p>被规则或计划引用的对象不能删除。删除按钮保留可见，悬停或点按时说明被谁引用，而不是静默失败。</p>
+          <div class="demo"><span data-tip="被 1 个通知动作、1 个关机计划引用"><button class="btn btn-danger-tinted btn-sm" type="button"><svg class="i"><use href="#i-trash"/></svg>删除渠道</button></span></div></div>
+        <div class="card" style="grid-column:1/-1"><h3>措辞只陈述已确认的事实</h3>
+          <div class="words">
+            <span class="no">测试消息已发送</span><span class="yes">测试消息已加入队列</span>
+            <span class="no">NAS-01 已关机</span><span class="yes">已发送关机命令，等待 NAS-01 离线（01:12 / 05:00）</span>
+            <span class="no">已保存</span><span class="yes">已保存，但未能应用到运行中的服务（需要处理）</span>
+            <span class="no">剩余 0 分钟</span><span class="yes">剩余时间 —（仅电池供电时估算）</span>
+          </div></div>
+      </div>
+    </section>
+
+    <!-- ============ 动效 ============ -->
+    <section class="doc-sec" id="motion">
+      <h2 class="doc-h">动效</h2>
+      <p class="doc-lead">默认使用临界阻尼（无回弹）的运动：从当前位置出发，平稳到达，可以随时被新的输入打断。只有带惯性的手势（拖拽表单、甩动）在松手后才允许轻微回弹。</p>
+      <div class="curves">
+        <div class="card curve" style="--c:var(--accent)"><div class="name">默认 <code>--ease-out</code></div>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="grid-l" d="M0 0H100M0 50H100M0 100H100"/><path class="path" d="M0 100C22 0 36 0 100 0"/></svg>
+          <code>cubic-bezier(.22, 1, .36, 1) · 350ms</code><p>≈ 阻尼 1.0 / 响应 0.35s。位置变化、分段滑块、开关。</p></div>
+        <div class="card curve" style="--c:var(--indigo)"><div class="name">浮层 <code>--ease-sheet</code></div>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="grid-l" d="M0 0H100M0 50H100M0 100H100"/><path class="path" d="M0 100C32 28 0 0 100 0"/></svg>
+          <code>cubic-bezier(.32, .72, 0, 1) · 450ms</code><p>≈ 阻尼 0.85 / 响应 0.3s。表单、对话框从触发处升起，原路退出。</p></div>
+        <div class="card curve" style="--c:var(--gray)"><div class="name">颜色与透明度 <code>--ease-standard</code></div>
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="grid-l" d="M0 0H100M0 50H100M0 100H100"/><path class="path" d="M0 100C25 90 25 0 100 0"/></svg>
+          <code>cubic-bezier(.25, .1, .25, 1) · 200ms</code><p>悬停、背景色、浅色与深色外观切换。</p></div>
+      </div>
+      <div class="card motion-demo mt-4">
+        <div class="track-demo" id="track-demo" role="button" tabindex="0" aria-label="点按让圆点移动，可在运动中再次点按使其折返"><span class="puck"></span></div>
+        <div class="t-footnote muted" style="flex:1 1 220px">点按轨道让圆点移动，在运动途中再点一次：它会从当前位置立即折返，而不是先跑完再回来。</div>
+      </div>
+      <div class="card mt-4">
+        <table class="table">
+          <thead><tr><th>Token</th><th>时长</th><th>用途</th></tr></thead>
+          <tbody>
+            <tr><td><code>--dur-press</code></td><td class="tnum">100ms</td><td class="t-callout muted">按下反馈：缩放到 97%，在按下瞬间开始</td></tr>
+            <tr><td><code>--dur-quick</code></td><td class="tnum">200ms</td><td class="t-callout muted">悬停、选中背景、开关滑块</td></tr>
+            <tr><td><code>--dur-base</code></td><td class="tnum">350ms</td><td class="t-callout muted">分段滑块、圆环与进度、布局变化</td></tr>
+            <tr><td><code>--dur-sheet</code></td><td class="tnum">450ms</td><td class="t-callout muted">表单、对话框、toast 的进入与退出</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">前端实现时，可拖拽的表单和列表应使用支持速度承接的弹簧库（如 Motion 的 <code>type: "spring", bounce: 0, duration: 0.4</code>），松手后把手指速度交给弹簧，并按惯性投影选择停靠位置；CSS transition 只用于不可拖拽的状态变化。系统开启「减少动态效果」时，位移与缩放改为 200ms 淡入淡出，呼吸动画和旋转指示停止。</p>
+    </section>
+
+    <!-- ============ 图标 ============ -->
+    <section class="doc-sec" id="icons">
+      <h2 class="doc-h">图标</h2>
+      <p class="doc-lead">24px 网格、圆头圆角线条，风格参照 SF Symbols 但为本项目自绘（SF Symbols 的授权不允许在网页中使用）。图标总是与文字一起出现，或带有可读的标签。</p>
+      <div class="icons" id="icon-grid"></div>
+    </section>
+
+    <!-- ============ 无障碍 ============ -->
+    <section class="doc-sec" id="a11y">
+      <h2 class="doc-h">无障碍</h2>
+      <ul class="rules-list">
+        <li><div><b>颜色不是唯一信号。</b><span>状态胶囊同时带图标和文字；图表中的阈值线带标签。</span></div></li>
+        <li><div><b>对比度。</b><span>浅底上的彩色文字使用 <code>-ink</code> 变体；正文对比度不低于 4.5:1。</span></div></li>
+        <li><div><b>尊重系统偏好。</b><span>减少动态效果 → 淡入淡出；降低透明度 → 材质改为不透明；增强对比度 → 加深分隔线与描边。</span></div></li>
+        <li><div><b>键盘与焦点。</b><span>所有操作可用键盘完成，焦点环为 4px 强调色光晕；Esc 关闭表单和对话框，焦点回到触发它的控件。</span></div></li>
+        <li><div><b>触控尺寸。</b><span>窄屏下可点区域不小于 44 × 44px；列表行最小高度 44px。</span></div></li>
+        <li><div><b>实时更新要克制。</b><span>倒计时和计时器每秒刷新，但只通过 <code>role="status"</code> 播报状态变化，不朗读每一秒。</span></div></li>
+      </ul>
+    </section>
+  </main>
+</div>
+<script>
+  // 图标网格：在共享脚本注入图标精灵之后读取全部 symbol
+  addEventListener("load", () => {
+    const grid = document.getElementById("icon-grid");
+    const ids = [...document.querySelectorAll('symbol[id^="i-"]')].map((s) => s.id.slice(2));
+    grid.innerHTML = ids.map((id) => `<div><svg class="i"><use href="#i-${id}"/></svg>${id}</div>`).join("");
+  });
+  // 动效示例：CSS transition 被打断时从当前计算值继续，演示「可打断、可折返」
+  const track = document.getElementById("track-demo");
+  const sizeTrack = () => track.style.setProperty("--w", `${track.clientWidth}px`);
+  sizeTrack();
+  addEventListener("resize", sizeTrack);
+  const flip = () => track.classList.toggle("is-end");
+  track.addEventListener("pointerdown", flip);
+  track.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      flip();
+    }
+  });
+</script>
+</body>
+</html>

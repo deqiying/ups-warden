@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>总览 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  /* 停电主卡：仅在存在停电周期时出现，是整页最重要的信息 */
+  .outage {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) 300px;
+    gap: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--orange-tint), transparent 55%), var(--surface);
+  }
+  .outage > * { padding: 22px 24px; }
+  .outage > * + * { border-left: 0.5px solid var(--separator-strong); }
+  .oh-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: var(--orange); margin-bottom: 14px; }
+  .oh-icon .i { width: 24px; height: 24px; }
+  .oh-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; align-content: center; }
+  .oh-plan { display: flex; gap: 16px; align-items: center; background: var(--surface-2); }
+  .cd-ring .bar { stroke: var(--orange); }
+  .cd-num { font: 600 1.375rem/1 var(--font-rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+  .stat { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; }
+  .stat .row-icon { width: 30px; height: 30px; border-radius: 50%; }
+  .stat-num { font: 600 2rem/1 var(--font-rounded); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
+
+  /* 设备卡：电池环 + 4 个关键量；状态色只出现在胶囊、环与顶部柔光中 */
+  .dev-grid { transition: opacity var(--dur-base) var(--ease-standard), filter var(--dur-base); }
+  [data-state="offline"] .dev-grid { opacity: 0.55; filter: saturate(0.4); }
+  .dev {
+    display: flex; flex-direction: column; gap: 16px; padding: 18px 20px 14px;
+    color: inherit; text-decoration: none;
+    transition: transform var(--dur-press) ease-out, box-shadow var(--dur-base) var(--ease-out);
+  }
+  .dev:hover { text-decoration: none; box-shadow: var(--shadow-float); }
+  .dev:active { transform: scale(0.985); }
+  .dev.is-battery { background: linear-gradient(180deg, var(--orange-tint), transparent 46%), var(--surface); }
+  .dev.is-lost { background: linear-gradient(180deg, var(--gray-tint), transparent 46%), var(--surface); }
+  .dev.is-warn { background: linear-gradient(180deg, var(--yellow-tint), transparent 46%), var(--surface); }
+  .dev-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .dev-name { font: 600 1.0625rem/1.25 var(--font-display); letter-spacing: -0.012em; }
+  .dev-loc { font-size: 0.8125rem; color: var(--label-2); margin-top: 2px; }
+  .dev-mid { display: flex; align-items: center; gap: 18px; }
+  .ring-num { font: 600 1.25rem/1 var(--font-rounded); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ring-num small { font-size: 0.6875rem; font-weight: 600; margin-left: 1px; }
+  .ring-cap { font-size: 0.625rem; font-weight: 600; color: var(--label-3); margin-top: 3px; letter-spacing: 0.02em; }
+  .dev-stats { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; margin: 0; }
+  .dev-stats dt { font-size: 0.6875rem; font-weight: 500; color: var(--label-2); letter-spacing: 0.01em; }
+  .dev-stats dd { margin: 2px 0 0; font: 600 1rem/1.15 var(--font-rounded); letter-spacing: -0.012em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .dev-stats dd small { font: 500 0.75rem var(--font-text); color: var(--label-2); margin-left: 1px; }
+  .dev-foot { display: flex; justify-content: space-between; gap: 8px; padding-top: 11px; border-top: 0.5px solid var(--separator-strong); font-size: 0.75rem; color: var(--label-3); }
+  .pending-meter { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--yellow-ink); font-weight: 600; }
+  .pending-meter .meter { width: 64px; --c: var(--yellow); }
+
+  @media (max-width: 1180px) {
+    .outage { grid-template-columns: 1fr 1fr; }
+    .oh-plan { grid-column: 1 / -1; border-left: 0 !important; border-top: 0.5px solid var(--separator-strong); }
+  }
+  @media (max-width: 860px) {
+    .outage { grid-template-columns: 1fr; }
+    .outage > * + * { border-left: 0; border-top: 0.5px solid var(--separator-strong); }
+  }
+</style>
+</head>
+<body data-page="overview" data-states="outage:停电中,normal:全部正常,offline:实时断开">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">总览</span>
+      <div class="spacer"></div>
+      <button class="btn btn-icon" aria-label="搜索"><svg class="i"><use href="#i-search"/></svg></button>
+      <a class="btn btn-icon" href="devices.html?state=proto" aria-label="添加设备"><svg class="i"><use href="#i-plus"/></svg></a>
+    </header>
+
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">10月27日 星期二 · Asia/Shanghai</div>
+        <h1 class="page-title">总览</h1>
+      </div>
+      <div class="hstack hide-narrow">
+        <span class="t-footnote faint" data-when-not="offline">14:21:15 更新</span>
+        <span class="t-footnote ink-orange" data-when="offline">数据停在 14:20:58</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- 实时连接断开（FR-UI-01）：不把断流期间视为连续观测 -->
+      <div class="banner banner-warning" data-when="offline" style="margin-bottom:16px">
+        <svg class="i banner-icon"><use href="#i-wifi-off"/></svg>
+        <div>
+          <div class="banner-title">实时连接已断开</div>
+          <div class="banner-text">正在第 3 次重连，4 秒后重试。下方是 14:20:58 同步的数据；重连后将重新全量同步，断开期间的变化不视为连续观测。</div>
+        </div>
+        <div class="actions"><button class="btn btn-gray btn-sm">立即重连</button></div>
+      </div>
+
+      <!-- 停电主卡：设备停电周期 + 关机计划倒计时（来自 SSE sync.plan_runs） -->
+      <section class="card outage" data-when="outage offline" aria-label="停电中">
+        <div>
+          <div class="oh-icon"><svg class="i"><use href="#i-battery"/></svg></div>
+          <div class="eyebrow ink-orange">停电中 · 停电周期 #12</div>
+          <h2 class="t-title2">机房 UPS-A 正在使用电池供电</h2>
+          <p class="t-subhead muted mt-2">14:11:12 确认市电中断（去抖 10 秒）。已放电 <b class="tnum" data-elapsed="613">10:13</b>，计时在服务重启后延续。</p>
+        </div>
+        <div class="oh-metrics">
+          <div class="metric"><span class="metric-label">电池容量</span><span class="metric-value">89<small>%</small></span></div>
+          <div class="metric">
+            <span class="metric-label">预计剩余</span>
+            <span class="metric-value">约 81<small>分钟</small></span>
+            <span><span class="badge badge-orange">估算</span> <span class="t-caption faint">放电速率 1.1 %/min</span></span>
+          </div>
+          <div class="metric"><span class="metric-label">负载</span><span class="metric-value">27<small>%</small></span></div>
+          <div class="metric"><span class="metric-label">输出电压</span><span class="metric-value">220.1<small>V</small></span></div>
+        </div>
+        <div class="oh-plan" data-countdown="47" data-total="60">
+          <div class="ring-wrap" style="width:88px;height:88px">
+            <svg class="ring cd-ring" viewBox="0 0 88 88" width="88" height="88"><circle class="track" cx="44" cy="44" r="39" stroke-width="6"/><circle class="bar" cx="44" cy="44" r="39" stroke-width="6" pathLength="100" stroke-dasharray="78 100"/></svg>
+            <div class="ring-center"><span class="cd-num cd-text">00:47</span></div>
+          </div>
+          <div style="min-width:0">
+            <div class="t-subhead strong">关机计划「机房关机」</div>
+            <div class="t-footnote muted mt-2">倒计时结束后开始阶段 1 / 3。由规则「停电 10 分钟或低电量」触发；市电恢复确认后自动取消。</div>
+            <div class="hstack mt-3">
+              <a class="btn btn-gray btn-sm" href="shutdown-plans.html?state=countdown">取消运行…</a>
+              <a class="btn btn-plain btn-sm" href="shutdown-plans.html?state=countdown">查看进度</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 汇总 -->
+      <section class="section">
+        <div class="grid cols-4 keep-2" data-when="outage offline">
+          <div class="card stat"><div class="stat-top"><span class="row-icon" style="--c:var(--green)"><svg class="i"><use href="#i-plug"/></svg></span></div><div><div class="stat-num">3</div><div class="t-subhead muted">市电供电 · 1 台确认中</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-battery"/></svg></span></div><div><div class="stat-num">1</div><div class="t-subhead muted">电池供电 · 10 分钟</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon" style="--c:var(--yellow)"><svg class="i"><use href="#i-alert"/></svg></span></div><div><div class="stat-num">2</div><div class="t-subhead muted">需要关注 · 失联 1 · 旁路 1</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon" style="--c:var(--red)"><svg class="i"><use href="#i-bell"/></svg></span></div><div><div class="stat-num">4</div><div class="t-subhead muted">活动告警 · 1 严重</div></div></div>
+        </div>
+        <div class="grid cols-4 keep-2" data-when="normal">
+          <div class="card stat"><div class="stat-top"><span class="row-icon" style="--c:var(--green)"><svg class="i"><use href="#i-plug"/></svg></span></div><div><div class="stat-num">6</div><div class="t-subhead muted">市电供电</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon is-soft" style="--c:var(--orange)"><svg class="i"><use href="#i-battery"/></svg></span></div><div><div class="stat-num faint">0</div><div class="t-subhead muted">电池供电</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon is-soft" style="--c:var(--yellow-ink)"><svg class="i"><use href="#i-alert"/></svg></span></div><div><div class="stat-num faint">0</div><div class="t-subhead muted">需要关注</div></div></div>
+          <div class="card stat"><div class="stat-top"><span class="row-icon is-soft" style="--c:var(--red)"><svg class="i"><use href="#i-bell"/></svg></span></div><div><div class="stat-num faint">0</div><div class="t-subhead muted">活动告警</div></div></div>
+        </div>
+      </section>
+
+      <!-- 设备 -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">设备</h2>
+          <div class="hstack">
+            <div class="seg hide-narrow" data-when="outage offline"><button aria-pressed="true">全部 <span class="count">6</span></button><button>电池 <span class="count">1</span></button><button>需关注 <span class="count">2</span></button></div>
+            <span class="select is-plain btn-sm">按状态排序<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          </div>
+        </div>
+
+        <div class="grid cards dev-grid" data-when="outage offline">
+          <a class="card dev is-battery" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">机房 UPS-A</div><div class="dev-loc">1F 机房 · 机柜 A3</div></div><span class="pill pill-orange"><span class="dot"></span>电池供电</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="89 100" stroke="var(--orange)"/></svg>
+                <div class="ring-center"><div><div class="ring-num">89<small>%</small></div><div class="ring-cap">电池</div></div></div>
+              </div>
+              <dl class="dev-stats">
+                <div><dt>预计剩余</dt><dd>约 81<small>分</small> <span class="badge badge-orange">估算</span></dd></div>
+                <div><dt>已放电</dt><dd data-elapsed="613">10:13</dd></div>
+                <div><dt>负载</dt><dd>27<small>%</small></dd></div>
+                <div><dt>输入 / 输出</dt><dd>0 / 220<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>SNMP v2c · et1k-snmp</span><span>2 秒前</span></div>
+          </a>
+
+          <a class="card dev is-lost" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">监控室 UPS</div><div class="dev-loc">B1 安防监控室</div></div><span class="pill"><svg class="i"><use href="#i-wifi-off"/></svg>通讯中断</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--label-4)"/></svg>
+                <div class="ring-center"><div><div class="ring-num is-stale">100<small>%</small></div><div class="ring-cap">3 分钟前</div></div></div>
+              </div>
+              <dl class="dev-stats is-stale">
+                <div><dt>供电状态</dt><dd class="is-stale" style="font-size:.875rem">保持：市电</dd></div>
+                <div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div>
+                <div><dt>负载</dt><dd class="is-stale">34<small>%</small></dd></div>
+                <div><dt>输入 / 输出</dt><dd class="is-stale">229 / 220<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>AYI9 JSON · 连续 3 次超时</span><span class="ink-orange">最后成功 14:17:31</span></div>
+          </a>
+
+          <a class="card dev is-warn" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">实验室 UPS</div><div class="dev-loc">3F 实验室 · 测试台</div></div><span class="pill pill-yellow"><span class="dot"></span>旁路供电</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg>
+                <div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div>
+              </div>
+              <dl class="dev-stats">
+                <div><dt>负载 L1</dt><dd class="ink-orange">92<small>%</small> <span class="badge badge-orange">过载</span></dd></div>
+                <div><dt>温度</dt><dd>38<small>℃</small></dd></div>
+                <div><dt>剩余时间</dt><dd class="na" data-tip="旁路供电时电池不放电，不估算">—</dd></div>
+                <div><dt>输入 / 输出</dt><dd>230 / 229<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>SNMP v2c · rfc1628-generic</span><span>1 秒前</span></div>
+          </a>
+
+          <a class="card dev" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">网络间 UPS</div><div class="dev-loc">2F 弱电间</div></div><span class="pill pill-yellow"><span class="dot breathe"></span>疑似停电</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg>
+                <div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div>
+              </div>
+              <dl class="dev-stats">
+                <div style="grid-column:1/-1"><dt>停电确认中</dt><dd class="pending-meter"><span class="meter"><span style="width:60%"></span></span>6 / 10 秒</dd></div>
+                <div><dt>负载</dt><dd>19<small>%</small></dd></div>
+                <div><dt>输入 / 输出</dt><dd>12 / 220<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>Modbus TCP · et1k-modbus</span><span>刚刚</span></div>
+          </a>
+
+          <a class="card dev" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">机房 UPS-B</div><div class="dev-loc">1F 机房 · 机柜 B1</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg>
+                <div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div>
+              </div>
+              <dl class="dev-stats">
+                <div><dt>负载</dt><dd>41<small>%</small></dd></div>
+                <div><dt>温度</dt><dd>29<small>℃</small></dd></div>
+                <div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div>
+                <div><dt>输入 / 输出</dt><dd>231 / 220<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>AYI9 JSON · et1k-ayi9-json</span><span>2 秒前</span></div>
+          </a>
+
+          <a class="card dev" href="device-detail.html">
+            <div class="dev-top"><div><div class="dev-name">办公区 UPS</div><div class="dev-loc">2F 开放办公区</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div>
+            <div class="dev-mid">
+              <div class="ring-wrap" style="width:84px;height:84px">
+                <svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="97 100" stroke="var(--green)"/></svg>
+                <div class="ring-center"><div><div class="ring-num">97<small>%</small></div><div class="ring-cap">电池</div></div></div>
+              </div>
+              <dl class="dev-stats">
+                <div><dt>负载</dt><dd>18<small>%</small></dd></div>
+                <div><dt>温度</dt><dd>27<small>℃</small></dd></div>
+                <div><dt>剩余时间</dt><dd class="na" data-tip="Modbus Profile 不提供原生剩余时间；仅电池供电时估算">—</dd></div>
+                <div><dt>输入 / 输出</dt><dd>230.4 / 220.0<small>V</small></dd></div>
+              </dl>
+            </div>
+            <div class="dev-foot"><span>Modbus TCP · et1k-modbus</span><span>3 秒前</span></div>
+          </a>
+        </div>
+
+        <div class="grid cards dev-grid" data-when="normal">
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">机房 UPS-A</div><div class="dev-loc">1F 机房 · 机柜 A3</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>27<small>%</small></dd></div><div><dt>温度</dt><dd>31<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div><div><dt>输入 / 输出</dt><dd>230 / 220<small>V</small></dd></div></dl></div><div class="dev-foot"><span>SNMP v2c · et1k-snmp</span><span>2 秒前</span></div></a>
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">机房 UPS-B</div><div class="dev-loc">1F 机房 · 机柜 B1</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>41<small>%</small></dd></div><div><dt>温度</dt><dd>29<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div><div><dt>输入 / 输出</dt><dd>231 / 220<small>V</small></dd></div></dl></div><div class="dev-foot"><span>AYI9 JSON · et1k-ayi9-json</span><span>2 秒前</span></div></a>
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">办公区 UPS</div><div class="dev-loc">2F 开放办公区</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="97 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">97<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>18<small>%</small></dd></div><div><dt>温度</dt><dd>27<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="仅电池供电时估算">—</dd></div><div><dt>输入 / 输出</dt><dd>230.4 / 220.0<small>V</small></dd></div></dl></div><div class="dev-foot"><span>Modbus TCP · et1k-modbus</span><span>3 秒前</span></div></a>
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">网络间 UPS</div><div class="dev-loc">2F 弱电间</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>19<small>%</small></dd></div><div><dt>温度</dt><dd>30<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="仅电池供电时估算">—</dd></div><div><dt>输入 / 输出</dt><dd>229.8 / 220.0<small>V</small></dd></div></dl></div><div class="dev-foot"><span>Modbus TCP · et1k-modbus</span><span>刚刚</span></div></a>
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">监控室 UPS</div><div class="dev-loc">B1 安防监控室</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>34<small>%</small></dd></div><div><dt>温度</dt><dd>28<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div><div><dt>输入 / 输出</dt><dd>229 / 220<small>V</small></dd></div></dl></div><div class="dev-foot"><span>AYI9 JSON · et1k-ayi9-json</span><span>1 秒前</span></div></a>
+          <a class="card dev" href="device-detail.html"><div class="dev-top"><div><div class="dev-name">实验室 UPS</div><div class="dev-loc">3F 实验室 · 测试台</div></div><span class="pill pill-green"><span class="dot"></span>市电</span></div><div class="dev-mid"><div class="ring-wrap" style="width:84px;height:84px"><svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle class="track" cx="42" cy="42" r="37" stroke-width="7"/><circle class="bar" cx="42" cy="42" r="37" stroke-width="7" pathLength="100" stroke-dasharray="100 100" stroke="var(--green)"/></svg><div class="ring-center"><div><div class="ring-num">100<small>%</small></div><div class="ring-cap">电池</div></div></div></div><dl class="dev-stats"><div><dt>负载</dt><dd>48<small>%</small></dd></div><div><dt>温度</dt><dd>33<small>℃</small></dd></div><div><dt>剩余时间</dt><dd class="na" data-tip="市电供电时不估算剩余时间">—</dd></div><div><dt>输入 / 输出</dt><dd>230 / 220<small>V</small></dd></div></dl></div><div class="dev-foot"><span>SNMP v2c · rfc1628-generic</span><span>1 秒前</span></div></a>
+        </div>
+      </section>
+
+      <!-- 活动告警 -->
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">活动告警</h2>
+          <a class="section-link" href="alerts.html">全部告警与事件<svg class="i"><use href="#i-chev-right"/></svg></a>
+        </div>
+        <div class="list has-icons" data-when="outage offline">
+          <a class="row is-link" href="alerts.html" style="color:inherit;text-decoration:none">
+            <span class="sev sev-critical"><svg class="i"><use href="#i-plug"/></svg></span>
+            <div class="row-main"><div class="row-title"><b>市电中断</b> · 机房 UPS-A</div><div class="row-sub">14:11:12 起 · 持续 10 分钟 · 容量 89% · 负载 27%</div></div>
+            <span class="pill pill-red pill-sm">严重</span><svg class="i row-chevron"><use href="#i-chev-right"/></svg>
+          </a>
+          <a class="row is-link" href="alerts.html" style="color:inherit;text-decoration:none">
+            <span class="sev sev-warning"><svg class="i"><use href="#i-wifi-off"/></svg></span>
+            <div class="row-main"><div class="row-title"><b>通讯中断</b> · 监控室 UPS</div><div class="row-sub">14:17:40 起 · 失联策略「保持」：沿用最后已知的供电状态</div></div>
+            <span class="pill pill-orange pill-sm">警告</span><svg class="i row-chevron"><use href="#i-chev-right"/></svg>
+          </a>
+          <a class="row is-link" href="alerts.html" style="color:inherit;text-decoration:none">
+            <span class="sev sev-warning"><svg class="i"><use href="#i-gauge"/></svg></span>
+            <div class="row-main"><div class="row-title"><b>过载</b> · 实验室 UPS</div><div class="row-sub">13:58:42 起 · 负载 L1 92%（阈值 90%，回差 5%）</div></div>
+            <span class="pill pill-orange pill-sm">警告</span><svg class="i row-chevron"><use href="#i-chev-right"/></svg>
+          </a>
+          <a class="row is-link" href="alerts.html" style="color:inherit;text-decoration:none">
+            <span class="sev sev-warning"><svg class="i"><use href="#i-branch"/></svg></span>
+            <div class="row-main"><div class="row-title"><b>旁路供电</b> · 实验室 UPS</div><div class="row-sub">13:58:40 起 · UPS 模式 bypass</div></div>
+            <span class="pill pill-orange pill-sm">警告</span><svg class="i row-chevron"><use href="#i-chev-right"/></svg>
+          </a>
+        </div>
+        <div class="card" data-when="normal">
+          <div class="empty">
+            <span class="sev sev-ok"><svg class="i"><use href="#i-check"/></svg></span>
+            <div class="t-headline" style="color:var(--label)">没有活动告警</div>
+            <div class="t-subhead">6 台设备均由市电供电。最近一次事件：昨天 22:14 通讯恢复 · 监控室 UPS</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

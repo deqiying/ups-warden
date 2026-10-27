@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>登录与初始化 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 48px 20px 96px;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(52, 199, 89, 0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(0, 113, 227, 0.08), transparent 60%),
+      var(--bg);
+  }
+  .auth { width: 100%; max-width: 420px; text-align: center; }
+  .auth-icon {
+    width: 76px; height: 76px; margin: 0 auto 22px; border-radius: 18px;
+    display: grid; place-items: center; color: #fff;
+    background: linear-gradient(160deg, #5fe07b 0%, #28b44f 55%, #12913a 100%);
+    box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.35), 0 10px 30px rgba(36,160,70,.28);
+  }
+  .auth-icon .i { width: 40px; height: 40px; stroke-width: 2; }
+  .auth h1 { font: 700 2rem/1.15 var(--font-display); letter-spacing: -0.022em; }
+  .auth .lead { margin-top: 10px; font-size: 1.0625rem; line-height: 1.45; color: var(--label-2); }
+
+  /* 组合输入框：多个字段共享一个圆角容器，中间以细线分隔（Apple 账户登录样式） */
+  .field-group {
+    margin-top: 32px; text-align: left; border-radius: 14px; overflow: hidden;
+    background: var(--surface); box-shadow: 0 0 0 0.5px var(--separator-strong), var(--shadow-1);
+    transition: box-shadow var(--dur-quick) var(--ease-standard);
+  }
+  .field-group:focus-within { box-shadow: 0 0 0 1px var(--accent), var(--ring-focus); }
+  .field-group.is-error { box-shadow: 0 0 0 1px var(--red), 0 0 0 4px var(--red-tint); animation: shake 420ms var(--ease-out); }
+  @keyframes shake { 15%, 55% { transform: translateX(-7px); } 35%, 75% { transform: translateX(6px); } 90% { transform: translateX(-2px); } }
+  .field { position: relative; display: block; }
+  .field + .field { border-top: 0.5px solid var(--separator-strong); }
+  .field span { position: absolute; left: 16px; top: 9px; font-size: 0.75rem; color: var(--label-3); pointer-events: none; }
+  .field input {
+    width: 100%; height: 58px; padding: 22px 52px 6px 16px; border: 0; outline: 0; background: transparent;
+    font-size: 1.0625rem; color: var(--label);
+  }
+  .field .go {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    width: 34px; height: 34px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer;
+    color: #fff; background: var(--accent); transition: transform var(--dur-press) ease-out, opacity var(--dur-quick);
+  }
+  .field .go:active { transform: translateY(-50%) scale(0.92); }
+  .field .go[disabled] { background: var(--fill); color: var(--label-3); }
+  .field .go .i { width: 17px; height: 17px; stroke-width: 2.4; }
+  .msg { margin-top: 14px; font-size: 0.875rem; line-height: 1.45; }
+  .foot { margin-top: 36px; font-size: 0.75rem; color: var(--label-3); line-height: 1.6; }
+  .req { list-style: none; padding: 0; margin: 14px 4px 0; text-align: left; display: grid; gap: 6px; font-size: 0.8125rem; color: var(--label-2); }
+  .req li { display: flex; align-items: center; gap: 8px; }
+  .req .ok { color: var(--green-ink); }
+  .req .i { width: 15px; height: 15px; stroke-width: 2.4; }
+  .lock-ring { margin: 26px auto 0; }
+  .lock-ring .bar { stroke: var(--orange); }
+  .step-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; }
+  .step-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--fill); }
+  .step-dots i.on { background: var(--accent); width: 20px; border-radius: 4px; }
+</style>
+</head>
+<body data-states="login:登录,error:密码错误,locked:已锁定,setup:首次初始化">
+
+<main class="auth">
+  <div class="auth-icon"><svg class="i"><use href="#i-bolt"/></svg></div>
+
+  <!-- 登录：POST /auth/login -->
+  <section data-when="login error">
+    <h1>登录 UPS Warden</h1>
+    <p class="lead">使用管理员账户继续。</p>
+    <form class="field-group" data-when="login" onsubmit="return false">
+      <label class="field"><span>用户名</span><input autocomplete="username" value="admin"></label>
+      <label class="field"><span>密码</span><input type="password" autocomplete="current-password" value="••••••••••" autofocus>
+        <button class="go" aria-label="登录"><svg class="i"><use href="#i-arrow-right"/></svg></button></label>
+    </form>
+    <form class="field-group is-error" data-when="error" onsubmit="return false">
+      <label class="field"><span>用户名</span><input autocomplete="username" value="admin"></label>
+      <label class="field"><span>密码</span><input type="password" autocomplete="current-password" value="" placeholder="" autofocus>
+        <button class="go" aria-label="登录" disabled><svg class="i"><use href="#i-arrow-right"/></svg></button></label>
+    </form>
+    <p class="msg ink-red" data-when="error">用户名或密码不正确。连续失败 5 次后，该账户在此网络位置将暂停登录 15 分钟。</p>
+    <p class="foot">会话在 24 小时无操作或 7 天后过期。<br>页面与 API 仅接受同源请求。</p>
+  </section>
+
+  <!-- 限速：429 + Retry-After: 900 -->
+  <section data-when="locked">
+    <h1>暂时无法登录</h1>
+    <p class="lead">尝试次数过多。为保护账户，请在倒计时结束后再试。</p>
+    <div class="ring-wrap lock-ring" style="width:132px;height:132px" data-countdown="872" data-total="900">
+      <svg class="ring" viewBox="0 0 132 132" width="132" height="132"><circle class="track" cx="66" cy="66" r="58" stroke-width="8"/><circle class="bar" cx="66" cy="66" r="58" stroke-width="8" pathLength="100" stroke-dasharray="97 100"/></svg>
+      <div class="ring-center"><div><div class="t-metric cd-text" style="font-size:1.75rem">14:32</div><div class="t-caption faint mt-2">后可重试</div></div></div>
+    </div>
+    <p class="foot">锁定按用户名与来源 IP 分别计算，15 分钟后自动解除。<br>如果忘记密码，请由其他管理员在「设置 › 账户」中重置。</p>
+  </section>
+
+  <!-- 首次初始化：GET /setup/status → POST /setup -->
+  <section data-when="setup">
+    <div class="step-dots" aria-hidden="true"><i class="on"></i><i></i></div>
+    <h1>欢迎使用 UPS Warden</h1>
+    <p class="lead">创建第一个管理员账户。之后即可添加 UPS、配置通知与关机计划。</p>
+    <form class="field-group" onsubmit="return false">
+      <label class="field"><span>初始化令牌</span><input class="mono" value="uw-setup-7f3a·····" spellcheck="false"></label>
+      <label class="field"><span>用户名</span><input value="admin" autocomplete="username"></label>
+      <label class="field"><span>密码</span><input type="password" value="••••••••••••" autocomplete="new-password"></label>
+      <label class="field"><span>确认密码</span><input type="password" value="••••••••••••" autocomplete="new-password">
+        <button class="go" aria-label="创建账户"><svg class="i"><use href="#i-arrow-right"/></svg></button></label>
+    </form>
+    <ul class="req">
+      <li class="ok"><svg class="i"><use href="#i-check-circle"/></svg>密码至少 8 个字符</li>
+      <li class="ok"><svg class="i"><use href="#i-check-circle"/></svg>两次输入一致</li>
+      <li><svg class="i"><use href="#i-info"/></svg>用户名会统一转为小写，仅限字母、数字、点、下划线与连字符</li>
+    </ul>
+    <div class="banner banner-neutral" style="margin-top:22px;text-align:left">
+      <svg class="i banner-icon"><use href="#i-terminal"/></svg>
+      <div><div class="banner-title" style="font-size:.875rem">令牌在哪里？</div>
+      <div class="banner-text">服务首次启动时会在终端（stderr）打印一次「首次初始化 setup token」。令牌只保存在内存中，重启后会重新生成；请勿公开终端日志。</div></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

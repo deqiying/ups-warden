@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>通知渠道 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .ch-list .row { align-items: flex-start; padding-top: 11px; padding-bottom: 11px; }
+  .ch-list .row-icon { margin-top: 1px; }
+  .ch-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .ed-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ed-title { flex: 1 1 10em; min-width: 0; }
+  .ed-acts { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .ed-head .row-icon { width: 44px; height: 44px; border-radius: 11px; }
+  .ed-head .row-icon .i { width: 24px; height: 24px; }
+  .form-row .control { max-width: 60%; justify-content: flex-end; flex-wrap: wrap; }
+  .secret-set { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: var(--label-2); }
+  .secret-set .i { width: 14px; height: 14px; color: var(--green-ink); }
+  .retry { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.75rem; color: var(--label-2); }
+  .retry .dotx { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 0.6875rem var(--font-rounded); background: var(--fill); color: var(--label); }
+  .retry .line { width: 26px; height: 1.5px; background: var(--separator-strong); }
+
+  .tpl-list .row { min-height: 38px; padding-top: 7px; padding-bottom: 7px; }
+  .tpl-list .row-title { font-size: 0.875rem; }
+  .tpl-key { font: 500 0.6875rem var(--font-mono); color: var(--label-3); }
+  .editor { font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1.7; min-height: 168px; white-space: pre-wrap; padding: 12px 14px; border-radius: 10px; background: var(--fill-3); box-shadow: inset 0 0 0 0.5px var(--separator); }
+  .editor .v { color: var(--indigo-ink); background: var(--indigo-tint); border-radius: 4px; padding: 0 2px; }
+  .editor .bad { color: var(--red-ink); background: var(--red-tint); border-radius: 4px; padding: 0 2px; text-decoration: underline wavy var(--red); text-underline-offset: 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .preview-msg { border-radius: 16px 16px 16px 4px; padding: 12px 14px; background: var(--surface); box-shadow: var(--shadow-1); font-size: 0.875rem; line-height: 1.6; white-space: pre-wrap; max-width: 420px; }
+  .preview-wrap { padding: 18px; border-radius: 14px; background: var(--fill-3); }
+
+  .logs td { white-space: nowrap; }
+  .logs .sum { white-space: normal; min-width: 220px; color: var(--label-2); }
+  @media (max-width: 860px) {
+    /* 窄屏：渠道 / 模板列表叠在编辑区上方并取消吸顶，保证随时能切换 */
+    .ch-col { position: static; }
+    .form-row .control { max-width: 100%; justify-content: flex-start; }
+    .col-hide { display: none; }
+    /* 窄屏：发送记录重排为两行列表，事件与结果在上，时间、渠道与尝试次数在下 */
+    .logs, .logs tbody { display: block; }
+    .logs thead { display: none; }
+    .logs tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 3px; align-items: center; padding: 10px 16px; border-bottom: 0.5px solid var(--separator); }
+    .logs tr td { padding: 0; border: 0; }
+    .logs td:nth-child(4) { grid-column: 1 / span 2; grid-row: 1; font-weight: 600; }
+    .logs td:nth-child(5) { grid-column: 3; grid-row: 1; text-align: right; }
+    .logs td:nth-child(1), .logs td:nth-child(2) { grid-row: 2; font-size: 0.8125rem; color: var(--label-2); }
+    .logs td:nth-child(6) { grid-column: 3; grid-row: 2; font-size: 0.8125rem; color: var(--label-2); }
+    .logs td:nth-child(6)::before { content: "尝试 "; }
+    .logs td:nth-child(6)::after { content: " 次"; }
+  }
+</style>
+</head>
+<body data-page="notifications" data-states="channels:渠道,test:测试已入队,templates:模板,logs:发送记录">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">通知渠道</span>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" type="button" data-when="channels test"><svg class="i"><use href="#i-plus"/></svg>添加渠道</button>
+    </header>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">通知渠道</h1>
+        <p class="page-sub">通知只在规则的「通知」动作或关机计划中发送，不会自动广播到所有渠道。</p>
+      </div>
+      <div class="seg seg-lg">
+        <button type="button" data-goto="channels" data-match="test">渠道</button>
+        <button type="button" data-goto="templates">模板</button>
+        <button type="button" data-goto="logs">发送记录</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ============ 渠道：GET /channels ============ -->
+      <div class="split" data-when="channels test">
+        <div class="sticky-col ch-col">
+          <div class="list ch-list has-icons">
+            <div class="row is-link is-selected"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-paperplane"/></svg></span>
+              <div class="row-main"><div class="row-title strong">值班群</div><div class="row-sub">Telegram · 2 个 Chat ID</div><div class="ch-meta"><span class="badge badge-green">14:21 已送达</span></div></div></div>
+            <div class="row is-link"><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-globe"/></svg></span>
+              <div class="row-main"><div class="row-title strong">运维平台</div><div class="row-sub">Webhook · 签名已设置</div><div class="ch-meta"><span class="badge badge-red">14:21 失败 · HTTP 502</span></div></div></div>
+            <div class="row is-link"><span class="row-icon is-soft"><svg class="i"><use href="#i-globe"/></svg></span>
+              <div class="row-main" style="opacity:.6"><div class="row-title strong">旧告警网关</div><div class="row-sub">Webhook · 已停用</div><div class="ch-meta"><span class="badge">保留 312 条发送记录</span></div></div></div>
+          </div>
+          <p class="list-caption">每个渠道独立排队（最多 256 条），慢渠道不会拖慢其他渠道。队列只在内存中，服务重启不重发。</p>
+        </div>
+
+        <div>
+          <section class="card">
+            <div class="card-pad ed-head">
+              <span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-paperplane"/></svg></span>
+              <div class="ed-title"><div class="t-title3">值班群</div><div class="t-footnote muted">Telegram Bot · 被 1 个通知动作、1 个关机计划引用</div></div>
+              <div class="ed-acts">
+                <button class="btn btn-gray btn-sm" type="button" data-goto="test"><svg class="i"><use href="#i-paperplane"/></svg>发送测试</button>
+                <button class="switch" role="switch" aria-checked="true" aria-label="启用"></button>
+              </div>
+            </div>
+            <div class="list is-flat">
+              <div class="row form-row"><div class="row-main"><div class="row-title">Bot Token</div><div class="row-sub">只写不读，加密保存</div></div><div class="control"><span class="secret-set"><svg class="i"><use href="#i-lock"/></svg>已设置</span><button class="btn btn-plain btn-sm" type="button">更换…</button></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">Chat ID</div><div class="row-sub">按顺序分别发送，最多 32 个</div></div><div class="control"><span class="token mono">-100198765432<span class="x"><svg class="i"><use href="#i-x"/></svg></span></span><span class="token mono">@ups_oncall<span class="x"><svg class="i"><use href="#i-x"/></svg></span></span><span class="token token-add">添加</span></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">消息格式</div></div><div class="control"><div class="seg"><button type="button">纯文本</button><button type="button" aria-pressed="true">HTML</button></div></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">API 地址</div><div class="row-sub">可改为自建反向代理；不要在此填写凭据</div></div><div class="control"><input class="input input-mono" value="https://api.telegram.org" style="width:240px"></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">HTTP 代理</div><div class="row-sub">仅支持 HTTP/HTTPS，含账号时整体加密</div></div><div class="control"><span class="t-subhead faint">未设置</span><button class="btn btn-plain btn-sm" type="button">设置…</button></div></div>
+            </div>
+          </section>
+
+          <div class="list-header mt-6">失败重试</div>
+          <div class="card card-pad">
+            <div class="retry"><span class="dotx">1</span>首次发送<span class="line"></span>2 秒<span class="line"></span><span class="dotx">2</span><span class="line"></span>4 秒<span class="line"></span><span class="dotx">3</span><span class="line"></span>8 秒<span class="line"></span><span class="dotx">4</span>最后一次</div>
+            <p class="t-footnote muted mt-3">单次请求最长 10 秒，不跟随重定向。Telegram 要求更长的等待（429）时按其要求等待。已成功的 Chat ID 不会因其他目标失败而重发。</p>
+          </div>
+
+          <div class="hstack mt-6">
+            <button class="btn btn-danger-tinted btn-sm" type="button" data-tip="已有发送记录，删除会被拒绝；可以改为停用"><svg class="i"><use href="#i-trash"/></svg>删除渠道</button>
+            <span class="spacer"></span>
+            <button class="btn btn-gray" type="button">还原</button><button class="btn btn-primary" type="button" disabled>保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 模板：GET /notify-templates，PUT 写入 / reset ============ -->
+      <div class="split" data-when="templates">
+        <div class="sticky-col ch-col">
+          <div class="list-header">设备事件</div>
+          <div class="list tpl-list">
+            <div class="row is-link is-selected"><div class="row-main"><div class="row-title strong">市电中断</div><div class="tpl-key">mains_lost</div></div><span class="badge badge-blue">已自定义</span></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title">市电恢复</div><div class="tpl-key">mains_restored</div></div></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title">电量低</div><div class="tpl-key">battery_low</div></div><span class="badge badge-blue">已自定义</span></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title">通讯中断</div><div class="tpl-key">comm_lost</div></div></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title faint">其余 11 种…</div></div><svg class="i row-chevron"><use href="#i-chev-down"/></svg></div>
+          </div>
+          <div class="list-header mt-4">规则与关机计划</div>
+          <div class="list tpl-list">
+            <div class="row is-link"><div class="row-main"><div class="row-title">条件规则触发 / 恢复</div><div class="tpl-key">rule_triggered · rule_recovered</div></div></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title">计划开始</div><div class="tpl-key">plan_started</div></div></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title">计划步骤失败</div><div class="tpl-key">plan_step_failed</div></div></div>
+            <div class="row is-link"><div class="row-main"><div class="row-title faint">其余 4 种…</div></div><svg class="i row-chevron"><use href="#i-chev-down"/></svg></div>
+          </div>
+        </div>
+
+        <div>
+          <section class="card card-pad">
+            <div class="hstack wrap" style="justify-content:space-between;gap:12px">
+              <div><div class="t-title3">市电中断</div><div class="t-footnote muted">全局模板 · Webhook 渠道自带的正文模板优先</div></div>
+              <div class="seg"><button type="button">纯文本</button><button type="button" aria-pressed="true">HTML</button><button type="button">JSON</button></div>
+            </div>
+            <div class="editor mt-4"><b>⚡ 市电中断 · <span class="v">{{device.name}}</span></b>
+时间：<span class="v">{{time}}</span>
+电池：<span class="v">{{battery_capacity_pct}}</span>%　预计剩余：<span class="v">{{runtime_estimate_text}}</span>
+输入电压：<span class="v">{{input_voltage[1]}}</span> V
+位置：<span class="bad">{{ device.location }}</span></div>
+            <div class="banner banner-critical mt-3" style="padding:10px 14px"><svg class="i banner-icon" style="width:16px;height:16px"><use href="#i-x-circle"/></svg><div class="banner-text" style="margin:0">第 5 行：占位符内不能有空白，且 <span class="mono">device.location</span> 不是可用变量。保存会被拒绝。</div></div>
+            <div class="list-header mt-4">点按插入变量</div>
+            <div class="chips">
+              <span class="var-chip">{{device.name}}</span><span class="var-chip">{{event.type}}</span><span class="var-chip">{{event.severity}}</span><span class="var-chip">{{time}}</span><span class="var-chip">{{battery_capacity_pct}}</span><span class="var-chip">{{runtime_estimate_text}}</span><span class="var-chip">{{on_battery_elapsed_text}}</span><span class="var-chip">{{output_load_pct[1]}}</span><span class="var-chip">{{input_voltage[1]}}</span><span class="var-chip">{{detail}}</span>
+            </div>
+            <p class="list-caption">按相字段必须写相号 [1]～[3]；时长字段加 <span class="mono">_text</span> 显示为「1 小时 21 分」这样的中文时长。未采集或无效的字段渲染为「—」，不会显示为 0。{{detail}} 只在关机计划通知中有内容。</p>
+          </section>
+
+          <div class="list-header mt-6">预览 · 使用机房 UPS-A 的当前数据</div>
+          <div class="preview-wrap">
+            <div class="preview-msg"><b>⚡ 市电中断 · 机房 UPS-A</b>
+时间：2026-10-27T14:11:12+08:00
+电池：89%　预计剩余：1 小时 21 分 12 秒
+输入电压：0 V
+位置：<span class="faint">（修正错误后显示）</span></div>
+          </div>
+
+          <div class="hstack mt-6">
+            <button class="btn btn-plain btn-sm" type="button"><svg class="i"><use href="#i-undo"/></svg>恢复默认模板</button>
+            <span class="spacer"></span>
+            <button class="btn btn-primary" type="button" disabled>保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 发送记录：GET /notify-logs ============ -->
+      <div data-when="logs">
+        <div class="hstack wrap" style="margin-bottom:14px">
+          <span class="select" style="height:28px;font-size:.8125rem"><span class="faint">渠道</span>全部渠道<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <div class="seg"><button type="button" aria-pressed="true">全部</button><button type="button">失败</button></div>
+          <span class="select" style="height:28px;font-size:.8125rem"><svg class="i faint" style="width:14px;height:14px"><use href="#i-calendar"/></svg>今天<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="table logs">
+            <thead><tr><th>完成时间</th><th>渠道</th><th class="col-hide">目标</th><th>事件</th><th>结果</th><th class="num">尝试</th><th class="num col-hide">耗时</th><th class="col-hide">内容摘要（已脱敏）</th></tr></thead>
+            <tbody>
+              <tr><td class="tnum">14:21:27</td><td>运维平台</td><td class="col-hide mono">webhook</td><td>计划开始</td><td><span class="pill pill-sm pill-red">失败 · HTTP 502</span></td><td class="num">4</td><td class="num col-hide">14.9 s</td><td class="sum col-hide">{"event":"plan_started","plan":"机房关机","run":18…</td></tr>
+              <tr><td class="tnum">14:21:26</td><td>运维平台</td><td class="col-hide mono">webhook</td><td>规则触发</td><td><span class="pill pill-sm pill-red">失败 · HTTP 502</span></td><td class="num">4</td><td class="num col-hide">14.6 s</td><td class="sum col-hide">{"event":"rule_triggered","device":"机房 UPS-A"…</td></tr>
+              <tr><td class="tnum">14:21:13</td><td>值班群</td><td class="col-hide mono">-100198765432</td><td>计划开始</td><td><span class="pill pill-sm pill-green">已送达</span></td><td class="num">1</td><td class="num col-hide">298 ms</td><td class="sum col-hide">⏻ 关机计划「机房关机」已开始倒计时 60 秒…</td></tr>
+              <tr><td class="tnum">14:21:13</td><td>值班群</td><td class="col-hide mono">@ups_oncall</td><td>计划开始</td><td><span class="pill pill-sm pill-green">已送达</span></td><td class="num">1</td><td class="num col-hide">305 ms</td><td class="sum col-hide">⏻ 关机计划「机房关机」已开始倒计时 60 秒…</td></tr>
+              <tr><td class="tnum">14:11:16</td><td>值班群</td><td class="col-hide mono">-100198765432</td><td>市电中断</td><td><span class="pill pill-sm pill-green">已送达</span></td><td class="num">2</td><td class="num col-hide">2.4 s</td><td class="sum col-hide">⚡ 市电中断 · 机房 UPS-A 时间：2026-10-27T14:11:12…</td></tr>
+              <tr><td class="tnum">14:11:13</td><td>运维平台</td><td class="col-hide mono">webhook</td><td>市电中断</td><td><span class="pill pill-sm pill-green">已送达</span> <span class="badge badge-yellow" data-tip="自定义模板渲染失败，已改用默认模板">默认模板</span></td><td class="num">1</td><td class="num col-hide">87 ms</td><td class="sum col-hide">{"event":"mains_lost","device":"机房 UPS-A"…</td></tr>
+              <tr><td class="tnum">09:30:02</td><td>值班群</td><td class="col-hide mono">-100198765432</td><td>测试</td><td><span class="pill pill-sm pill-green">已送达</span></td><td class="num">1</td><td class="num col-hide">276 ms</td><td class="sum col-hide">UPS Warden 测试消息 · UPS Warden 测试设备…</td></tr>
+            </tbody>
+          </table>
+          <div class="hstack" style="justify-content:center;padding:14px;box-shadow:inset 0 .5px 0 var(--separator-strong)"><button class="btn btn-gray btn-sm" type="button">加载更早的记录</button></div>
+        </div>
+        <p class="list-caption">每个接收目标一条记录。耗时包含重试等待，不含排队时间。超时或取消不能证明接收端一定没有收到。记录默认保留 365 天。</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- POST /channels/{id}/test → 202：只表示入队 -->
+<div class="toast" data-when="test" role="status">
+  <span class="sev sev-info"><svg class="i"><use href="#i-paperplane"/></svg></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-headline">测试消息已加入队列</div>
+    <div class="t-footnote muted" style="margin-top:2px">「值班群」会依次发送给 2 个 Chat ID。入队不代表送达，结果稍后出现在发送记录中。</div>
+    <div class="hstack mt-2"><button class="btn btn-tinted btn-sm" type="button" data-goto="logs">查看发送记录</button><button class="btn btn-plain btn-sm" type="button" data-goto="channels">好</button></div>
+  </div>
+</div>
+</body>
+</html>

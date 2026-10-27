@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>告警与事件 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  /* 严重告警主卡：只在顶部用一层浅色调区分，不使用侧边色条 */
+  .hero { overflow: hidden; }
+  .hero-top { display: flex; align-items: center; gap: 16px; padding: 20px 22px; background: var(--red-tint); }
+  .hero-top .sev { width: 44px; height: 44px; background: var(--red); color: #fff; }
+  .hero-top .sev .i { width: 22px; height: 22px; }
+  .hero-elapsed { text-align: right; }
+  .hero-elapsed .t-metric { font-size: 2rem; color: var(--red-ink); }
+  .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--separator); }
+  .hero-metrics .metric { padding: 14px 22px; background: var(--surface); }
+  .chain { display: grid; grid-template-columns: 1fr 1fr; }
+  .chain > div { padding: 14px 22px; display: flex; gap: 12px; align-items: flex-start; }
+  .chain > div + div { box-shadow: inset 0.5px 0 0 var(--separator-strong); }
+  .chain .row-icon { margin-top: 1px; }
+  .chain-title { font-size: 0.8125rem; color: var(--label-2); }
+  .chain-line { font-size: 0.875rem; margin-top: 2px; line-height: 1.45; }
+
+  .alert-card { display: flex; flex-direction: column; }
+  .alert-card .card-body { flex: 1; }
+  .alert-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 0; }
+  .alert-foot { display: flex; align-items: center; gap: 8px; padding: 12px 18px; box-shadow: inset 0 0.5px 0 var(--separator-strong); font-size: 0.8125rem; color: var(--label-2); }
+  .alert-foot a { margin-left: auto; }
+  .alert-card .kv { font-size: 0.8125rem; }
+
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; position: relative; }
+  .filters .select { height: 28px; font-size: 0.8125rem; }
+  .filters .lbl { color: var(--label-2); }
+  .grp td { padding: 18px 16px 8px; font-size: 0.8125rem; font-weight: 600; color: var(--label); background: var(--surface); border-bottom: 0.5px solid var(--separator-strong); }
+  .table .sev { width: 24px; height: 24px; }
+  .table tbody tr.grp:hover { background: none; }
+  .table .sev .i { width: 13px; height: 13px; }
+  .ev-name { font-weight: 600; }
+  .col-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .type-pop { top: 36px; left: 168px; width: 260px; }
+  .type-pop .menu-item .check { width: 16px; height: 16px; box-shadow: none; }
+  .type-pop .menu-item .check .i { width: 11px; height: 11px; color: var(--accent); }
+  .type-pop .menu-item:hover .check .i { color: #fff; }
+  .type-pop .grp-label { padding: 6px 10px 2px; font-size: 0.6875rem; font-weight: 600; color: var(--label-3); }
+  .load-more { display: flex; justify-content: center; padding: 14px; box-shadow: inset 0 0.5px 0 var(--separator-strong); }
+
+  @media (max-width: 860px) {
+    .hero-top { flex-wrap: wrap; padding: 16px; }
+    .hero-metrics { grid-template-columns: 1fr 1fr; }
+    .hero-metrics .metric, .chain > div { padding: 12px 16px; }
+    .chain { grid-template-columns: 1fr; }
+    .chain > div + div { box-shadow: inset 0 0.5px 0 var(--separator-strong); }
+    /* 窄屏：表格重排为两行列表项（事件+设备 / 开始+结束），不横向滚动 */
+    .ev, .ev tbody { display: block; }
+    .ev thead, .ev .col-sum, .ev .col-dur { display: none; }
+    .ev tr:not(.grp) { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 2px; align-items: center; padding: 10px 16px; border-bottom: 0.5px solid var(--separator); }
+    .ev tr:not(.grp) td { padding: 0; border: 0; }
+    .ev td:nth-child(1) { grid-row: 1 / span 2; }
+    .ev td:nth-child(3) { grid-column: 2; grid-row: 2; font-size: 0.8125rem; color: var(--label-2); }
+    .ev td:nth-child(4) { grid-column: 3; grid-row: 1; text-align: right; }
+    .ev td:nth-child(5) { grid-column: 3; grid-row: 2; text-align: right; font-size: 0.8125rem; color: var(--label-2); }
+    .ev tr.grp, .ev tr.grp td { display: block; }
+    .type-pop { left: 0; }
+  }
+</style>
+</head>
+<body data-page="alerts" data-states="active:活动告警,failed:通知失败,empty:无活动告警,history:历史事件,filter:按类型筛选">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">告警与事件</span>
+      <div class="spacer"></div>
+      <span class="t-footnote faint hide-narrow"><span class="live-dot" style="display:inline-block;margin-right:6px;vertical-align:1px"></span>实时更新</span>
+    </header>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">告警与事件</h1>
+        <p class="page-sub">告警是仍在持续的事件，条件解除后自动结束，无需手动确认。</p>
+      </div>
+      <div class="seg seg-lg">
+        <button type="button" data-goto="active" data-match="failed empty">活动告警 <span class="count" data-when-not="empty">4</span></button>
+        <button type="button" data-goto="history" data-match="filter">历史事件</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ============ 活动告警：GET /alerts + SSE alert 替换 ============ -->
+      <div data-when="active failed">
+        <section class="card hero">
+          <div class="hero-top">
+            <span class="sev"><svg class="i"><use href="#i-plug"/></svg></span>
+            <div style="flex:1;min-width:0">
+              <div class="hstack wrap"><span class="t-title2">市电中断</span><span class="pill pill-solid-red pill-sm">严重</span></div>
+              <div class="t-subhead muted mt-2"><a href="device-detail.html">机房 UPS-A</a> · 1F 机房 · 今天 14:11:12 开始 · 停电周期 #12</div>
+            </div>
+            <div class="hero-elapsed">
+              <div class="t-caption muted">已持续</div>
+              <div class="t-metric" data-elapsed="613">10:13</div>
+            </div>
+          </div>
+          <div class="hero-metrics">
+            <div class="metric"><span class="metric-label">电池容量</span><span class="metric-value">89<small>%</small></span></div>
+            <div class="metric"><span class="metric-label">剩余时间 <span class="badge badge-yellow">估算</span></span><span class="metric-value">约 81<small>分钟</small></span></div>
+            <div class="metric"><span class="metric-label">负载</span><span class="metric-value">27<small>%</small></span></div>
+            <div class="metric"><span class="metric-label">输入电压</span><span class="metric-value">0<small>V</small></span></div>
+          </div>
+          <div class="chain">
+            <div>
+              <span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-power"/></svg></span>
+              <div style="flex:1;min-width:0" data-countdown="47" data-total="60">
+                <div class="chain-title">规则「停电 10 分钟或低电量」已触发</div>
+                <div class="chain-line">关机计划「机房关机」将在 <b class="tnum ink-orange cd-text">00:47</b> 后开始 · <a href="shutdown-plans.html?state=countdown">查看计划</a></div>
+              </div>
+            </div>
+            <div>
+              <span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-paperplane"/></svg></span>
+              <div style="flex:1;min-width:0">
+                <div class="chain-title">通知 · 2 个渠道</div>
+                <div class="chain-line">Telegram「值班群」<span class="ink-green">已送达</span> ·
+                  Webhook「运维平台」<span class="ink-orange" data-when="active">重试中（第 3 次）</span><span class="ink-red" data-when="failed">失败，已尝试 4 次</span>
+                  · <a href="notifications.html?state=logs">发送记录</a></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="section-head mt-6"><h2 class="section-title">需要关注</h2><span class="t-footnote faint">按开始时间倒序</span></div>
+        <div class="grid cols-3">
+          <article class="card alert-card">
+            <div class="alert-head"><span class="sev sev-warning"><svg class="i"><use href="#i-wifi-off"/></svg></span><div class="row-main"><div class="t-headline">通讯中断</div><div class="t-footnote muted">监控室 UPS</div></div><span class="pill pill-orange pill-sm">警告</span></div>
+            <div class="card-body">
+              <dl class="kv">
+                <dt>开始</dt><dd>14:17:40 · 3 分钟前</dd>
+                <dt>最后成功采集</dt><dd>14:17:31</dd>
+                <dt>原因</dt><dd>连续 3 次 timeout</dd>
+                <dt>供电状态</dt><dd>保持最后已知：市电</dd>
+              </dl>
+            </div>
+            <div class="alert-foot"><svg class="i"><use href="#i-check"/></svg>已通知 2 个渠道<a href="device-detail.html?state=lost">查看设备</a></div>
+          </article>
+          <article class="card alert-card">
+            <div class="alert-head"><span class="sev sev-warning"><svg class="i"><use href="#i-gauge"/></svg></span><div class="row-main"><div class="t-headline">过载</div><div class="t-footnote muted">实验室 UPS</div></div><span class="pill pill-orange pill-sm">警告</span></div>
+            <div class="card-body">
+              <dl class="kv">
+                <dt>开始</dt><dd>13:58:42 · 22 分钟前</dd>
+                <dt>当前负载</dt><dd>L1 <b class="ink-orange">92%</b> · L2 — · L3 —</dd>
+                <dt>阈值</dt><dd>90%，降到 85% 解除</dd>
+                <dt>未采集的相</dt><dd class="na">单相设备 · phase_inactive</dd>
+              </dl>
+            </div>
+            <div class="alert-foot"><svg class="i"><use href="#i-check"/></svg>已通知 2 个渠道<a href="device-detail.html">查看设备</a></div>
+          </article>
+          <article class="card alert-card">
+            <div class="alert-head"><span class="sev sev-warning"><svg class="i"><use href="#i-branch"/></svg></span><div class="row-main"><div class="t-headline">旁路供电</div><div class="t-footnote muted">实验室 UPS</div></div><span class="pill pill-orange pill-sm">警告</span></div>
+            <div class="card-body">
+              <dl class="kv">
+                <dt>开始</dt><dd>13:58:40 · 22 分钟前</dd>
+                <dt>UPS 模式</dt><dd>bypass</dd>
+                <dt>输入电压</dt><dd>228.6 V</dd>
+                <dt>说明</dt><dd>负载未受电池保护</dd>
+              </dl>
+            </div>
+            <div class="alert-foot"><svg class="i"><use href="#i-check"/></svg>已通知 2 个渠道<a href="device-detail.html">查看设备</a></div>
+          </article>
+        </div>
+        <p class="list-caption">告警由事件开始，条件解除时自动结束并在「历史事件」中留存。断线重连后会重新同步全部活动告警。</p>
+      </div>
+
+      <!-- 空状态 -->
+      <div class="card" data-when="empty">
+        <div class="empty" style="padding:64px 16px">
+          <span class="sev sev-ok"><svg class="i"><use href="#i-check"/></svg></span>
+          <div class="t-title3" style="color:var(--label)">一切正常</div>
+          <div class="t-subhead">没有活动告警。6 台设备均由市电供电，通讯正常。</div>
+          <button class="btn btn-gray btn-sm mt-2" type="button" data-goto="history">查看历史事件</button>
+        </div>
+      </div>
+
+      <!-- ============ 历史事件：GET /events?device_id&type&severity&from&to&before&limit ============ -->
+      <div data-when="history filter">
+        <div class="filters">
+          <span class="select"><span class="lbl">设备</span>全部设备<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <span class="select" data-when="history"><span class="lbl">类型</span>全部类型<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <span class="select" data-when="filter" style="box-shadow:0 0 0 1px var(--accent),var(--ring-focus)"><span class="lbl">类型</span>市电中断、市电恢复<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <div class="seg"><button type="button" aria-pressed="true">全部</button><button type="button">严重</button><button type="button">警告</button><button type="button">信息</button></div>
+          <span class="select"><svg class="i faint" style="width:14px;height:14px"><use href="#i-calendar"/></svg>最近 7 天<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <div class="spacer"></div>
+          <button class="btn btn-plain btn-sm" type="button" data-when="filter">清除筛选</button>
+
+          <!-- 类型多选：15 种统一模型事件，按成对的发生/解除分组 -->
+          <div class="popover type-pop" data-when="filter" role="listbox" aria-label="事件类型">
+            <div class="menu-item"><span class="check"></span>全部类型</div>
+            <div class="menu-sep"></div>
+            <div class="grp-label">供电</div>
+            <div class="menu-item"><span class="check"><svg class="i"><use href="#i-check"/></svg></span>市电中断<span class="spacer"></span><span class="faint mono t-caption">mains_lost</span></div>
+            <div class="menu-item"><span class="check"><svg class="i"><use href="#i-check"/></svg></span>市电恢复<span class="spacer"></span><span class="faint mono t-caption">mains_restored</span></div>
+            <div class="menu-item"><span class="check"></span>旁路供电 / 解除</div>
+            <div class="menu-item"><span class="check"></span>UPS 即将关机</div>
+            <div class="grp-label">电池</div>
+            <div class="menu-item"><span class="check"></span>电量低 / 恢复</div>
+            <div class="menu-item"><span class="check"></span>电池耗尽</div>
+            <div class="menu-item"><span class="check"></span>自检结果</div>
+            <div class="grp-label">负载与环境</div>
+            <div class="menu-item"><span class="check"></span>过载 / 解除</div>
+            <div class="menu-item"><span class="check"></span>温度过高</div>
+            <div class="menu-item"><span class="check"></span>UPS 故障</div>
+            <div class="grp-label">通讯</div>
+            <div class="menu-item"><span class="check"></span>通讯中断 / 恢复</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <table class="table is-sticky ev">
+            <thead><tr><th class="shrink"></th><th>事件</th><th>设备</th><th class="col-time">开始</th><th class="col-time">结束</th><th class="col-dur">持续</th><th class="col-sum">摘要</th></tr></thead>
+            <tbody data-when="history">
+              <tr class="grp"><td colspan="7">今天 · 10月27日 周二</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-wifi-off"/></svg></span></td><td><span class="ev-name">通讯中断</span></td><td>监控室 UPS</td><td class="col-time">14:17:40</td><td><span class="pill pill-sm pill-orange">进行中</span></td><td class="col-dur muted">3 分钟</td><td class="col-sum muted">连续 3 次 timeout</td></tr>
+              <tr><td><span class="sev sev-critical"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电中断</span></td><td>机房 UPS-A</td><td class="col-time">14:11:12</td><td><span class="pill pill-sm pill-red">进行中</span></td><td class="col-dur muted">10 分钟</td><td class="col-sum muted">容量 100% · 负载 27% · 输入 0 V</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-gauge"/></svg></span></td><td><span class="ev-name">过载</span></td><td>实验室 UPS</td><td class="col-time">13:58:42</td><td><span class="pill pill-sm pill-orange">进行中</span></td><td class="col-dur muted">22 分钟</td><td class="col-sum muted">L1 92% · 阈值 90%</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-branch"/></svg></span></td><td><span class="ev-name">旁路供电</span></td><td>实验室 UPS</td><td class="col-time">13:58:40</td><td><span class="pill pill-sm pill-orange">进行中</span></td><td class="col-dur muted">22 分钟</td><td class="col-sum muted">UPS 模式 bypass</td></tr>
+              <tr><td><span class="sev sev-info"><svg class="i"><use href="#i-check-circle"/></svg></span></td><td><span class="ev-name">自检结果</span></td><td>办公区 UPS</td><td class="col-time">11:02:09</td><td class="faint">—</td><td class="col-dur faint">—</td><td class="col-sum muted">通过 · 电池容量 100%</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-thermo"/></svg></span></td><td><span class="ev-name">温度过高</span></td><td>机房 UPS-B</td><td class="col-time">09:30:15</td><td class="col-time">09:52:40</td><td class="col-dur muted">22 分 25 秒</td><td class="col-sum muted">电池温度 41.5 °C</td></tr>
+              <tr class="grp"><td colspan="7">昨天 · 10月26日 周一</td></tr>
+              <tr><td><span class="sev sev-info"><svg class="i"><use href="#i-antenna"/></svg></span></td><td><span class="ev-name">通讯恢复</span></td><td>监控室 UPS</td><td class="col-time">22:14:03</td><td class="faint">—</td><td class="col-dur faint">—</td><td class="col-sum muted">中断 43 秒后恢复</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-wifi-off"/></svg></span></td><td><span class="ev-name">通讯中断</span></td><td>监控室 UPS</td><td class="col-time">22:13:20</td><td class="col-time">22:14:03</td><td class="col-dur muted">43 秒</td><td class="col-sum muted">连续 3 次 connection refused</td></tr>
+              <tr><td><span class="sev sev-info"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电恢复</span></td><td>机房 UPS-A</td><td class="col-time">09:42:05</td><td class="faint">—</td><td class="col-dur faint">—</td><td class="col-sum muted">停电周期 #11 结束 · 容量 96%</td></tr>
+              <tr><td><span class="sev sev-critical"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电中断</span></td><td>机房 UPS-A</td><td class="col-time">09:35:53</td><td class="col-time">09:42:05</td><td class="col-dur muted">6 分 12 秒</td><td class="col-sum muted">容量 100% · 负载 26%</td></tr>
+              <tr class="grp"><td colspan="7">10月24日 周六</td></tr>
+              <tr><td><span class="sev sev-info"><svg class="i"><use href="#i-antenna"/></svg></span></td><td><span class="ev-name">通讯恢复</span></td><td>机房 UPS-A</td><td class="col-time">03:13:30</td><td class="faint">—</td><td class="col-dur faint">—</td><td class="col-sum muted">中断 46 秒后恢复</td></tr>
+              <tr><td><span class="sev sev-warning"><svg class="i"><use href="#i-wifi-off"/></svg></span></td><td><span class="ev-name">通讯中断</span></td><td>机房 UPS-A</td><td class="col-time">03:12:44</td><td class="col-time">03:13:30</td><td class="col-dur muted">46 秒</td><td class="col-sum muted">连续 3 次 timeout</td></tr>
+            </tbody>
+            <tbody data-when="filter">
+              <tr class="grp"><td colspan="7">今天 · 10月27日 周二</td></tr>
+              <tr><td><span class="sev sev-critical"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电中断</span></td><td>机房 UPS-A</td><td class="col-time">14:11:12</td><td><span class="pill pill-sm pill-red">进行中</span></td><td class="col-dur muted">10 分钟</td><td class="col-sum muted">容量 100% · 负载 27% · 输入 0 V</td></tr>
+              <tr class="grp"><td colspan="7">昨天 · 10月26日 周一</td></tr>
+              <tr><td><span class="sev sev-info"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电恢复</span></td><td>机房 UPS-A</td><td class="col-time">09:42:05</td><td class="faint">—</td><td class="col-dur faint">—</td><td class="col-sum muted">停电周期 #11 结束 · 容量 96%</td></tr>
+              <tr><td><span class="sev sev-critical"><svg class="i"><use href="#i-plug"/></svg></span></td><td><span class="ev-name">市电中断</span></td><td>机房 UPS-A</td><td class="col-time">09:35:53</td><td class="col-time">09:42:05</td><td class="col-dur muted">6 分 12 秒</td><td class="col-sum muted">容量 100% · 负载 26%</td></tr>
+            </tbody>
+          </table>
+          <div class="load-more" data-when="history"><button class="btn btn-gray btn-sm" type="button">加载更早的事件</button></div>
+          <div class="load-more t-footnote faint" data-when="filter">最近 7 天内没有更多匹配的事件</div>
+        </div>
+        <p class="list-caption">时间按「设置 › 通用 › 时区」显示（Asia/Shanghai）；服务端以 UTC 保存。每次加载 50 条，按 next_before 继续向前翻页。</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- SSE notify_failed：落库后才推送；按日志 id 去重 -->
+<div class="toast" data-when="failed" role="status">
+  <span class="sev sev-critical"><svg class="i"><use href="#i-paperplane"/></svg></span>
+  <div style="flex:1;min-width:0">
+    <div class="t-headline">通知发送失败</div>
+    <div class="t-footnote muted" style="margin-top:2px">Webhook「运维平台」· 市电中断 · 机房 UPS-A。已尝试 4 次，最后返回 HTTP 502。</div>
+    <div class="hstack mt-2"><a class="btn btn-tinted btn-sm" href="notifications.html?state=logs">查看发送记录</a><button class="btn btn-plain btn-sm" type="button" data-goto="active">关闭</button></div>
+  </div>
+</div>
+</body>
+</html>

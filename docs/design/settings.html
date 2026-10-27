@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>设置 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .set-nav .row { min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
+  .set-nav .list { --row-inset: 52px; }
+  .pane-head { display: flex; align-items: center; gap: 8px; margin: 0 2px 14px; }
+  .pane-head .section-title { margin: 0; flex: 1; }
+  .pane-head .back { display: none; }
+  .pane .list + .list-caption + .list-header, .pane .list + .list-header { margin-top: 22px; }
+  .save-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .save-bar .note { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8125rem; color: var(--label-2); }
+  .dot-mod { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  .stepper.is-changed .val { color: var(--accent); font-weight: 600; }
+
+  /* 外观：本机偏好，不经后端 */
+  .appear { display: flex; gap: 22px; flex-wrap: wrap; padding: 16px 16px 14px; }
+  .appear-opt { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--label); display: grid; justify-items: center; gap: 8px; cursor: pointer; }
+  .appear-opt svg { width: 96px; height: 62px; border-radius: 9px; box-shadow: 0 0 0 0.5px var(--separator-strong), var(--shadow-1); transition: box-shadow var(--dur-quick) var(--ease-standard), transform var(--dur-press) var(--ease-out); }
+  .appear-opt:active svg { transform: scale(0.97); }
+  .appear-opt span { font-size: 0.8125rem; color: var(--label-2); }
+  .appear-opt[aria-pressed="true"] svg { box-shadow: 0 0 0 3px var(--accent); }
+  .appear-opt[aria-pressed="true"] span { color: var(--label); font-weight: 600; }
+
+  /* 保留期时间线：对数刻度，1 天 ～ 10 年 */
+  .tl { padding: 18px 20px 14px; }
+  .tl-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 14px; height: 32px; }
+  .tl-name { font-size: 0.8125rem; color: var(--label-2); text-align: right; white-space: nowrap; }
+  .tl-track { position: relative; height: 10px; border-radius: 5px; background: var(--fill-3); }
+  .tl-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--c); transition: width var(--dur-base) var(--ease-standard); }
+  .tl-val { position: absolute; top: 50%; transform: translate(8px, -50%); font: 600 0.75rem var(--font-rounded); white-space: nowrap; }
+  .tl-ghost { position: absolute; top: -5px; bottom: -5px; border-left: 1.5px dashed var(--label-3); }
+  .tl-axis { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; margin-top: 4px; }
+  .tl-ticks { position: relative; height: 16px; font-size: 0.6875rem; color: var(--label-3); }
+  .tl-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .tl-ticks span:first-child { transform: none; }
+  .tl-ticks span:last-child { transform: translateX(-100%); }
+  .tl-ticks i { position: absolute; top: -26px; height: 6px; border-left: 1px solid var(--separator-strong); }
+
+  /* 告警回差：触发区、保持区、解除区 */
+  .hy { margin-top: 10px; max-width: 340px; }
+  .hy-track { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }
+  .hy-track i { display: block; height: 100%; }
+  .hy-track .hold { background: repeating-linear-gradient(135deg, var(--fill) 0 3px, transparent 3px 6px), var(--fill-3); }
+  .hy-scale { position: relative; height: 15px; margin-top: 4px; font: 500 0.6875rem var(--font-rounded); color: var(--label-2); }
+  .hy-scale span { position: absolute; top: 0; white-space: nowrap; }
+  .hy-scale .l { transform: translateX(calc(-100% - 3px)); }
+  .hy-scale .r { transform: translateX(3px); }
+  .form-row .control.dual { display: grid; gap: 6px; justify-items: end; }
+  .dual label { display: flex; align-items: center; gap: 8px; font-size: 0.8125rem; color: var(--label-2); }
+  .policy { display: grid; gap: 8px; }
+  .policy .opt { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; box-shadow: 0 0 0 1px var(--separator-strong); cursor: pointer; background: var(--surface); }
+  .policy .opt.is-on { box-shadow: 0 0 0 2px var(--accent); background: var(--accent-tint); }
+  .policy .opt .stepper { margin-top: 8px; }
+
+  .guard-hosts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 14px 60px; }
+  .users .avatar { width: 34px; height: 34px; font-size: 0.8125rem; }
+  .avatar.is-blue { background: linear-gradient(160deg, #5ac8fa, #007aff); }
+  .avatar.is-teal { background: linear-gradient(160deg, #6ee0d0, #30b0c7); }
+  .pw-rules { display: grid; gap: 6px; margin-top: 12px; font-size: 0.8125rem; }
+  .pw-rules div { display: flex; align-items: center; gap: 8px; color: var(--label-2); }
+  .pw-rules .ok { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; background: var(--green); color: #fff; }
+  .pw-rules .ok .i { width: 10px; height: 10px; stroke-width: 3; }
+  .field-label { display: block; font-size: 0.8125rem; font-weight: 600; margin: 0 0 6px 2px; }
+
+  .audit td { white-space: nowrap; }
+  .audit .kind { display: block; font: 500 0.6875rem var(--font-mono); color: var(--label-3); margin-top: 1px; }
+  .audit tr.grp td { padding: 14px 16px 6px; font-size: 0.75rem; font-weight: 600; color: var(--label-2); background: var(--surface); border-bottom: 0.5px solid var(--separator-strong); }
+  .audit tr.is-open td { background: var(--accent-tint); }
+  .audit tr.detail td { padding: 0 16px 14px; background: var(--accent-tint); white-space: normal; }
+  .diff { display: inline-grid; grid-template-columns: auto auto auto auto; gap: 4px 10px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 0.5px var(--separator); font: 0.8125rem var(--font-mono); }
+  .diff .k { color: var(--label-2); }
+  .diff .b { color: var(--red-ink); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--red) 50%, transparent); }
+  .diff .a { color: var(--green-ink); font-weight: 600; }
+  .diff .arr { color: var(--label-3); }
+
+  @media (max-width: 860px) {
+    .set-nav { display: none; }
+    .pane-head .back { display: inline-flex; margin-left: -8px; }
+    .tl { padding: 16px 14px 12px; }
+    .tl-row, .tl-axis { grid-template-columns: 64px minmax(0, 1fr); gap: 10px; }
+    .tl-name { font-size: 0.75rem; }
+    .guard-hosts { padding-left: 16px; }
+    .col-hide { display: none; }
+    .form-row .control.dual { justify-items: start; }
+    /* 窄屏：审计表重排为两行，操作与结果在上，时间、用户和对象在下 */
+    .audit, .audit tbody { display: block; }
+    .audit thead { display: none; }
+    .audit tr:not(.grp):not(.detail) { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: center; padding: 10px 16px; border-bottom: 0.5px solid var(--separator); }
+    .audit tr:not(.grp):not(.detail) td { padding: 0; border: 0; }
+    .audit td:nth-child(3) { grid-column: 1 / span 3; grid-row: 1; }
+    .audit td:nth-child(5) { grid-column: 4; grid-row: 1 / span 2; text-align: right; }
+    .audit td:nth-child(1), .audit td:nth-child(2) { grid-row: 2; font-size: 0.8125rem; color: var(--label-2); }
+    .audit td:nth-child(4) { grid-column: 3; grid-row: 2; font-size: 0.8125rem; color: var(--label-2); overflow: hidden; text-overflow: ellipsis; }
+    .audit .kind { display: inline; margin-left: 6px; }
+    .audit tr.grp, .audit tr.grp td, .audit tr.detail, .audit tr.detail td { display: block; }
+    .audit tr.is-open { background: var(--accent-tint); border-bottom: 0; }
+    .audit tr.is-open td { background: none; }
+    .diff { grid-template-columns: auto auto auto auto; font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body data-page="settings" data-states="general:通用,retention:数据保留,defaults:设备默认值,security:安全,guard:关闭护栏,account:管理员,password:修改密码,audit:审计日志">
+
+<!-- 外观缩略图：浅色、深色两组图形复用 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="ap-lt">
+      <rect width="96" height="62" fill="#dfe3ea"/>
+      <rect x="8" y="8" width="80" height="48" rx="5" fill="#fff"/>
+      <path d="M13 8h19v48H13a5 5 0 0 1-5-5V13a5 5 0 0 1 5-5z" fill="#eeeef3"/>
+      <rect x="12" y="14" width="16" height="4" rx="2" fill="#007aff"/>
+      <rect x="12" y="21" width="13" height="3" rx="1.5" fill="#c7c7cc"/>
+      <rect x="12" y="27" width="15" height="3" rx="1.5" fill="#c7c7cc"/>
+      <rect x="38" y="14" width="28" height="4" rx="2" fill="#1d1d1f"/>
+      <rect x="38" y="23" width="44" height="13" rx="3" fill="#f2f2f7"/>
+      <circle cx="44" cy="29.5" r="2.4" fill="#34c759"/>
+      <rect x="49" y="28" width="22" height="3" rx="1.5" fill="#c7c7cc"/>
+      <rect x="38" y="39" width="44" height="11" rx="3" fill="#f2f2f7"/>
+    </g>
+    <g id="ap-dk">
+      <rect width="96" height="62" fill="#3a3f4b"/>
+      <rect x="8" y="8" width="80" height="48" rx="5" fill="#1c1c1e"/>
+      <path d="M13 8h19v48H13a5 5 0 0 1-5-5V13a5 5 0 0 1 5-5z" fill="#2a2a2e"/>
+      <rect x="12" y="14" width="16" height="4" rx="2" fill="#0a84ff"/>
+      <rect x="12" y="21" width="13" height="3" rx="1.5" fill="#48484a"/>
+      <rect x="12" y="27" width="15" height="3" rx="1.5" fill="#48484a"/>
+      <rect x="38" y="14" width="28" height="4" rx="2" fill="#f5f5f7"/>
+      <rect x="38" y="23" width="44" height="13" rx="3" fill="#2c2c2e"/>
+      <circle cx="44" cy="29.5" r="2.4" fill="#30d158"/>
+      <rect x="49" y="28" width="22" height="3" rx="1.5" fill="#48484a"/>
+      <rect x="38" y="39" width="44" height="11" rx="3" fill="#2c2c2e"/>
+    </g>
+    <clipPath id="ap-cut"><path d="M58 0H96V62H38z"/></clipPath>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">设置</span>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" type="button" data-when="account password"><svg class="i"><use href="#i-plus"/></svg>添加管理员</button>
+    </header>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">设置</h1>
+        <p class="page-sub">对所有管理员生效；每次修改都会记入审计日志。</p>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="split split-narrow">
+        <nav class="sticky-col set-nav" aria-label="设置分类">
+          <div class="list">
+            <div class="row is-link" data-goto="general"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-gear"/></svg></span><div class="row-main"><div class="row-title">通用</div></div></div>
+            <div class="row is-link" data-goto="retention"><span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-hourglass"/></svg></span><div class="row-main"><div class="row-title">数据保留</div></div></div>
+            <div class="row is-link" data-goto="defaults"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-sliders"/></svg></span><div class="row-main"><div class="row-title">设备默认值</div></div></div>
+            <div class="row is-link" data-goto="security" data-match="guard"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-shield"/></svg></span><div class="row-main"><div class="row-title">安全</div></div></div>
+          </div>
+          <div class="list mt-4">
+            <div class="row is-link" data-goto="account" data-match="password"><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-people"/></svg></span><div class="row-main"><div class="row-title">管理员</div></div><span class="row-value">2</span></div>
+            <div class="row is-link" data-goto="audit"><span class="row-icon" style="--c:var(--brown)"><svg class="i"><use href="#i-doc"/></svg></span><div class="row-main"><div class="row-title">审计日志</div></div></div>
+          </div>
+        </nav>
+
+        <div class="pane">
+          <!-- ============ 通用：timezone / language（PATCH /settings），外观为本机偏好 ============ -->
+          <section data-when="general">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">通用</h2></div>
+            <div class="list-header">地区与语言</div>
+            <div class="list">
+              <div class="row form-row"><div class="row-main"><div class="row-title">时区</div><div class="row-sub">网页上的时间按此时区显示。通知消息中的时间使用服务器所在时区。</div></div><div class="control"><span class="select" style="min-width:230px">Asia/Shanghai<span class="faint">UTC+08:00</span><span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">语言</div><div class="row-sub">网页界面语言；通知内容由各模板决定。</div></div><div class="control"><div class="seg"><button type="button" aria-pressed="true">简体中文</button><button type="button">English</button></div></div></div>
+            </div>
+            <p class="list-caption">更改后立即保存并生效。</p>
+
+            <div class="list-header mt-6">外观</div>
+            <div class="list">
+              <div class="appear" role="group" aria-label="外观">
+                <button class="appear-opt" type="button" aria-pressed="true"><svg viewBox="0 0 96 62" aria-hidden="true"><use href="#ap-lt"/><g clip-path="url(#ap-cut)"><use href="#ap-dk"/></g></svg><span>跟随系统</span></button>
+                <button class="appear-opt" type="button"><svg viewBox="0 0 96 62" aria-hidden="true"><use href="#ap-lt"/></svg><span>浅色</span></button>
+                <button class="appear-opt" type="button"><svg viewBox="0 0 96 62" aria-hidden="true"><use href="#ap-dk"/></svg><span>深色</span></button>
+              </div>
+            </div>
+            <p class="list-caption">外观只保存在这台设备的浏览器中，不影响其他管理员。</p>
+          </section>
+
+          <!-- ============ 数据保留：*_retention_days；示例为未保存的修改 ============ -->
+          <section data-when="retention">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">数据保留</h2></div>
+            <div class="card tl" aria-label="各类数据的保留时长">
+              <div class="tl-row"><span class="tl-name">明细样本</span><div class="tl-track"><span class="tl-ghost" style="left:23.72%" title="修改前：7 天"></span><span class="tl-bar" style="--c:var(--accent);width:32.17%"></span><span class="tl-val" style="left:32.17%;color:var(--accent)">14 天</span></div></div>
+              <div class="tl-row"><span class="tl-name">分钟聚合</span><div class="tl-track"><span class="tl-bar" style="--c:var(--indigo);width:54.86%"></span><span class="tl-val" style="left:54.86%">90 天</span></div></div>
+              <div class="tl-row"><span class="tl-name">日志与记录</span><div class="tl-track"><span class="tl-bar" style="--c:var(--gray);width:71.93%"></span><span class="tl-val" style="left:71.93%">365 天</span></div></div>
+              <div class="tl-axis"><span></span><div class="tl-ticks"><span style="left:0">1 天</span><span style="left:23.72%">7 天</span><span style="left:41.47%">30 天</span><span style="left:54.86%">90 天</span><span style="left:71.93%">1 年</span><span style="left:100%">10 年</span></div></div>
+            </div>
+
+            <div class="list mt-4">
+              <div class="row form-row"><div class="row-main"><div class="row-title">明细样本</div><div class="row-sub">每次采集的原始值，1～90 天。超出此范围的历史曲线只显示分钟聚合。</div></div><div class="control"><div class="stepper is-changed"><span class="val">14</span><span class="unit">天</span><button type="button">−</button><button type="button">+</button></div></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">分钟聚合</div><div class="row-sub">每分钟的最小、最大与平均值，不少于明细保留期，最长 3650 天。</div></div><div class="control"><div class="stepper"><span class="val">90</span><span class="unit">天</span><button type="button">−</button><button type="button">+</button></div></div></div>
+              <div class="row form-row"><div class="row-main"><div class="row-title">日志与记录</div><div class="row-sub">审计、规则与通知日志，已结束的运行、事件和停电周期，1～3650 天。仍被引用的记录不会删除。</div></div><div class="control"><div class="stepper"><span class="val">365</span><span class="unit">天</span><button type="button">−</button><button type="button">+</button></div></div></div>
+            </div>
+            <p class="list-caption">保存后立即生效，无需重启。缩短保留期后，超期数据会在下一次整点清理时删除且无法恢复；延长不会找回已经删除的数据。</p>
+
+            <div class="save-bar">
+              <span class="note"><span class="dot-mod"></span>明细样本 7 天 → 14 天，尚未保存</span>
+              <span class="spacer"></span>
+              <button class="btn btn-gray" type="button">还原</button>
+              <button class="btn btn-primary" type="button">保存</button>
+            </div>
+          </section>
+
+          <!-- ============ 设备默认值：device_defaults（整体替换） ============ -->
+          <section data-when="defaults">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">设备默认值</h2></div>
+            <div class="banner banner-neutral"><svg class="i banner-icon"><use href="#i-info"/></svg><div class="banner-text" style="margin:0">这些值只用于之后添加的设备。现有设备（包括已停用的）各自保存了完整配置，不受影响；如需调整，请到设备的「阈值与去抖」中修改。</div></div>
+
+            <div class="mt-4">
+              <div>
+                <div class="list-header">停电判定</div>
+                <div class="list">
+                  <div class="row form-row"><div class="row-main"><div class="row-title">停电确认时长</div><div class="row-sub">短于此时长的闪断不产生事件</div></div><div class="control"><div class="stepper"><span class="val">10</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div></div></div>
+                  <div class="row form-row"><div class="row-main"><div class="row-title">市电恢复确认</div><div class="row-sub">持续供电满此时长才结束停电</div></div><div class="control"><div class="stepper"><span class="val">60</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div></div></div>
+                  <div class="row form-row"><div class="row-main"><div class="row-title">输入电压阈值</div><div class="row-sub">无显式状态时，低于此值视为断电</div></div><div class="control"><div class="stepper"><span class="val">50</span><span class="unit">V</span><button type="button">−</button><button type="button">+</button></div></div></div>
+                </div>
+
+                <div class="list-header mt-6">告警阈值</div>
+                <div class="list">
+                  <div class="row form-row" style="align-items:flex-start">
+                    <div class="row-main"><div class="row-title">低电量</div><div class="row-sub">降到 30% 告警，回升到 35% 才解除</div>
+                      <div class="hy" aria-hidden="true">
+                        <div class="hy-track"><i style="width:30%;background:var(--orange)"></i><i class="hold" style="width:5%"></i><i style="flex:1;background:var(--green-tint)"></i></div>
+                        <div class="hy-scale"><span class="l" style="left:30%">30%</span><span class="r" style="left:35%">35%</span></div>
+                      </div>
+                    </div>
+                    <div class="control dual">
+                      <label>告警<span class="stepper"><span class="val">30</span><span class="unit">%</span><button type="button">−</button><button type="button">+</button></span></label>
+                      <label>回差<span class="stepper"><span class="val">5</span><span class="unit">%</span><button type="button">−</button><button type="button">+</button></span></label>
+                    </div>
+                  </div>
+                  <div class="row form-row" style="align-items:flex-start">
+                    <div class="row-main"><div class="row-title">过载</div><div class="row-sub">任一相达到 90% 告警，降到 85% 才解除</div>
+                      <div class="hy" aria-hidden="true">
+                        <div class="hy-track"><i style="width:85%;background:var(--green-tint)"></i><i class="hold" style="width:5%"></i><i style="flex:1;background:var(--orange)"></i></div>
+                        <div class="hy-scale"><span class="l" style="left:85%">85%</span><span class="r" style="left:90%">90%</span></div>
+                      </div>
+                    </div>
+                    <div class="control dual">
+                      <label>告警<span class="stepper"><span class="val">90</span><span class="unit">%</span><button type="button">−</button><button type="button">+</button></span></label>
+                      <label>回差<span class="stepper"><span class="val">5</span><span class="unit">%</span><button type="button">−</button><button type="button">+</button></span></label>
+                    </div>
+                  </div>
+                </div>
+                <p class="list-caption">无效或过期的读数不会触发告警，也不会用来解除告警。</p>
+              </div>
+
+              <div>
+                <div class="list-header mt-6">通讯中断</div>
+                <div class="list">
+                  <div class="row form-row"><div class="row-main"><div class="row-title">判定为失联</div><div class="row-sub">连续采集失败次数</div></div><div class="control"><div class="stepper"><span class="val">3</span><span class="unit">次</span><button type="button">−</button><button type="button">+</button></div></div></div>
+                </div>
+                <div class="list-header mt-6">失联期间如何处理供电状态</div>
+                <div class="policy" role="radiogroup" aria-label="失联策略">
+                  <div class="opt is-on" role="radio" aria-checked="true"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span><div><div class="t-subhead strong">保持（推荐）</div><div class="t-footnote muted">沿用最后确认的供电状态；如在电池模式，放电计时继续。</div></div></div>
+                  <div class="opt" role="radio" aria-checked="false"><span class="check"></span><div><div class="t-subhead strong">失联一段时间后视为停电</div><div class="t-footnote muted">从最后一次成功采集起算。</div><div class="stepper" style="opacity:.55"><span class="val">300</span><span class="unit">秒</span><button type="button" disabled>−</button><button type="button" disabled>+</button></div></div></div>
+                  <div class="opt" role="radio" aria-checked="false"><span class="check"></span><div><div class="t-subhead strong">仅告警</div><div class="t-footnote muted">供电显示为未知，不判定市电恢复；重新连上后再确认。</div></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <button class="btn btn-plain btn-sm" type="button"><svg class="i"><use href="#i-undo"/></svg>恢复内置默认值</button>
+              <span class="spacer"></span>
+              <button class="btn btn-gray" type="button" disabled>还原</button>
+              <button class="btn btn-primary" type="button" disabled>保存</button>
+            </div>
+          </section>
+
+          <!-- ============ 安全：http_action_guard_ups_hosts；关闭需 confirm_disable_guard ============ -->
+          <section data-when="security guard">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">安全</h2></div>
+            <div class="list-header">HTTP 动作</div>
+            <div class="list has-icons">
+              <div class="row form-row"><span class="row-icon" style="--c:var(--green)"><svg class="i"><use href="#i-shield"/></svg></span><div class="row-main"><div class="row-title strong">禁止访问 UPS 数据源</div><div class="row-sub">HTTP 动作不能指向下列任何数据源的主机，保存和每次执行时都会检查，避免把请求误发到 UPS 网卡。</div></div><div class="control"><button class="switch" role="switch" aria-checked="true" aria-label="禁止 HTTP 动作访问 UPS 数据源" data-guard="dlg-guard"></button></div></div>
+              <div class="guard-hosts">
+                <span class="token mono">ups-a.lan</span><span class="token mono">ups-b.lan</span><span class="token mono">ups-monitor.lan</span><span class="token mono">ups-lab.lan</span><span class="token mono">ups-net.lan</span><span class="token mono">ups-office.lan</span><span class="token mono">ups-old.lan</span>
+              </div>
+            </div>
+            <p class="list-caption">包含已停用设备的数据源。此列表随数据源配置自动更新。</p>
+
+            <div class="list-header mt-6">登录会话</div>
+            <div class="list">
+              <div class="row"><div class="row-main"><div class="row-title">当前会话</div><div class="row-sub">admin · 这台设备上的浏览器</div></div><span class="row-value">10月28日 14:05 到期</span></div>
+              <div class="row"><div class="row-main"><div class="row-title">自动退出</div><div class="row-sub">空闲 24 小时，或登录满 7 天，以先到者为准</div></div></div>
+              <div class="row is-link"><div class="row-main"><div class="row-title ink-red">退出登录</div></div></div>
+            </div>
+          </section>
+
+          <!-- ============ 管理员：GET /users；P0 只有管理员角色 ============ -->
+          <section data-when="account password">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">管理员</h2></div>
+            <div class="list users" style="--row-inset:62px">
+              <div class="row"><span class="avatar is-blue">AD</span><div class="row-main"><div class="row-title strong">admin <span class="badge badge-blue">你</span></div><div class="row-sub">上次登录 今天 14:05 · 2026-08-14 创建</div></div><button class="btn btn-gray btn-sm" type="button" data-goto="password">修改密码…</button></div>
+              <div class="row"><span class="avatar is-teal">ON</span><div class="row-main"><div class="row-title strong">oncall</div><div class="row-sub">上次登录 10月26日 18:39 · 2026-09-02 创建</div></div><button class="btn btn-gray btn-icon btn-sm" type="button" aria-label="更多操作"><svg class="i"><use href="#i-ellipsis"/></svg></button></div>
+            </div>
+            <p class="list-caption">所有账户都是管理员，拥有相同权限。不能删除自己，也不能删除最后一位管理员。用户名仅限小写字母、数字及 . _ -。</p>
+          </section>
+
+          <!-- ============ 审计日志：GET /audit（只分页，无筛选） ============ -->
+          <section data-when="audit">
+            <div class="pane-head"><button class="btn btn-plain btn-icon back" type="button" aria-label="返回设置"><svg class="i"><use href="#i-chev-left"/></svg></button><h2 class="section-title">审计日志</h2></div>
+            <div class="card" style="overflow-x:auto">
+              <table class="table audit">
+                <thead><tr><th>时间</th><th>用户</th><th>操作</th><th>对象</th><th>结果</th><th class="col-hide">来源</th></tr></thead>
+                <tbody>
+                  <tr class="grp"><td colspan="6">今天 · 10月27日 星期二</td></tr>
+                  <tr><td class="tnum">14:06:30</td><td>admin</td><td>发送测试<span class="kind">channel.test</span></td><td>渠道「运维平台」</td><td><span class="pill pill-sm pill-blue">已请求</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr><td class="tnum">14:05:12</td><td>admin</td><td>登录<span class="kind">login</span></td><td>admin</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr><td class="tnum">14:04:58</td><td class="faint">—</td><td>登录<span class="kind">login</span></td><td>admin</td><td><span class="pill pill-sm pill-red">失败</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr class="is-open"><td class="tnum">11:32:40</td><td>admin</td><td>修改规则<span class="kind">rule.update</span></td><td>规则「停电 10 分钟或低电量」</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr class="detail"><td colspan="6"><div class="diff"><span class="k">dry_run</span><span class="b">true</span><span class="arr">→</span><span class="a">false</span><span class="k">cooldown_s</span><span class="b">300</span><span class="arr">→</span><span class="a">60</span></div></td></tr>
+                  <tr><td class="tnum">10:15:03</td><td>admin</td><td>信任主机指纹<span class="kind">host.hostkey.confirm</span></td><td>主机「NAS-01」</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr><td class="tnum">09:30:02</td><td>admin</td><td>发送测试<span class="kind">channel.test</span></td><td>渠道「值班群」</td><td><span class="pill pill-sm pill-blue">已请求</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr><td class="tnum">09:12:44</td><td>admin</td><td>修改系统设置<span class="kind">settings.update</span></td><td>系统设置</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">192.0.2.24</td></tr>
+                  <tr class="grp"><td colspan="6">昨天 · 10月26日 星期一</td></tr>
+                  <tr class="is-open"><td class="tnum">18:40:31</td><td>oncall</td><td>修改密码<span class="kind">user.password</span></td><td>oncall</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">198.51.100.7</td></tr>
+                  <tr class="detail"><td colspan="6"><div class="diff"><span class="k">password</span><span></span><span></span><span class="a" style="color:var(--label-2);font-weight:500">已修改</span></div></td></tr>
+                  <tr><td class="tnum">18:39:02</td><td>oncall</td><td>登录<span class="kind">login</span></td><td>oncall</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="col-hide mono">198.51.100.7</td></tr>
+                </tbody>
+              </table>
+              <div class="hstack" style="justify-content:center;padding:14px;box-shadow:inset 0 .5px 0 var(--separator-strong)"><button class="btn btn-gray btn-sm" type="button">加载更早的记录</button></div>
+            </div>
+            <p class="list-caption">按时间倒序。密码、令牌等敏感字段只显示「已修改」，不记录内容。审计记录按「数据保留 › 日志与记录」的期限保存。</p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 关闭护栏：PATCH {http_action_guard_ups_hosts:false, confirm_disable_guard:true}；重新开启无需确认 -->
+<div class="overlay" id="dlg-guard" data-when="guard">
+  <div class="scrim"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="guard-t">
+    <div class="dialog-icon" style="background:var(--red-tint);color:var(--red-ink)"><svg class="i"><use href="#i-shield"/></svg></div>
+    <div class="dialog-title" id="guard-t">允许 HTTP 动作访问 UPS？</div>
+    <div class="dialog-msg">关闭后，HTTP 动作可以向 UPS 网卡发送请求。一次配置错误就可能让 UPS 关机或改动设备设置。只有确实需要通过 HTTP 控制 UPS 时才关闭。</div>
+    <div class="dialog-actions"><button class="btn btn-gray" type="button" data-close data-goto="security">保持开启</button><button class="btn btn-danger" type="button" data-close data-guard-confirm>关闭护栏</button></div>
+  </div>
+</div>
+
+<!-- 修改密码：PUT /users/{id}/password；改自己的密码保留当前会话、撤销其他会话 -->
+<div class="overlay" data-when="password">
+  <div class="scrim"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="pw-t" style="width:min(460px,calc(100vw - 32px))">
+    <header class="sheet-head">
+      <button class="btn btn-plain" type="button" data-goto="account">取消</button>
+      <div class="sheet-title" id="pw-t">修改 admin 的密码</div>
+      <button class="btn btn-primary btn-sm" type="button" data-goto="account">修改</button>
+    </header>
+    <div class="sheet-body">
+      <label class="field-label" for="pw1">新密码</label>
+      <input class="input input-lg" id="pw1" type="password" value="correct-horse-battery" autocomplete="new-password" style="width:100%">
+      <label class="field-label mt-4" for="pw2">再次输入</label>
+      <input class="input input-lg" id="pw2" type="password" value="correct-horse-battery" autocomplete="new-password" style="width:100%">
+      <div class="pw-rules">
+        <div><span class="ok"><svg class="i"><use href="#i-check"/></svg></span>至少 8 个字符</div>
+        <div><span class="ok"><svg class="i"><use href="#i-check"/></svg></span>两次输入一致</div>
+      </div>
+      <div class="banner banner-neutral mt-4"><svg class="i banner-icon"><use href="#i-info"/></svg><div class="banner-text" style="margin:0">这台设备保持登录；你在其他设备和浏览器上的登录会被退出。</div></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

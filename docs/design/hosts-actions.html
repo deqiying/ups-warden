@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>主机与动作 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .host-row .row-icon, .act-row .row-icon { width: 36px; height: 36px; border-radius: 9px; }
+  .host-row .row-icon .i, .act-row .row-icon .i { width: 19px; height: 19px; }
+  .list.big-icons { --row-inset: 64px; }
+  .col-auth { width: 190px; }
+  .col-fp { width: 150px; }
+  .col-online { width: 110px; }
+  .col-last { width: 170px; text-align: right; }
+  /* 行尾操作占固定宽度，保证各列在不同按钮宽度下仍然对齐 */
+  .col-end { flex: none; width: 84px; display: flex; justify-content: flex-end; }
+  .group-title { display: flex; align-items: center; gap: 8px; margin: 22px 4px 8px; font-size: 0.8125rem; font-weight: 600; }
+  .group-title:first-child { margin-top: 0; }
+  .group-title .faint { font-weight: 500; }
+
+  .fp { font: 500 0.9375rem/1.5 var(--font-mono); letter-spacing: 0.01em; word-break: break-all; padding: 14px 16px; border-radius: 12px; background: var(--fill-3); box-shadow: inset 0 0 0 0.5px var(--separator); }
+  .fp b { color: var(--link); font-weight: 600; }
+  .fp-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 0.75rem; color: var(--label-2); }
+  .steps-mini { display: grid; gap: 10px; margin-top: 18px; }
+  .steps-mini div { display: flex; gap: 10px; font-size: 0.8125rem; color: var(--label-2); line-height: 1.45; }
+  .steps-mini .n { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font: 600 0.6875rem var(--font-rounded); background: var(--fill); color: var(--label); }
+  .steps-mini .n.ok { background: var(--green); color: #fff; }
+
+  .run-form { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px 16px; align-items: center; }
+  .run-form > label { font-size: 0.875rem; color: var(--label-2); text-align: right; }
+  .preview-box { border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 0.5px var(--separator); }
+  .preview-box .head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 0.75rem; font-weight: 600; color: var(--indigo-ink); background: var(--indigo-tint); }
+  .preview-box .code-block { border-radius: 0; box-shadow: none; }
+
+  .runs-table td { vertical-align: top; }
+  .runs-table tr.is-open td { background: var(--accent-tint); }
+  .runs-table tr.detail td { padding: 0 16px 16px; background: var(--accent-tint); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-grid .code-block { min-height: 64px; background: var(--surface); }
+  .detail-grid .lbl { font-size: 0.6875rem; font-weight: 600; color: var(--label-2); margin: 0 0 6px 2px; }
+
+  @media (max-width: 860px) {
+    .col-auth, .col-fp, .col-last, .col-hide { display: none; }
+    .col-end { width: auto; }
+    .run-form { grid-template-columns: 1fr; }
+    .run-form > label { text-align: left; margin-bottom: -8px; }
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-page="hosts" data-states="hosts:受控主机,fp:确认指纹,actions:动作,run:手动执行,runs:执行记录">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">主机与动作</span>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" type="button" data-when="hosts fp"><svg class="i"><use href="#i-plus"/></svg>添加主机</button>
+      <button class="btn btn-primary btn-sm" type="button" data-when="actions run"><svg class="i"><use href="#i-plus"/></svg>新建动作</button>
+    </header>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">主机与动作</h1>
+        <p class="page-sub">动作是规则与关机计划可调用的最小单元：通知、HTTP、本地脚本、SSH 命令或启动计划。</p>
+      </div>
+      <div class="seg seg-lg">
+        <button type="button" data-goto="hosts" data-match="fp">受控主机</button>
+        <button type="button" data-goto="actions" data-match="run">动作</button>
+        <button type="button" data-goto="runs">执行记录</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- ============ 受控主机：GET /hosts ============ -->
+      <div data-when="hosts fp">
+        <div class="list has-icons big-icons">
+          <div class="row is-link host-row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-desktop"/></svg></span>
+            <div class="row-main"><div class="row-title strong">PC-01</div><div class="row-sub">Windows · <span class="mono">pc-01.lan:22</span></div></div>
+            <div class="col-auth t-subhead muted">admin · 密码<br><span class="faint">用于计划「机房关机」</span></div>
+            <div class="col-fp"><span class="badge badge-green"><svg class="i"><use href="#i-fingerprint"/></svg>指纹已确认</span></div>
+            <div class="col-online"><span class="pill pill-sm pill-green"><span class="dot"></span>在线</span><div class="t-caption faint mt-2">TCP 22</div></div>
+            <div class="col-end"><button class="btn btn-icon btn-sm btn-gray" type="button" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="row is-link host-row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-server"/></svg></span>
+            <div class="row-main"><div class="row-title strong">测试服务器</div><div class="row-sub">Linux · <span class="mono">test-srv.lan:22</span></div></div>
+            <div class="col-auth t-subhead muted">ops · 私钥 · sudo -n<br><span class="faint">需在主机配置 NOPASSWD</span></div>
+            <div class="col-fp"><span class="badge badge-green"><svg class="i"><use href="#i-fingerprint"/></svg>指纹已确认</span></div>
+            <div class="col-online"><span class="pill pill-sm pill-green"><span class="dot"></span>在线</span><div class="t-caption faint mt-2">TCP 22</div></div>
+            <div class="col-end"><button class="btn btn-icon btn-sm btn-gray" type="button" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="row is-link host-row"><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-stack"/></svg></span>
+            <div class="row-main"><div class="row-title strong">NAS-01</div><div class="row-sub">NAS · <span class="mono">nas-01.lan:22</span></div></div>
+            <div class="col-auth t-subhead muted">admin · 密码<br><span class="faint">用于计划「机房关机」</span></div>
+            <div class="col-fp"><span class="badge badge-green"><svg class="i"><use href="#i-fingerprint"/></svg>指纹已确认</span></div>
+            <div class="col-online"><span class="pill pill-sm pill-green"><span class="dot"></span>在线</span><div class="t-caption faint mt-2">ICMP</div></div>
+            <div class="col-end"><button class="btn btn-icon btn-sm btn-gray" type="button" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+          <div class="row is-link host-row"><span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-server"/></svg></span>
+            <div class="row-main"><div class="row-title strong">ESXi-01</div><div class="row-sub">ESXi · <span class="mono">esxi-01.lan:22</span> · 刚添加</div></div>
+            <div class="col-auth t-subhead muted">root · 密码<br><span class="faint">未测试</span></div>
+            <div class="col-fp"><span class="badge badge-yellow"><svg class="i"><use href="#i-alert"/></svg>指纹未确认</span></div>
+            <div class="col-online"><span class="pill pill-sm pill-green"><span class="dot"></span>在线</span><div class="t-caption faint mt-2">TCP 22</div></div>
+            <div class="col-end"><button class="btn btn-tinted btn-sm" type="button" data-goto="fp">获取指纹</button></div>
+          </div>
+          <div class="row is-link host-row"><span class="row-icon is-soft" style="--c:var(--gray)"><svg class="i"><use href="#i-desktop"/></svg></span>
+            <div class="row-main"><div class="row-title strong">设计部 Mac mini</div><div class="row-sub">macOS · <span class="mono">mac-mini.lan:22</span></div></div>
+            <div class="col-auth t-subhead muted">design · 私钥<br><span class="faint">未被引用</span></div>
+            <div class="col-fp"><span class="badge badge-green"><svg class="i"><use href="#i-fingerprint"/></svg>指纹已确认</span></div>
+            <div class="col-online"><span class="pill pill-sm">离线</span><div class="t-caption faint mt-2">TCP 22 · 拒绝连接</div></div>
+            <div class="col-end"><button class="btn btn-icon btn-sm btn-gray" type="button" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button></div>
+          </div>
+        </div>
+        <p class="list-caption">只支持 SSH。凭据加密保存，之后只显示「已设置」。指纹未确认或不匹配时，拒绝认证和执行任何命令。在线检测只探测一个指定的 TCP 端口或 ICMP，3 秒超时。</p>
+      </div>
+
+      <!-- ============ 动作：GET /actions ============ -->
+      <div data-when="actions run">
+        <div class="banner banner-neutral" style="margin-bottom:18px">
+          <svg class="i banner-icon"><use href="#i-shield"/></svg>
+          <div><div class="banner-title" style="font-size:.875rem">HTTP 护栏已开启</div><div class="banner-text">HTTP 动作不能指向任何已配置的 UPS 数据源地址，保存和每次执行时都会检查。<a href="settings.html?state=security">在设置中管理</a></div></div>
+        </div>
+
+        <div class="group-title"><svg class="i ink-accent"><use href="#i-bell"/></svg>通知<span class="faint">1</span></div>
+        <div class="list has-icons big-icons">
+          <div class="row act-row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-bell"/></svg></span>
+            <div class="row-main"><div class="row-title strong">通知值班群</div><div class="row-sub">Telegram「值班群」、Webhook「运维平台」· 被 3 条规则引用</div></div>
+            <div class="col-last t-footnote faint">14:21 · 已入队</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+        </div>
+
+        <div class="group-title"><svg class="i ink-orange"><use href="#i-power"/></svg>启动关机计划<span class="faint">1</span></div>
+        <div class="list has-icons big-icons">
+          <div class="row act-row"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-power"/></svg></span>
+            <div class="row-main"><div class="row-title strong">启动关机计划「机房关机」</div><div class="row-sub">只能由规则触发；手动执行请到关机计划页输入计划名称</div></div>
+            <div class="col-last t-footnote faint">14:21 · 已启动 #18</div>
+            <div class="col-end"><a class="btn btn-gray btn-sm" href="shutdown-plans.html">前往计划</a></div>
+          </div>
+        </div>
+
+        <div class="group-title"><svg class="i"><use href="#i-terminal"/></svg>SSH 命令<span class="faint">3</span></div>
+        <div class="list has-icons big-icons">
+          <div class="row act-row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-terminal"/></svg></span>
+            <div class="row-main"><div class="row-title strong">关闭 PC-01</div><div class="row-sub">PC-01 · <span class="mono">shutdown /s /t 0</span> · 关机命令 · 超时 30 秒</div></div>
+            <div class="col-last t-footnote faint">10月22日 · dry-run</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+          <div class="row act-row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-terminal"/></svg></span>
+            <div class="row-main"><div class="row-title strong">关闭测试服务器</div><div class="row-sub">测试服务器 · <span class="mono">shutdown -h now</span> · sudo · 关机命令</div></div>
+            <div class="col-last t-footnote faint">10月22日 · dry-run</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+          <div class="row act-row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-terminal"/></svg></span>
+            <div class="row-main"><div class="row-title strong">关闭 NAS-01</div><div class="row-sub">NAS-01 · <span class="mono">poweroff</span> · 关机命令</div></div>
+            <div class="col-last t-footnote faint">10月22日 · dry-run</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button" data-goto="run">运行…</button></div>
+          </div>
+        </div>
+
+        <div class="group-title"><svg class="i"><use href="#i-globe"/></svg>HTTP<span class="faint">2</span></div>
+        <div class="list has-icons big-icons">
+          <div class="row act-row"><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-globe"/></svg></span>
+            <div class="row-main"><div class="row-title strong">停止业务 API</div><div class="row-sub">POST · 期望 200 / 204 · <span class="secret"><svg class="i"><use href="#i-lock"/></svg>地址、请求头、正文已加密</span></div></div>
+            <div class="col-last t-footnote faint">10月22日 · dry-run</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+          <div class="row act-row"><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-globe"/></svg></span>
+            <div class="row-main"><div class="row-title strong">实验室过载回调</div><div class="row-sub">POST · 期望 2xx · <span class="secret"><svg class="i"><use href="#i-lock"/></svg>地址、正文已加密</span></div></div>
+            <div class="col-last t-footnote faint">13:58 · dry-run</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+        </div>
+
+        <div class="group-title"><svg class="i"><use href="#i-doc"/></svg>本地脚本<span class="faint">2</span></div>
+        <div class="list has-icons big-icons">
+          <div class="row act-row"><span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-doc"/></svg></span>
+            <div class="row-main"><div class="row-title strong">归档运行日志</div><div class="row-sub"><span class="mono">archive-logs.sh</span> · 参数 <span class="mono">--keep 7</span></div></div>
+            <div class="col-last t-footnote ink-red">10月21日 · 失败</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+          <div class="row act-row"><span class="row-icon" style="--c:var(--red)"><svg class="i"><use href="#i-server"/></svg></span>
+            <div class="row-main"><div class="row-title strong">关闭 UPS Warden 主机</div><div class="row-sub"><span class="mono">shutdown-self.sh</span> · 仅用于计划的最后阶段</div></div>
+            <div class="col-last t-footnote faint">从未运行</div>
+            <div class="col-end"><button class="btn btn-gray btn-sm" type="button">运行…</button></div>
+          </div>
+        </div>
+        <p class="list-caption">脚本只能从服务端脚本目录中选择，不能在线创建或编辑。脚本只继承 PATH 等必要环境变量，并注入 UPS_DEVICE_NAME、UPS_EVENT、UPS_DRY_RUN 等上下文。</p>
+      </div>
+
+      <!-- ============ 执行记录：GET /action-runs ============ -->
+      <div data-when="runs">
+        <div class="hstack wrap" style="margin-bottom:14px">
+          <span class="select" style="height:28px;font-size:.8125rem"><span class="faint">动作</span>全部动作<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <div class="seg"><button type="button" aria-pressed="true">全部</button><button type="button">失败</button><button type="button">Dry-run</button></div>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table class="table runs-table">
+            <thead><tr><th>时间</th><th>动作</th><th class="col-hide">触发</th><th>结果</th><th class="num col-hide">耗时</th></tr></thead>
+            <tbody>
+              <tr><td class="tnum nowrap">今天 14:21:12</td><td>通知值班群</td><td class="col-hide muted">规则「停电 10 分钟或低电量」</td><td><span class="pill pill-sm pill-blue">已入队</span></td><td class="num col-hide">4 ms</td></tr>
+              <tr><td class="tnum nowrap">今天 14:21:12</td><td>启动关机计划「机房关机」</td><td class="col-hide muted">规则「停电 10 分钟或低电量」</td><td><span class="pill pill-sm pill-orange">计划已启动 #18</span></td><td class="num col-hide">11 ms</td></tr>
+              <tr><td class="tnum nowrap">今天 14:11:13</td><td>通知值班群</td><td class="col-hide muted">规则「停电与恢复通知」</td><td><span class="pill pill-sm pill-blue">已入队</span></td><td class="num col-hide">3 ms</td></tr>
+              <tr><td class="tnum nowrap">今天 13:58:43</td><td>实验室过载回调</td><td class="col-hide muted">规则「实验室过载回调」· dry-run</td><td><span class="pill pill-sm pill-indigo">Dry-run 预览</span></td><td class="num col-hide">—</td></tr>
+              <tr><td class="tnum nowrap">10月22日 16:41:02</td><td>关闭测试服务器</td><td class="col-hide muted">计划运行 #16 · dry-run</td><td><span class="pill pill-sm pill-indigo">Dry-run 预览</span></td><td class="num col-hide">—</td></tr>
+              <tr><td class="tnum nowrap">10月22日 15:02:47</td><td>连接测试 · 测试服务器</td><td class="col-hide muted">手动 · admin</td><td><span class="pill pill-sm pill-green">成功</span></td><td class="num col-hide">412 ms</td></tr>
+              <tr class="is-open"><td class="tnum nowrap">10月21日 23:00:05</td><td>归档运行日志</td><td class="col-hide muted">手动 · admin</td><td><span class="pill pill-sm pill-red">失败 · 退出码 1</span></td><td class="num col-hide">0.8 s</td></tr>
+              <tr class="detail"><td colspan="5">
+                <div class="detail-grid">
+                  <div><div class="lbl">stdout（前 4 KiB）</div><pre class="code-block">archiving /var/log/app → /srv/archive/2026-10-21.tar.gz
+collected 214 files</pre></div>
+                  <div><div class="lbl">stderr</div><pre class="code-block" style="color:var(--red-ink)">tar: /srv/archive: Cannot open: Permission denied
+tar: Error is not recoverable: exiting now</pre></div>
+                </div>
+                <div class="t-caption faint mt-3">运行 #280 · 环境 UPS_DRY_RUN=0 · 已按已知凭据脱敏</div>
+              </td></tr>
+            </tbody>
+          </table>
+          <div class="hstack" style="justify-content:center;padding:14px;box-shadow:inset 0 .5px 0 var(--separator-strong)"><button class="btn btn-gray btn-sm" type="button">加载更早的记录</button></div>
+        </div>
+        <p class="list-caption">「已入队」只表示进入通知队列，实际送达见通知发送记录。服务重启时仍在执行的记录标为「未知」，不会自动重放。</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 主机指纹：POST /hosts/{id}/hostkey/fetch → 人工核对 → POST /hosts/{id}/hostkey/confirm -->
+<div class="overlay" data-when="fp">
+  <div class="scrim"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="fp-t" style="width:min(520px,calc(100vw - 32px))">
+    <header class="sheet-head">
+      <button class="btn btn-plain" type="button" data-goto="hosts">取消</button>
+      <div class="sheet-title" id="fp-t">确认主机指纹</div>
+      <button class="btn btn-primary btn-sm" type="button" data-goto="hosts">信任此指纹</button>
+    </header>
+    <div class="sheet-body">
+      <div class="hstack" style="gap:12px;margin:6px 0 16px"><span class="row-icon" style="--c:var(--indigo);width:40px;height:40px;border-radius:10px"><svg class="i" style="width:22px;height:22px"><use href="#i-server"/></svg></span>
+        <div><div class="t-headline">ESXi-01</div><div class="t-footnote muted"><span class="mono">esxi-01.lan:22</span> · ED25519 主机密钥</div></div></div>
+      <div class="fp">SHA256:<b>q2Nw8fJ1</b>oV0bS4mZ7kHcR9eT3yLxA6uP5dGiWjK0nQ</div>
+      <div class="fp-meta" data-countdown="272" data-total="300"><span>本次获取的指纹 <b class="tnum cd-text">04:32</b> 内有效</span><button class="btn btn-plain btn-sm" type="button" style="height:auto;padding:0"><svg class="i"><use href="#i-copy"/></svg>拷贝</button></div>
+      <div class="steps-mini">
+        <div><span class="n ok"><svg class="i" style="width:11px;height:11px;stroke-width:3"><use href="#i-check"/></svg></span>已获取主机公钥。获取过程不发送用户名或密码。</div>
+        <div><span class="n">2</span>通过可信途径（主机控制台或管理界面）查看本机 SSH 指纹，逐字核对。</div>
+        <div><span class="n">3</span>一致后点按「信任此指纹」。之后修改地址或端口会清除已确认的指纹。</div>
+      </div>
+      <div class="banner banner-warning mt-4"><svg class="i banner-icon"><use href="#i-alert"/></svg><div class="banner-text" style="margin:0">如果指纹与主机上看到的不一致，不要信任——连接可能被中间人劫持。</div></div>
+    </div>
+  </section>
+</div>
+
+<!-- 手动执行动作：POST /actions/{id}/run {confirm:true, dry_run, device_id}；未传 dry_run 即真实执行，前端始终显式填写 -->
+<div class="overlay" data-when="run">
+  <div class="scrim"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="run-t" style="width:min(600px,calc(100vw - 32px))">
+    <header class="sheet-head">
+      <button class="btn btn-plain" type="button" data-goto="actions">取消</button>
+      <div class="sheet-title" id="run-t">运行「关闭 NAS-01」</div>
+      <button class="btn btn-primary btn-sm" type="button" data-goto="runs" style="background:var(--indigo)">运行 dry-run</button>
+    </header>
+    <div class="sheet-body">
+      <div class="run-form">
+        <label>方式</label>
+        <div><div class="seg"><button type="button" aria-pressed="true"><svg class="i" style="width:13px;height:13px"><use href="#i-flask"/></svg>Dry-run 预演</button><button type="button">真实执行</button></div>
+          <div class="t-caption faint mt-2">Dry-run 只保存执行记录和脱敏预览，不连接主机。</div></div>
+        <label>设备上下文</label>
+        <div><span class="select" style="min-width:260px">机房 UPS-A · 当前快照<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+          <div class="t-caption faint mt-2">用于填充 UPS_DEVICE_NAME 等变量；可不指定。</div></div>
+      </div>
+      <div class="preview-box mt-6">
+        <div class="head"><svg class="i" style="width:14px;height:14px"><use href="#i-eye"/></svg>将要执行</div>
+        <pre class="code-block">主机    NAS-01 (nas-01.lan:22) · 指纹 SHA256:7Hc0…Ue4w 已确认
+用户    admin · 密码已设置
+命令    poweroff
+超时    30 秒 · 关机命令：连接在命令被接受后断开记为「已发送」</pre>
+      </div>
+      <div class="banner banner-warning mt-4"><svg class="i banner-icon"><use href="#i-power"/></svg><div class="banner-text" style="margin:0">选择「真实执行」会立即关闭 NAS-01。同一动作不会并发执行；执行期间不能修改或删除该动作。</div></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

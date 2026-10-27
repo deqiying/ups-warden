@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>设备管理 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .dev-row .row-icon { width: 36px; height: 36px; border-radius: 9px; }
+  .dev-row .row-icon .i { width: 20px; height: 20px; }
+  .col-proto { width: 210px; }
+  .col-status { width: 150px; }
+  .col-seen { width: 110px; text-align: right; }
+  [data-state="list"] .scrim, [data-state="list"] .sheet { display: none; }
+
+  /* 向导步骤条：完成项打勾，当前项为强调色 */
+  .steps { display: flex; gap: 6px; padding: 4px 28px 18px; }
+  .step { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 0.75rem; font-weight: 600; color: var(--label-3); }
+  .step::before { content: ""; height: 4px; border-radius: 2px; background: var(--fill); }
+  .step.done { color: var(--label-2); }
+  .step.done::before, .step.on::before { background: var(--accent); }
+  .step.on { color: var(--link); }
+
+  .proto-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .proto {
+    position: relative; padding: 16px; border-radius: 14px; cursor: pointer;
+    background: var(--surface); box-shadow: 0 0 0 1px var(--separator-strong);
+    transition: box-shadow var(--dur-quick) var(--ease-standard), transform var(--dur-press) ease-out;
+  }
+  .proto:active { transform: scale(0.98); }
+  .proto.is-on { box-shadow: 0 0 0 2px var(--accent), var(--ring-focus); }
+  .proto .check { position: absolute; top: 14px; right: 14px; }
+  .proto h4 { font: 600 0.9375rem/1.3 var(--font-text); margin-top: 12px; }
+  .proto p { font-size: 0.75rem; color: var(--label-2); margin-top: 4px; line-height: 1.45; }
+  .proto .row-icon { width: 34px; height: 34px; border-radius: 9px; }
+
+  .form-grid { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px 16px; align-items: center; }
+  .form-grid label { font-size: 0.875rem; color: var(--label-2); text-align: right; }
+  .form-grid .input, .form-grid .select { width: 100%; }
+  .hint { font-size: 0.75rem; color: var(--label-3); margin-top: 4px; }
+
+  .test-ok { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 14px; background: var(--green-tint); }
+  .test-ok .sev { width: 40px; height: 40px; background: var(--green); color: #fff; }
+  .test-fail { background: var(--red-tint); }
+  .test-fail .sev { background: var(--red); }
+  .reco .row { cursor: pointer; }
+  .score { font: 600 0.8125rem var(--font-rounded); color: var(--label-2); font-variant-numeric: tabular-nums; }
+  .preview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .preview .metric { padding: 12px; border-radius: 12px; background: var(--fill-3); }
+
+  .policy { display: grid; gap: 8px; }
+  .policy .opt { display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; box-shadow: 0 0 0 1px var(--separator-strong); cursor: pointer; }
+  .policy .opt.is-on { box-shadow: 0 0 0 2px var(--accent); background: var(--accent-tint); }
+  @media (max-width: 860px) {
+    .proto-grid, .preview { grid-template-columns: 1fr 1fr; }
+    .col-proto, .col-seen { display: none; }
+    /* 窄屏：状态胶囊移到名称下方，开关与「更多」跨两行居中，名称保持整行宽度 */
+    .dev-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 12px; row-gap: 6px; }
+    .dev-row > .row-icon { grid-row: 1 / span 2; }
+    .dev-row > .row-main { grid-column: 2; grid-row: 1; }
+    .dev-row > .col-status { grid-column: 2; grid-row: 2; width: auto; }
+    .dev-row > .switch { grid-column: 3; grid-row: 1 / span 2; }
+    .dev-row > .btn { grid-column: 4; grid-row: 1 / span 2; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid label { text-align: left; }
+  }
+</style>
+</head>
+<body data-page="devices" data-states="list:设备列表,proto:添加·协议,test:添加·测试,pwd:密码错误,thresholds:添加·阈值,delete:删除确认">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">设备</span>
+      <div class="spacer"></div>
+      <button class="btn btn-icon" aria-label="搜索"><svg class="i"><use href="#i-search"/></svg></button>
+      <button class="btn btn-primary btn-sm"><svg class="i"><use href="#i-plus"/></svg>添加设备</button>
+    </header>
+    <div class="page-head">
+      <div><h1 class="page-title">设备</h1><p class="page-sub">每台设备绑定一个只读数据源。停用设备会停止采集，但保留历史。</p></div>
+      <div class="seg hide-narrow"><button aria-pressed="true">全部 <span class="count">7</span></button><button>已启用 <span class="count">6</span></button><button>已停用 <span class="count">1</span></button></div>
+    </div>
+    <div class="content">
+      <div class="list has-icons" style="--row-inset:64px">
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">机房 UPS-A</div><div class="row-sub">1F 机房 · 机柜 A3 · <span class="badge badge-outline">核心</span> <span class="badge badge-outline">机房</span></div></div>
+          <div class="col-proto t-subhead muted">SNMP v2c · <span class="mono">ups-a.lan</span><br><span class="faint">et1k-snmp v1</span></div>
+          <div class="col-status"><span class="pill pill-orange pill-sm"><span class="dot"></span>电池供电</span></div>
+          <div class="col-seen t-footnote faint">38 ms · 2 秒前</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--green)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">机房 UPS-B</div><div class="row-sub">1F 机房 · 机柜 B1 · <span class="badge badge-outline">核心</span></div></div>
+          <div class="col-proto t-subhead muted">AYI9 JSON · <span class="mono">ups-b.lan</span><br><span class="faint">et1k-ayi9-json v1</span></div>
+          <div class="col-status"><span class="pill pill-green pill-sm"><span class="dot"></span>市电</span></div>
+          <div class="col-seen t-footnote faint">22 ms · 2 秒前</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--gray)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">监控室 UPS</div><div class="row-sub">B1 安防监控室</div></div>
+          <div class="col-proto t-subhead muted">AYI9 JSON · <span class="mono">ups-monitor.lan</span><br><span class="ink-orange">连续 3 次 timeout</span></div>
+          <div class="col-status"><span class="pill pill-sm"><svg class="i"><use href="#i-wifi-off"/></svg>通讯中断</span></div>
+          <div class="col-seen t-footnote ink-orange">3 分钟前</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--yellow)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">实验室 UPS</div><div class="row-sub">3F 实验室 · 测试台 · <span class="badge badge-outline">实验</span></div></div>
+          <div class="col-proto t-subhead muted">SNMP v2c · <span class="mono">ups-lab.lan</span><br><span class="faint">rfc1628-generic v1</span></div>
+          <div class="col-status"><span class="pill pill-yellow pill-sm"><span class="dot"></span>旁路供电</span></div>
+          <div class="col-seen t-footnote faint">41 ms · 1 秒前</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多" data-open="dlg-delete"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--yellow)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">网络间 UPS</div><div class="row-sub">2F 弱电间 · <span class="badge badge-outline">网络</span></div></div>
+          <div class="col-proto t-subhead muted">Modbus TCP · <span class="mono">ups-net.lan</span><br><span class="faint">et1k-modbus v1 · Unit 1</span></div>
+          <div class="col-status"><span class="pill pill-yellow pill-sm"><span class="dot breathe"></span>疑似停电</span></div>
+          <div class="col-seen t-footnote faint">19 ms · 刚刚</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row"><span class="row-icon" style="--c:var(--green)"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">办公区 UPS</div><div class="row-sub">2F 开放办公区</div></div>
+          <div class="col-proto t-subhead muted">Modbus TCP · <span class="mono">ups-office.lan</span><br><span class="faint">et1k-modbus v1 · Unit 1</span></div>
+          <div class="col-status"><span class="pill pill-green pill-sm"><span class="dot"></span>市电</span></div>
+          <div class="col-seen t-footnote faint">17 ms · 3 秒前</div>
+          <button class="switch switch-sm" role="switch" aria-checked="true" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+        <div class="row is-link dev-row" style="opacity:.6"><span class="row-icon is-soft"><svg class="i"><use href="#i-ups"/></svg></span>
+          <div class="row-main"><div class="row-title strong">旧仓库 UPS</div><div class="row-sub">已停用 · 历史保留到保留期结束</div></div>
+          <div class="col-proto t-subhead muted">SNMP v1 · <span class="mono">ups-old.lan</span><br><span class="faint">rfc1628-generic v1</span></div>
+          <div class="col-status"><span class="pill pill-sm">已停用</span></div>
+          <div class="col-seen t-footnote faint">10月12日</div>
+          <button class="switch switch-sm" role="switch" aria-checked="false" aria-label="启用"></button>
+          <button class="btn btn-icon btn-sm btn-gray" aria-label="更多"><svg class="i"><use href="#i-ellipsis"/></svg></button>
+        </div>
+      </div>
+      <p class="list-caption">驱动只发送只读请求：SNMP GET / GETNEXT / GETBULK，Modbus FC03 / FC04，AYI9 仅 QAD / RTD。同一 IP 的采集与连接测试串行执行。</p>
+    </div>
+  </main>
+</div>
+
+<!-- 添加设备向导：POST /devices → POST /sources/test → POST /devices/{id}/sources -->
+<div class="overlay" data-when="proto test pwd thresholds">
+  <div class="scrim"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="wiz-title">
+    <header class="sheet-head">
+      <button class="btn btn-plain" data-close>取消</button>
+      <div class="sheet-title" id="wiz-title">添加设备</div>
+      <div class="hstack">
+        <button class="btn btn-plain" data-when="test pwd thresholds">上一步</button>
+        <button class="btn btn-primary btn-sm" data-when="proto">下一步</button>
+        <button class="btn btn-primary btn-sm" data-when="test">使用 et1k-snmp</button>
+        <button class="btn btn-primary btn-sm" data-when="pwd" disabled>下一步</button>
+        <button class="btn btn-primary btn-sm" data-when="thresholds">添加设备</button>
+      </div>
+    </header>
+
+    <div class="steps" data-when="proto"><div class="step on">设备与协议</div><div class="step">连接</div><div class="step">测试与 Profile</div><div class="step">阈值与去抖</div></div>
+    <div class="steps" data-when="test pwd"><div class="step done">设备与协议</div><div class="step done">连接</div><div class="step on">测试与 Profile</div><div class="step">阈值与去抖</div></div>
+    <div class="steps" data-when="thresholds"><div class="step done">设备与协议</div><div class="step done">连接</div><div class="step done">测试与 Profile</div><div class="step on">阈值与去抖</div></div>
+
+    <!-- 1. 设备与协议 -->
+    <div class="sheet-body" data-when="proto">
+      <div class="form-grid">
+        <label>名称</label><input class="input" value="门卫室 UPS">
+        <label>位置</label><input class="input" value="1F 门卫室" placeholder="可选">
+        <label>标签</label><div class="hstack wrap"><span class="token">安防<span class="x"><svg class="i"><use href="#i-x"/></svg></span></span><span class="token token-add">添加标签</span></div>
+      </div>
+      <div class="list-header mt-6">协议</div>
+      <div class="proto-grid">
+        <div class="proto is-on"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-antenna"/></svg></span><h4>SNMP</h4><p>v1 / v2c · UDP 161。适用于大多数 UPS 网卡，内置 RFC 1628 通用映射。</p></div>
+        <div class="proto"><span class="check"></span><span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-server"/></svg></span><h4>Modbus TCP</h4><p>TCP 502 · 只读 FC03 / FC04。设备没有身份信息，需要手动选择 Profile。</p></div>
+        <div class="proto"><span class="check"></span><span class="row-icon" style="--c:var(--teal)"><svg class="i"><use href="#i-globe"/></svg></span><h4>AYI9 云监控卡 JSON API</h4><p>TCP 2390 · 仅 QAD / RTD。网卡「集成设置」页显示 <span class="mono">TCP:2390, JSON format</span>。</p></div>
+      </div>
+      <div class="banner banner-neutral mt-4"><svg class="i banner-icon"><use href="#i-shield"/></svg><div><div class="banner-title" style="font-size:.875rem">完全只读</div><div class="banner-text">无论 Profile 如何配置，UPS Warden 都不会向 UPS 发送写入、控制或 WebUI 请求，也不会扫描端口。</div></div></div>
+    </div>
+
+    <!-- 3. 连接测试成功：返回 latency_ms / device_info / recommendations / snapshot -->
+    <div class="sheet-body" data-when="test">
+      <div class="test-ok"><span class="sev"><svg class="i"><use href="#i-check"/></svg></span>
+        <div style="flex:1"><div class="t-headline">已连接到 ET1K</div><div class="t-subhead muted">SNMP v2c · <span class="mono">ups-gate.lan:161</span> · 延迟 41 ms · 只读 GETBULK</div></div>
+        <button class="btn btn-gray btn-sm"><svg class="i"><use href="#i-refresh"/></svg>重新测试</button></div>
+      <div class="grid cols-2 mt-4">
+        <div>
+          <div class="list-header">设备身份</div>
+          <div class="list">
+            <div class="row form-row"><span class="row-main">型号</span><span class="row-value">ET1K</span></div>
+            <div class="row form-row"><span class="row-main">固件</span><span class="row-value">V1.06</span></div>
+            <div class="row form-row"><span class="row-main">Agent</span><span class="row-value">ayi9 v1</span></div>
+            <div class="row form-row"><span class="row-main">厂商</span><span class="row-value na" data-tip="网卡只返回了出厂占位字符串">— 未提供</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="list-header">推荐的 Profile</div>
+          <div class="list reco">
+            <div class="row is-selected"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span><div class="row-main"><div class="row-title strong">et1k-snmp</div><div class="row-sub">型号字符串匹配「ET1K」</div></div><span class="score">0.95</span></div>
+            <div class="row"><span class="check"></span><div class="row-main"><div class="row-title">rfc1628-generic</div><div class="row-sub">通用 UPS-MIB 映射</div></div><span class="score">0.40</span></div>
+            <div class="row"><span class="check"></span><div class="row-main"><div class="row-title faint">选择其他 Profile…</div></div><svg class="i row-chevron"><use href="#i-chev-right"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="list-header mt-6">按所选 Profile 归一化的读数</div>
+      <div class="preview">
+        <div class="metric"><span class="metric-label">电池容量</span><span class="metric-value">100<small>%</small></span></div>
+        <div class="metric"><span class="metric-label">输入电压</span><span class="metric-value">229.8<small>V</small></span></div>
+        <div class="metric"><span class="metric-label">负载</span><span class="metric-value">19<small>%</small></span></div>
+        <div class="metric"><span class="metric-label">剩余时间</span><span class="metric-value na" data-tip="原生值恒为 0，Profile 声明 0 视为无效">—</span></div>
+      </div>
+      <p class="list-caption">原始数据与字段追踪可在保存后于「数据源与诊断」中查看；测试结果不写入历史。</p>
+    </div>
+
+    <!-- 3'. AYI9 密码错误：502 / source_password_wrong -->
+    <div class="sheet-body" data-when="pwd">
+      <div class="test-ok test-fail"><span class="sev"><svg class="i"><use href="#i-key"/></svg></span>
+        <div style="flex:1"><div class="t-headline">设备密码错误（103）</div><div class="t-subhead muted">AYI9 JSON · <span class="mono">ups-gate.lan:2390</span> 拒绝了请求。请核对网卡「集成设置」中的访问密码。</div></div></div>
+      <div class="form-grid mt-6">
+        <label>协议</label><span class="select">AYI9 云监控卡 JSON API<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+        <label>主机</label><input class="input input-mono" value="ups-gate.lan">
+        <label>端口</label><input class="input input-mono" value="2390" style="max-width:120px">
+        <label>密码</label><div><input class="input is-invalid" type="password" value="••••••" style="max-width:260px"><div class="hint">密码加密保存，之后只显示「已设置」。留空表示使用空密码。</div></div>
+      </div>
+      <div class="hstack mt-6" style="justify-content:flex-end"><button class="btn btn-tinted"><svg class="i"><use href="#i-refresh"/></svg>重新测试</button></div>
+    </div>
+
+    <!-- 4. 阈值与去抖：设备 config，缺省取系统设置 device_defaults -->
+    <div class="sheet-body" data-when="thresholds">
+      <div class="banner banner-neutral"><svg class="i banner-icon"><use href="#i-info"/></svg><div class="banner-text" style="margin:0">默认值来自「设置 › 设备默认值」。保存后作为该设备的完整配置，之后修改系统默认值不会影响此设备。</div></div>
+      <div class="grid cols-2 mt-4">
+        <div>
+          <div class="list-header">停电判定</div>
+          <div class="list">
+            <div class="row form-row"><div class="row-main"><div class="row-title">停电确认时长</div><div class="row-sub">短于此时长的闪断不产生事件</div></div><div class="stepper"><span class="val">10</span><span class="unit">秒</span><button>−</button><button>+</button></div></div>
+            <div class="row form-row"><div class="row-main"><div class="row-title">市电恢复确认</div></div><div class="stepper"><span class="val">60</span><span class="unit">秒</span><button>−</button><button>+</button></div></div>
+            <div class="row form-row"><div class="row-main"><div class="row-title">输入电压阈值</div><div class="row-sub">无显式状态时，低于此值视为断电</div></div><div class="stepper"><span class="val">50</span><span class="unit">V</span><button>−</button><button>+</button></div></div>
+          </div>
+          <div class="list-header mt-4">告警阈值</div>
+          <div class="list">
+            <div class="row form-row"><div class="row-main"><div class="row-title">低电量</div><div class="row-sub">回差 5%：回升到 35% 才解除</div></div><div class="stepper"><span class="val">30</span><span class="unit">%</span><button>−</button><button>+</button></div></div>
+            <div class="row form-row"><div class="row-main"><div class="row-title">过载</div><div class="row-sub">回差 5%：降到 85% 才解除</div></div><div class="stepper"><span class="val">90</span><span class="unit">%</span><button>−</button><button>+</button></div></div>
+          </div>
+        </div>
+        <div>
+          <div class="list-header">通讯中断</div>
+          <div class="list">
+            <div class="row form-row"><div class="row-main"><div class="row-title">判定为失联</div><div class="row-sub">连续失败次数</div></div><div class="stepper"><span class="val">3</span><span class="unit">次</span><button>−</button><button>+</button></div></div>
+          </div>
+          <div class="list-header mt-4">失联期间如何处理供电状态</div>
+          <div class="policy">
+            <div class="opt is-on"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span><div><div class="t-subhead strong">保持（推荐）</div><div class="t-footnote muted">沿用最后确认的供电状态；如在电池模式，放电计时继续。</div></div></div>
+            <div class="opt"><span class="check"></span><div><div class="t-subhead strong">失联一段时间后视为停电</div><div class="t-footnote muted">从最后成功时间起算，默认 300 秒。</div></div></div>
+            <div class="opt"><span class="check"></span><div><div class="t-subhead strong">仅告警</div><div class="t-footnote muted">显示为未知，不参与关机判定。</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 删除确认：DELETE /devices/{id} {confirm:true}；被引用时 409 -->
+<div class="overlay" id="dlg-delete" data-when="delete">
+  <div class="scrim"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true">
+    <div class="dialog-icon" style="background:var(--red-tint);color:var(--red-ink)"><svg class="i"><use href="#i-trash"/></svg></div>
+    <div class="dialog-title">删除「实验室 UPS」？</div>
+    <div class="dialog-msg">将同时删除它的数据源、状态、事件与历史，且无法撤销。若规则或计划运行记录仍引用它，删除会被拒绝——此时可以改为停用。</div>
+    <div class="dialog-actions"><button class="btn btn-gray" data-close>取消</button><button class="btn btn-danger" data-close>删除</button></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>界面效果图 · UPS Warden</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  /* 画廊自带外观切换，同时控制缩略图；不需要评审浮条 */
+  .mock-bar { display: none; }
+  .gal { max-width: 1320px; margin: 0 auto; padding: 56px 32px 120px; }
+  .gal-hero { display: grid; justify-items: center; text-align: center; gap: 14px; padding-bottom: 36px; }
+  .gal-hero .app-icon-lg { width: 76px; height: 76px; border-radius: 18px; display: grid; place-items: center; color: #fff; background: linear-gradient(160deg, #5fe07b 0%, #28b44f 55%, #12913a 100%); box-shadow: inset 0 0 0 0.5px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.35), 0 10px 30px rgba(36,160,70,.28); }
+  .gal-hero .app-icon-lg .i { width: 40px; height: 40px; stroke-width: 2; }
+  .gal-hero h1 { font: 700 3rem/1.06 var(--font-display); letter-spacing: -0.03em; }
+  .gal-hero p { max-width: 660px; color: var(--label-2); font-size: 1.1875rem; line-height: 1.45; }
+  .gal-hero .hstack { gap: 12px; margin-top: 6px; justify-content: center; }
+
+  .gal-bar { position: sticky; top: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; width: fit-content; margin: 0 auto 8px; padding: 6px; border-radius: 999px; background: var(--material-chip); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); box-shadow: var(--shadow-float); }
+
+  .group-h { display: flex; align-items: baseline; gap: 12px; margin: 48px 4px 16px; }
+  .group-h h2 { font: 700 1.5rem/1.2 var(--font-display); letter-spacing: -0.016em; }
+  .group-h span { color: var(--label-2); font-size: 0.875rem; }
+  .shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
+  .gal.is-phone .shots { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+
+  .shot { display: grid; gap: 14px; align-content: start; }
+  .frame { position: relative; display: block; overflow: hidden; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-card), 0 0 0 0.5px var(--separator-strong); aspect-ratio: 1440 / 900; transition: transform var(--dur-press) var(--ease-out), box-shadow var(--dur-quick) var(--ease-standard); }
+  .frame:hover { box-shadow: var(--shadow-float), 0 0 0 0.5px var(--separator-strong); text-decoration: none; }
+  .frame:active { transform: scale(0.985); }
+  .gal.is-phone .frame { aspect-ratio: 390 / 844; border-radius: 30px; box-shadow: var(--shadow-card), 0 0 0 6px var(--label), 0 0 0 7px var(--separator-strong); margin: 7px; }
+  .frame iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; pointer-events: none; background: var(--bg); }
+  .frame .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--label-3); font-size: 0.8125rem; }
+  .shot-meta h3 { font: 600 1.1875rem/1.28 var(--font-display); letter-spacing: -0.01em; }
+  .shot-meta h3 a { color: var(--label); }
+  .shot-meta p { margin-top: 4px; font-size: 0.875rem; color: var(--label-2); line-height: 1.5; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { display: inline-flex; align-items: center; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; color: var(--label); background: var(--fill-2); transition: background-color var(--dur-quick) var(--ease-standard); }
+  .chip:hover { background: var(--fill); text-decoration: none; }
+  .chip:active { transform: scale(0.97); }
+  .api { margin-top: 10px; font: 0.6875rem/1.6 var(--font-mono); color: var(--label-3); }
+
+  .spec-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 20px 22px; margin-top: 48px; }
+  .spec-card .row-icon { width: 48px; height: 48px; border-radius: 12px; }
+  .spec-card .row-icon .i { width: 26px; height: 26px; }
+  .foot { margin-top: 56px; text-align: center; font-size: 0.75rem; color: var(--label-3); line-height: 1.6; }
+
+  @media (max-width: 860px) {
+    .gal { padding: 32px 16px 96px; }
+    .gal-hero h1 { font-size: 2.125rem; }
+    .gal-hero p { font-size: 1rem; }
+    .shots { grid-template-columns: minmax(0, 1fr); }
+    .gal.is-phone .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+    .spec-card { grid-template-columns: auto minmax(0, 1fr); }
+    .spec-card .btn { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body data-page="gallery">
+<div class="gal" id="gal">
+  <header class="gal-hero">
+    <span class="app-icon-lg"><svg class="i"><use href="#i-bolt"/></svg></span>
+    <h1>UPS Warden 界面效果图</h1>
+    <p>按后端 M4–M8 接口契约重新设计的全部主要页面。点按缩略图打开可交互的效果图；下方的标签直接跳到对应状态。</p>
+    <div class="hstack wrap">
+      <a class="btn btn-primary btn-lg" href="foundations.html">设计规范</a>
+      <a class="btn btn-gray btn-lg" href="overview.html">从总览开始</a>
+    </div>
+  </header>
+
+  <div class="gal-bar" role="toolbar" aria-label="缩略图显示方式">
+    <div class="seg" id="seg-device"><button type="button" aria-pressed="true" data-device="desktop"><svg class="i" style="width:14px;height:14px"><use href="#i-desktop"/></svg>桌面</button><button type="button" aria-pressed="false" data-device="phone"><svg class="i" style="width:14px;height:14px"><use href="#i-phone"/></svg>手机</button></div>
+    <div class="seg" id="seg-theme"><button type="button" data-theme-set="light"><svg class="i" style="width:14px;height:14px"><use href="#i-sun"/></svg>浅色</button><button type="button" data-theme-set="dark"><svg class="i" style="width:14px;height:14px"><use href="#i-moon"/></svg>深色</button></div>
+  </div>
+
+  <div id="groups"></div>
+
+  <a class="card spec-card" href="foundations.html" style="color:inherit;text-decoration:none">
+    <span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-sliders"/></svg></span>
+    <div><div class="t-title3">设计规范</div><div class="t-subhead muted" style="margin-top:2px">颜色与状态语义、字体、材质、组件、数据质量、安全交互、动效与无障碍。实现前端时以此为准。</div></div>
+    <span class="btn btn-tinted">查看规范</span>
+  </a>
+
+  <p class="foot">效果图为静态 HTML 与内联 SVG，不连接后端；示例数据均为虚构，主机名使用 .lan 占位。<br>右下角的「效果图状态」浮条仅用于评审，不属于产品界面。</p>
+</div>
+
+<script>
+  // 页面清单：thumb 为缩略图使用的状态，states 生成可直达的状态标签
+  const GROUPS = [
+    { title: "监控", note: "实时状态与历史", pages: [
+      { file: "overview.html", title: "总览", thumb: "outage",
+        desc: "停电时把正在放电的设备、关机倒计时和活动告警放在最前面；一切正常时退为安静的设备网格。",
+        api: "GET /snapshots · GET /alerts · GET /plan-runs · SSE /stream",
+        states: "outage:停电中,normal:全部正常,offline:实时断开" },
+      { file: "device-detail.html", title: "设备详情", thumb: "battery",
+        desc: "供电、电池、负载与输入输出分组展示；每个字段如实标注估算、过期或无效，历史曲线支持原始采样与分钟聚合。",
+        api: "GET /devices/{id}/snapshot · GET /devices/{id}/history · GET /events",
+        states: "battery:电池供电,normal:市电,lost:通讯中断" },
+      { file: "devices.html", title: "设备", thumb: "list",
+        desc: "设备列表与添加流程：选择协议、只读连接测试与 Profile 推荐、阈值与去抖；删除前说明会一并清除的历史与引用限制。",
+        api: "/devices · /devices/{id}/sources · POST /sources/test · GET /profiles",
+        states: "list:设备列表,proto:添加·协议,test:添加·测试,pwd:密码错误,thresholds:添加·阈值,delete:删除确认" },
+      { file: "alerts.html", title: "告警与事件", thumb: "active",
+        desc: "活动告警按严重度排列，串起触发它的规则、关机计划与通知结果；历史事件按天分组并可按类型筛选。",
+        api: "GET /alerts · GET /events · SSE alert / event / notify_failed",
+        states: "active:活动告警,failed:通知失败,empty:无活动告警,history:历史事件,filter:按类型筛选" },
+    ]},
+    { title: "自动化", note: "规则、关机编排与受控主机", pages: [
+      { file: "rules.html", title: "规则", thumb: "edit",
+        desc: "条件规则与事件规则编辑器；dry-run 默认开启，关闭需要确认；评估日志显示每次命中与跳过的原因。",
+        api: "/rules · GET /rules/templates · GET /rule-logs",
+        states: "edit:条件规则,event:事件规则,dryoff:关闭 dry-run,templates:从模板创建" },
+      { file: "shutdown-plans.html", title: "关机计划", thumb: "running",
+        desc: "按阶段编排关机：倒计时可取消，阶段内并行、阶段间串行，等待主机离线；手动执行需输入计划名称。",
+        api: "/plans · POST /plans/{id}/run · GET /plan-runs · POST /plan-runs/{id}/cancel",
+        states: "edit:计划配置,countdown:倒计时,running:执行中,confirm:手动执行" },
+      { file: "hosts-actions.html", title: "主机与动作", thumb: "hosts",
+        desc: "受控主机的 SSH 指纹确认与在线检测；通知、HTTP、脚本、SSH 与启动计划五类动作，手动运行默认 dry-run。",
+        api: "/hosts · POST /hosts/{id}/hostkey/fetch|confirm · /actions · POST /actions/{id}/run · GET /action-runs",
+        states: "hosts:受控主机,fp:确认指纹,actions:动作,run:手动执行,runs:执行记录" },
+    ]},
+    { title: "通知与系统", note: "渠道、设置与登录", pages: [
+      { file: "notifications.html", title: "通知渠道", thumb: "channels",
+        desc: "Telegram 与 Webhook 渠道、失败重试说明、事件模板编辑与实时预览，以及按目标记录的发送结果。",
+        api: "/channels · POST /channels/{id}/test · /notify-templates · GET /notify-logs",
+        states: "channels:渠道,test:测试已入队,templates:模板,logs:发送记录" },
+      { file: "settings.html", title: "设置", thumb: "retention",
+        desc: "时区与语言、数据保留、设备默认阈值、HTTP 护栏、管理员账户与审计日志。",
+        api: "GET|PATCH /settings · /users · PUT /users/{id}/password · GET /audit",
+        states: "general:通用,retention:数据保留,defaults:设备默认值,security:安全,guard:关闭护栏,account:管理员,password:修改密码,audit:审计日志" },
+      { file: "login.html", title: "登录与初始化", thumb: "login",
+        desc: "登录、密码错误与频率限制，以及首次启动时用一次性令牌创建管理员。",
+        api: "GET /setup/status · POST /setup · POST /auth/login",
+        states: "login:登录,error:密码错误,locked:已锁定,setup:首次初始化" },
+    ]},
+  ];
+
+  const gal = document.getElementById("gal");
+  const root = document.documentElement;
+  const VIEW = { desktop: [1440, 900], phone: [390, 844] };
+  let device = "desktop";
+  // ?theme= 已由 apple-ui.js 写入 data-theme，优先于系统外观
+  let theme = root.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+  const parseStates = (s) => s.split(",").map((p) => p.split(":"));
+  document.getElementById("groups").innerHTML = GROUPS.map((g) => `
+    <div class="group-h"><h2>${g.title}</h2><span>${g.note}</span></div>
+    <div class="shots">${g.pages.map((p) => `
+      <article class="shot">
+        <a class="frame" href="${p.file}?state=${p.thumb}" aria-label="打开${p.title}效果图">
+          <span class="loading">正在载入…</span>
+          <iframe title="${p.title}缩略图" tabindex="-1" aria-hidden="true" loading="lazy" data-file="${p.file}" data-thumb="${p.thumb}"></iframe>
+        </a>
+        <div class="shot-meta">
+          <h3><a href="${p.file}">${p.title}</a></h3>
+          <p>${p.desc}</p>
+          <div class="chips">${parseStates(p.states).map(([k, l]) => `<a class="chip" href="${p.file}?state=${k}">${l}</a>`).join("")}</div>
+          <div class="api">${p.api}</div>
+        </div>
+      </article>`).join("")}
+    </div>`).join("");
+
+  const frames = [...document.querySelectorAll(".frame")];
+  // 缩略图按真实视口渲染后整体缩放，保证与打开后的页面完全一致
+  const fit = (frame) => {
+    const ifr = frame.querySelector("iframe");
+    const [w, h] = VIEW[device];
+    ifr.width = w;
+    ifr.height = h;
+    ifr.style.transform = `scale(${frame.clientWidth / w})`;
+  };
+  const srcFor = (ifr) => `${ifr.dataset.file}?embed=1&state=${ifr.dataset.thumb}&theme=${theme}`;
+  const load = (frame) => {
+    const ifr = frame.querySelector("iframe");
+    const src = srcFor(ifr);
+    if (ifr.getAttribute("src") !== src) ifr.setAttribute("src", src);
+  };
+  frames.forEach((f) => f.querySelector("iframe").addEventListener("load", () => f.querySelector(".loading")?.remove()));
+  const ro = new ResizeObserver((entries) => entries.forEach((e) => fit(e.target)));
+  frames.forEach((f) => ro.observe(f));
+  // 进入视口才载入，避免一次性启动十个页面
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.dataset.seen = "1"; load(e.target); }
+  }), { rootMargin: "400px" });
+  frames.forEach((f) => io.observe(f));
+
+  const setTheme = (t) => {
+    theme = t;
+    root.dataset.theme = t;
+    document.querySelectorAll("#seg-theme button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === t)));
+    frames.filter((f) => f.dataset.seen).forEach(load);
+  };
+  document.getElementById("seg-theme").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-theme-set]");
+    if (b) setTheme(b.dataset.themeSet);
+  });
+  document.getElementById("seg-device").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-device]");
+    if (!b) return;
+    device = b.dataset.device;
+    gal.classList.toggle("is-phone", device === "phone");
+    frames.forEach(fit);
+  });
+  setTheme(theme);
+</script>
+</body>
+</html>

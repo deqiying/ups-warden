@@ -33,7 +33,7 @@
 | 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0～M8 代码已落地，真机与评审检查点未完成 |
 | 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3/M5/M6/M7/M8 已完成本机验证；M2 的 CP-1 只读冒烟通过、剩余项待完成；M4 实现/CP-2 联调待验收；M7 待 CP-3；M8 待 CP-4 |
 | 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
-| 评审设备状态页的视觉设计 | [设备状态页静态设计稿](design/device-status.html) | 独立 HTML 原型，不是 `frontend/` 中的已实现页面 |
+| 评审前端界面的视觉与交互设计 | [界面效果图](design/index.html)、[设计说明](design/README.md) | 按 M4～M8 契约设计的静态 HTML 效果图与设计规范，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |
 
 ## 文档分工
@@ -59,7 +59,8 @@ docs/
   reference/settings-api.md              M8 系统设置契约
   reference/protocols/
     et1k-probe-report.md                  历史协议证据与安全复盘
-  design/device-status.html              UI 静态设计稿
+  design/README.md                       界面效果图说明、页面与接口对照、设计约定
+  design/index.html                      效果图画廊；foundations.html 为设计规范
 .agents/notes/proposed/architecture/
   2026-10-11-backend-design.md            整体待实施方案，含已落地模块与验收边界
 ```

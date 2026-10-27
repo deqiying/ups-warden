@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>规则 · UPS Warden 效果图</title>
+<link rel="stylesheet" href="assets/apple-ui.css">
+<script src="assets/apple-ui.js"></script>
+<style>
+  .rule-list .row { align-items: flex-start; padding-top: 11px; padding-bottom: 11px; }
+  .rule-list .row-icon { margin-top: 1px; }
+  .rule-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .rule-list .is-off { opacity: 0.55; }
+
+  .ed-head { display: flex; align-items: flex-start; gap: 16px; }
+  .ed-name { font: 700 1.375rem/1.25 var(--font-display); letter-spacing: -0.014em; border: 0; background: none; padding: 0; width: 100%; color: var(--label); }
+  .ed-name:focus { outline: none; }
+  .ed-toggles { display: flex; gap: 20px; flex: none; }
+  .ed-toggles label { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 0.75rem; color: var(--label-2); }
+  .ed-sec { padding: 20px 22px; box-shadow: inset 0 0.5px 0 var(--separator-strong); }
+  .ed-sec-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .ed-sec-title h3 { font: 600 0.9375rem/1.3 var(--font-text); }
+
+  /* 条件构建器：OR（组之间）/ AND（组内）两层，与契约 any_of/all_of 一一对应 */
+  .group { border-radius: 14px; background: var(--fill-3); box-shadow: inset 0 0 0 0.5px var(--separator); padding: 12px; }
+  .group-head { display: flex; align-items: center; gap: 8px; padding: 0 4px 10px; font-size: 0.8125rem; color: var(--label-2); }
+  .group-head b { color: var(--label); }
+  .cond { display: grid; grid-template-columns: minmax(0, 1.5fr) 92px minmax(0, 1.2fr) auto 28px; gap: 8px; align-items: center; padding: 8px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-1); }
+  .cond + .cond { margin-top: 6px; }
+  .cond .select { width: 100%; height: 30px; }
+  .cond > .stepper { justify-self: start; }
+  .cond .for { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--label-2); white-space: nowrap; }
+  .cond .for .stepper .val { min-width: 34px; }
+  /* 删除按钮用实心圆底，避免与「无持续时间」的空位混淆 */
+  .cond .rm { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--label-2); background: var(--fill-2); cursor: pointer; transition: background-color var(--dur-quick), color var(--dur-quick); }
+  .cond .rm:hover { color: #fff; background: var(--red); }
+  .cond .rm .i { width: 12px; height: 12px; stroke-width: 2.6; }
+  .field-name { display: flex; flex-direction: column; min-width: 0; }
+  .field-key { font: 500 0.6875rem var(--font-mono); color: var(--label-3); margin-left: 2px; }
+  .add-link { display: inline-flex; align-items: center; gap: 4px; margin: 10px 4px 0; font-size: 0.8125rem; font-weight: 500; color: var(--link); cursor: pointer; }
+  .add-link .i { width: 14px; height: 14px; }
+  .or { margin: 10px 0; }
+
+  .events-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ev-opt { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; box-shadow: inset 0 0 0 0.5px var(--separator-strong); font-size: 0.875rem; cursor: pointer; }
+  .ev-opt.is-on { background: var(--accent-tint); box-shadow: inset 0 0 0 1px var(--accent); }
+  .ev-opt .faint { font-size: 0.75rem; margin-left: auto; }
+
+  .act-list .row { min-height: 52px; }
+  .tpl .row { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+  .tpl .row-icon { margin-top: 2px; }
+  .logs td { vertical-align: top; }
+  .kind { white-space: nowrap; }
+
+  @media (max-width: 860px) {
+    .ed-head { flex-direction: column; }
+    .ed-toggles label { align-items: flex-start; }
+    .cond { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 22px; }
+    .cond .field-cell { grid-column: 1 / 3; grid-row: 1; }
+    .cond .rm { grid-column: 3; grid-row: 1; }
+    .cond .for { grid-column: 1 / 3; }
+    .cond .for:empty { display: none; }
+    .events-pick { grid-template-columns: 1fr 1fr; }
+    .ed-sec { padding: 16px; }
+    /* 窄屏：规则列表叠在编辑器上方并取消吸顶，保证随时能回到列表 */
+    .rule-col { position: static; }
+  }
+</style>
+</head>
+<body data-page="rules" data-states="edit:条件规则,event:事件规则,dryoff:关闭 dry-run,templates:从模板创建">
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="main">
+    <header class="toolbar">
+      <span class="toolbar-title">规则</span>
+      <div class="spacer"></div>
+      <button class="btn btn-gray btn-sm" type="button" data-goto="templates"><svg class="i"><use href="#i-stack"/></svg>从模板创建</button>
+      <button class="btn btn-primary btn-sm" type="button"><svg class="i"><use href="#i-plus"/></svg>新建规则</button>
+    </header>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">规则</h1>
+        <p class="page-sub">设备状态每次更新都会评估规则，命中后派发动作。新建规则默认 dry-run：只记录，不执行。</p>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="split">
+        <!-- 规则列表：GET /rules -->
+        <div class="sticky-col rule-col">
+          <div class="list rule-list has-icons">
+            <div class="row is-link" data-goto="edit" data-match="dryoff">
+              <span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-power"/></svg></span>
+              <div class="row-main"><div class="row-title strong">停电 10 分钟或低电量</div><div class="row-sub">条件 · 标签「核心」· 2 台</div>
+                <div class="rule-meta"><span class="badge badge-orange" data-when-not="dryoff">真实执行</span><span class="badge badge-indigo" data-when="dryoff">Dry-run</span><span class="badge badge-red"><span class="live-dot is-warn" style="width:6px;height:6px"></span>已触发 · 机房 UPS-A</span></div></div>
+            </div>
+            <div class="row is-link" data-goto="event" data-match="templates">
+              <span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-plug"/></svg></span>
+              <div class="row-main"><div class="row-title strong">停电与恢复通知</div><div class="row-sub">事件 · 所有设备</div>
+                <div class="rule-meta"><span class="badge badge-orange">真实执行</span><span class="badge">今天 14:11 触发</span></div></div>
+            </div>
+            <div class="row is-link">
+              <span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-wifi-off"/></svg></span>
+              <div class="row-main"><div class="row-title strong">通讯中断通知</div><div class="row-sub">事件 · 所有设备</div>
+                <div class="rule-meta"><span class="badge badge-orange">真实执行</span><span class="badge">今天 14:17 触发</span></div></div>
+            </div>
+            <div class="row is-link">
+              <span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-battery"/></svg></span>
+              <div class="row-main"><div class="row-title strong">低电量通知</div><div class="row-sub">事件 · 标签「核心」</div>
+                <div class="rule-meta"><span class="badge badge-indigo">Dry-run</span></div></div>
+            </div>
+            <div class="row is-link">
+              <span class="row-icon" style="--c:var(--indigo)"><svg class="i"><use href="#i-globe"/></svg></span>
+              <div class="row-main"><div class="row-title strong">实验室过载回调</div><div class="row-sub">条件 · 实验室 UPS · HTTP</div>
+                <div class="rule-meta"><span class="badge badge-indigo">Dry-run</span><span class="badge">13:58 记录预览</span></div></div>
+            </div>
+            <div class="row is-link">
+              <span class="row-icon is-soft"><svg class="i"><use href="#i-pause"/></svg></span>
+              <div class="row-main is-off"><div class="row-title strong">旧仓库夜间关机</div><div class="row-sub">条件 · 旧仓库 UPS</div>
+                <div class="rule-meta"><span class="badge">已停用</span></div></div>
+            </div>
+          </div>
+          <p class="list-caption">规则按「规则 × 设备」分别计算。修改范围或触发方式会开始新的计算实例，旧日志保留。</p>
+        </div>
+
+        <!-- ============ 编辑器：条件规则（PUT /rules/{id}） ============ -->
+        <div>
+          <section class="card" data-when="edit dryoff">
+            <div class="card-pad ed-head">
+              <div style="flex:1;min-width:0">
+                <div class="eyebrow">条件规则 · #3</div>
+                <input class="ed-name" value="停电 10 分钟或低电量" aria-label="规则名称">
+                <div class="t-footnote muted mt-2">创建于 10月20日 · 最近触发 今天 14:21:12（机房 UPS-A）</div>
+              </div>
+              <div class="ed-toggles">
+                <label>启用<button class="switch" role="switch" aria-checked="true" aria-label="启用"></button></label>
+                <label data-when="edit">Dry-run<button class="switch is-indigo" role="switch" aria-checked="false" aria-label="Dry-run"></button></label>
+                <label data-when="dryoff">Dry-run<button class="switch is-indigo" role="switch" aria-checked="true" aria-label="Dry-run" data-guard="dlg-dryrun"></button></label>
+              </div>
+            </div>
+            <div class="banner banner-warning" style="margin:0 22px 18px" data-when="edit">
+              <svg class="i banner-icon"><use href="#i-alert"/></svg>
+              <div><div class="banner-title" style="font-size:.875rem">真实执行</div><div class="banner-text">命中后会启动关机计划「机房关机」并发送通知。重新开启 dry-run 不需要确认。</div></div>
+            </div>
+            <div class="banner banner-indigo" style="margin:0 22px 18px" data-when="dryoff">
+              <svg class="i banner-icon"><use href="#i-flask"/></svg>
+              <div><div class="banner-title" style="font-size:.875rem">Dry-run</div><div class="banner-text">命中时只保存执行记录与脱敏预览：不连接主机、不发送通知、不启动脚本。</div></div>
+            </div>
+
+            <!-- 作用范围 -->
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>作用范围</h3><span class="t-footnote faint">只评估已启用的设备</span></div>
+              <div class="seg"><button type="button">指定设备</button><button type="button" aria-pressed="true">按标签</button><button type="button">所有设备</button></div>
+              <div class="hstack wrap mt-3"><span class="token">核心<span class="x"><svg class="i"><use href="#i-x"/></svg></span></span><span class="token token-add">添加标签</span><span class="t-footnote muted" style="margin-left:6px">匹配任一标签 · 当前 2 台：机房 UPS-A、机房 UPS-B</span></div>
+            </div>
+
+            <!-- 触发方式 -->
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>触发条件</h3><div class="seg"><button type="button">事件</button><button type="button" aria-pressed="true">条件</button></div></div>
+              <p class="t-footnote muted" style="margin:0 2px 12px">满足<b class="ink-accent">任一</b>条件组即触发；组内条件需<b class="ink-accent">全部</b>成立。从不成立变为成立时只触发一次。</p>
+
+              <div class="group">
+                <div class="group-head"><b>条件组 1</b>· 全部满足<span class="spacer"></span><span class="cond-actions faint">2 / 16</span></div>
+                <div class="cond">
+                  <span class="select field-cell"><span class="field-name">供电状态</span><span class="field-key">power_state</span><span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <span class="select is-plain">等于<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <span class="select is-plain">电池供电<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <span class="for"></span>
+                  <span class="rm" aria-label="删除条件"><svg class="i"><use href="#i-minus"/></svg></span>
+                </div>
+                <div class="cond">
+                  <span class="select field-cell"><span class="field-name">已用电池时间</span><span class="field-key">on_battery_elapsed</span><span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <span class="select is-plain">≥<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <div class="stepper"><span class="val">600</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div>
+                  <span class="for">= 10 分钟</span>
+                  <span class="rm" aria-label="删除条件"><svg class="i"><use href="#i-minus"/></svg></span>
+                </div>
+                <span class="add-link"><svg class="i"><use href="#i-plus"/></svg>添加条件</span>
+              </div>
+
+              <div class="divider-text or">或</div>
+
+              <div class="group">
+                <div class="group-head"><b>条件组 2</b>· 全部满足<span class="spacer"></span><span class="faint">1 / 16</span></div>
+                <div class="cond">
+                  <span class="select field-cell"><span class="field-name">电池容量</span><span class="field-key">battery_capacity_pct</span><span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <span class="select is-plain">≤<span class="chev"><svg class="i"><use href="#i-chev-updown"/></svg></span></span>
+                  <div class="stepper"><span class="val">40</span><span class="unit">%</span><button type="button">−</button><button type="button">+</button></div>
+                  <span class="for">持续 <span class="stepper"><span class="val">10</span><span class="unit">秒</span></span></span>
+                  <span class="rm" aria-label="删除条件"><svg class="i"><use href="#i-minus"/></svg></span>
+                </div>
+                <span class="add-link"><svg class="i"><use href="#i-plus"/></svg>添加条件</span>
+              </div>
+              <span class="add-link" style="margin-top:14px"><svg class="i"><use href="#i-plus"/></svg>添加条件组</span>
+
+              <div class="banner banner-neutral mt-4">
+                <svg class="i banner-icon"><use href="#i-info"/></svg>
+                <div class="banner-text" style="margin:0">字段质量不是 good（缺测、失联过期、设备不支持）时，条件既不会触发，也不会被当作恢复。按相字段不指定相号时取所有有效相的最大值。</div>
+              </div>
+            </div>
+
+            <!-- 动作 -->
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>命中时执行</h3><span class="t-footnote faint">同时派发，不等待前一个完成</span></div>
+              <div class="list act-list has-icons">
+                <div class="row"><span class="row-icon" style="--c:var(--orange)"><svg class="i"><use href="#i-power"/></svg></span><div class="row-main"><div class="row-title">启动关机计划「机房关机」</div><div class="row-sub">计划 · 倒计时 60 秒 · 3 个阶段</div></div><a class="t-footnote" href="shutdown-plans.html">查看计划</a><span class="rm-btn btn btn-icon btn-sm btn-gray" aria-label="移除"><svg class="i"><use href="#i-minus"/></svg></span></div>
+                <div class="row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-bell"/></svg></span><div class="row-main"><div class="row-title">通知值班群</div><div class="row-sub">通知 · Telegram「值班群」、Webhook「运维平台」</div></div><span class="rm-btn btn btn-icon btn-sm btn-gray" aria-label="移除"><svg class="i"><use href="#i-minus"/></svg></span></div>
+              </div>
+              <span class="add-link"><svg class="i"><use href="#i-plus"/></svg>添加动作</span>
+
+              <div class="ed-sec-title mt-6"><h3>恢复时执行</h3><span class="t-footnote faint">所有条件组都确定不成立后</span></div>
+              <div class="list act-list has-icons">
+                <div class="row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-bell"/></svg></span><div class="row-main"><div class="row-title">通知值班群</div><div class="row-sub">通知 · 模板 rule_recovered</div></div><span class="rm-btn btn btn-icon btn-sm btn-gray" aria-label="移除"><svg class="i"><use href="#i-minus"/></svg></span></div>
+              </div>
+              <span class="add-link"><svg class="i"><use href="#i-plus"/></svg>添加恢复动作</span>
+            </div>
+
+            <!-- 冷却 -->
+            <div class="ed-sec">
+              <div class="hstack" style="justify-content:space-between;gap:16px">
+                <div><h3 class="t-subhead strong">冷却时间</h3><div class="t-footnote muted mt-2" style="margin-top:2px">冷却期内的新触发记为「跳过」，冷却结束后不补发。</div></div>
+                <div class="stepper"><span class="val">60</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div>
+              </div>
+            </div>
+            <div class="ed-sec hstack" style="justify-content:flex-end">
+              <button class="btn btn-danger-tinted btn-sm" type="button" style="margin-right:auto"><svg class="i"><use href="#i-trash"/></svg>删除规则</button>
+              <button class="btn btn-gray" type="button">还原</button>
+              <button class="btn btn-primary" type="button">保存</button>
+            </div>
+          </section>
+
+          <!-- 规则日志：GET /rule-logs?rule_id= -->
+          <section class="card mt-4" data-when="edit dryoff">
+            <div class="card-head"><div><h3 class="card-title">评估日志</h3><div class="card-sub">命中、恢复、跳过与质量变化；动作结果见执行记录</div></div><a class="section-link" href="hosts-actions.html?state=runs">执行记录<svg class="i"><use href="#i-chev-right"/></svg></a></div>
+            <div style="overflow-x:auto" class="mt-3">
+              <table class="table logs">
+                <thead><tr><th>时间</th><th>结果</th><th>设备</th><th>依据</th><th>动作</th></tr></thead>
+                <tbody>
+                  <tr><td class="tnum nowrap">今天 14:21:12</td><td class="kind"><span class="pill pill-sm pill-orange">已触发</span></td><td class="nowrap">机房 UPS-A</td><td class="muted">条件组 1：电池供电，已用 600 秒</td><td class="nowrap"><span class="badge badge-orange">#311 计划已启动</span> <span class="badge badge-blue">#312 已入队</span></td></tr>
+                  <tr><td class="tnum nowrap">10月24日 03:13:30</td><td class="kind"><span class="pill pill-sm pill-green">质量恢复</span></td><td class="nowrap">机房 UPS-A</td><td class="muted">通讯恢复，字段重新有效</td><td class="faint">—</td></tr>
+                  <tr><td class="tnum nowrap">10月24日 03:12:59</td><td class="kind"><span class="pill pill-sm">质量不足</span></td><td class="nowrap">机房 UPS-A</td><td class="muted">battery_capacity_pct 为 stale，不参与触发</td><td class="faint">—</td></tr>
+                  <tr><td class="tnum nowrap">10月21日 10:05:00</td><td class="kind"><span class="pill pill-sm pill-indigo">Dry-run</span></td><td class="nowrap">机房 UPS-B</td><td class="muted">模拟器联调：条件组 2，容量 38%</td><td class="nowrap"><span class="badge badge-indigo">#207 预览</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- ============ 编辑器：事件规则 ============ -->
+          <section class="card" data-when="event templates">
+            <div class="card-pad ed-head">
+              <div style="flex:1;min-width:0">
+                <div class="eyebrow">事件规则 · #1</div>
+                <input class="ed-name" value="停电与恢复通知" aria-label="规则名称">
+                <div class="t-footnote muted mt-2">最近触发 今天 14:11:12（机房 UPS-A）</div>
+              </div>
+              <div class="ed-toggles">
+                <label>启用<button class="switch" role="switch" aria-checked="true" aria-label="启用"></button></label>
+                <label>Dry-run<button class="switch is-indigo" role="switch" aria-checked="false" aria-label="Dry-run"></button></label>
+              </div>
+            </div>
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>作用范围</h3></div>
+              <div class="seg"><button type="button">指定设备</button><button type="button">按标签</button><button type="button" aria-pressed="true">所有设备</button></div>
+              <p class="t-footnote muted mt-3">包括之后新增的设备 · 当前 5 台已启用</p>
+            </div>
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>触发事件</h3><div class="seg"><button type="button" aria-pressed="true">事件</button><button type="button">条件</button></div></div>
+              <div class="events-pick">
+                <div class="ev-opt is-on"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span>市电中断<span class="faint">严重</span></div>
+                <div class="ev-opt"><span class="check"></span>电量低<span class="faint">严重</span></div>
+                <div class="ev-opt"><span class="check"></span>电池耗尽<span class="faint">严重</span></div>
+                <div class="ev-opt"><span class="check"></span>通讯中断<span class="faint">警告</span></div>
+                <div class="ev-opt"><span class="check"></span>过载<span class="faint">警告</span></div>
+                <div class="ev-opt"><span class="check"></span>旁路供电<span class="faint">警告</span></div>
+                <div class="ev-opt"><span class="check"></span>UPS 故障<span class="faint">严重</span></div>
+                <div class="ev-opt"><span class="check"></span>UPS 即将关机<span class="faint">严重</span></div>
+                <div class="ev-opt"><span class="check"></span>温度过高<span class="faint">警告</span></div>
+              </div>
+              <p class="list-caption">恢复动作会与对应的解除事件配对执行，例如「市电中断」与「市电恢复」。多个同时活动的事件分别配对。</p>
+            </div>
+            <div class="ed-sec">
+              <div class="ed-sec-title"><h3>事件发生时执行</h3></div>
+              <div class="list act-list has-icons">
+                <div class="row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-bell"/></svg></span><div class="row-main"><div class="row-title">通知值班群</div><div class="row-sub">通知 · Telegram「值班群」、Webhook「运维平台」</div></div><span class="btn btn-icon btn-sm btn-gray" aria-label="移除"><svg class="i"><use href="#i-minus"/></svg></span></div>
+              </div>
+              <div class="ed-sec-title mt-6"><h3>事件解除时执行</h3><span class="t-footnote faint">不受冷却时间限制</span></div>
+              <div class="list act-list has-icons">
+                <div class="row"><span class="row-icon" style="--c:var(--accent)"><svg class="i"><use href="#i-bell"/></svg></span><div class="row-main"><div class="row-title">通知值班群</div><div class="row-sub">通知 · 模板 mains_restored</div></div><span class="btn btn-icon btn-sm btn-gray" aria-label="移除"><svg class="i"><use href="#i-minus"/></svg></span></div>
+              </div>
+            </div>
+            <div class="ed-sec">
+              <div class="hstack" style="justify-content:space-between;gap:16px">
+                <div><h3 class="t-subhead strong">冷却时间</h3><div class="t-footnote muted" style="margin-top:2px">0 表示每次事件都执行</div></div>
+                <div class="stepper"><span class="val">60</span><span class="unit">秒</span><button type="button">−</button><button type="button">+</button></div>
+              </div>
+            </div>
+            <div class="ed-sec hstack" style="justify-content:flex-end">
+              <button class="btn btn-gray" type="button">还原</button>
+              <button class="btn btn-primary" type="button" disabled>保存</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 关闭 dry-run：从「只记录」切到「真实执行」才需要确认 -->
+<div class="overlay" id="dlg-dryrun" data-when="dryoff">
+  <div class="scrim"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dry-t">
+    <div class="dialog-icon" style="background:var(--orange-tint);color:var(--orange-ink)"><svg class="i"><use href="#i-power"/></svg></div>
+    <div class="dialog-title" id="dry-t">让这条规则真实执行？</div>
+    <div class="dialog-msg">「停电 10 分钟或低电量」下次命中时将启动关机计划「机房关机」（关闭 3 台主机）并发送通知。已经处理过的触发不会重放。</div>
+    <div class="dialog-actions"><button class="btn btn-gray" type="button" data-close>保持 dry-run</button><button class="btn btn-danger" type="button" data-close data-guard-confirm>真实执行</button></div>
+  </div>
+</div>
+
+<!-- 从模板创建：GET /rules/templates，模板默认停用 + dry-run -->
+<div class="overlay" data-when="templates">
+  <div class="scrim"></div>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="tpl-t" style="width:min(560px,calc(100vw - 32px))">
+    <header class="sheet-head">
+      <button class="btn btn-plain" type="button" data-goto="event">取消</button>
+      <div class="sheet-title" id="tpl-t">从模板创建</div>
+      <button class="btn btn-primary btn-sm" type="button">创建</button>
+    </header>
+    <div class="sheet-body">
+      <div class="list tpl has-icons">
+        <div class="row is-link"><span class="check"></span><div class="row-main"><div class="row-title strong">停电通知</div><div class="row-sub">事件「市电中断」→ 通知，恢复时再通知一次</div></div></div>
+        <div class="row is-link"><span class="check"></span><div class="row-main"><div class="row-title strong">市电恢复通知</div><div class="row-sub">事件「市电恢复」→ 通知</div></div></div>
+        <div class="row is-link"><span class="check"></span><div class="row-main"><div class="row-title strong">低电量通知</div><div class="row-sub">事件「电量低」→ 通知</div></div></div>
+        <div class="row is-link"><span class="check"></span><div class="row-main"><div class="row-title strong">通讯中断通知</div><div class="row-sub">事件「通讯中断」→ 通知</div></div></div>
+        <div class="row is-link is-selected"><span class="check is-on"><svg class="i"><use href="#i-check"/></svg></span><div class="row-main"><div class="row-title strong">停电或低电量时关机</div><div class="row-sub">条件：电池供电 ≥ 10 分钟，或电池容量 ≤ 40% 持续 10 秒</div>
+          <div class="banner banner-warning mt-3" style="padding:10px 12px"><svg class="i banner-icon" style="width:16px;height:16px"><use href="#i-power"/></svg><div class="banner-text" style="margin:0">需要你选择一个「启动关机计划」动作。模板不会自动挑选计划。</div></div></div></div>
+      </div>
+      <div class="banner banner-indigo mt-4"><svg class="i banner-icon"><use href="#i-flask"/></svg><div class="banner-text" style="margin:0">从模板创建的规则默认<b>停用</b>且处于 <b>dry-run</b>。确认动作与范围后再手动启用。</div></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>
