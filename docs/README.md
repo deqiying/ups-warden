@@ -32,6 +32,7 @@
 | 了解功能目标、优先级、字段和验收要求 | [需求文档](planning/requirements.md) | v0.3 草案；已确认项与待确认项按正文区分 |
 | 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0～M8 代码已落地，真机与评审检查点未完成 |
 | 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3/M5/M6/M7/M8 已完成本机验证；M2 的 CP-1 只读冒烟通过、剩余项待完成；M4 实现/CP-2 联调待验收；M7 待 CP-3；M8 待 CP-4 |
+| 查看前端开发顺序、技术方案、契约缺口与待确认事项 | [前端开发计划](planning/frontend-plan.md) | v0.1 草案，待 FCP-0 评审；尚未开始实现 |
 | 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
 | 评审前端界面的视觉与交互设计 | [界面效果图](design/index.html)、[设计说明](design/README.md) | 按 M4～M8 契约设计的静态 HTML 效果图与设计规范，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |
@@ -51,7 +52,8 @@ docs/
   guides/collection-state-history.md     采集、状态、事件、历史与生命周期
   planning/
     requirements.md                      需求草案
-    backend-plan.md                      开发任务与验收计划
+    backend-plan.md                      后端开发任务与验收计划
+    frontend-plan.md                     前端开发任务、待确认事项与验收计划
   reference/monitoring-api.md            M4 监控 API、认证、审计与 SSE 联调契约
   reference/notifications-api.md         M5 通知渠道、模板、日志与失败 SSE 契约
   reference/rules-actions-hosts-api.md   M6 规则、动作、受控主机与执行日志契约
