@@ -7,7 +7,8 @@ import { ToastProvider } from "./components/Toast.tsx";
 import { IconSprite } from "./icons/Icon.tsx";
 import { AppShell } from "./layout/AppShell.tsx";
 import { LiveProvider } from "./live/LiveProvider.tsx";
-import { AuthPlaceholderPage } from "./pages/auth/AuthPlaceholderPage.tsx";
+import { LoginPage } from "./pages/auth/LoginPage.tsx";
+import { SetupPage } from "./pages/auth/SetupPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
 import { SessionContext } from "./session/hooks.ts";
@@ -21,7 +22,10 @@ export function AppProviders({
   services: AppServices;
   children: ReactNode;
 }) {
-  const session = useMemo(() => ({ store: services.session, probe: services.probe }), [services]);
+  const session = useMemo(
+    () => ({ store: services.session, probe: services.probe, logout: services.logout }),
+    [services],
+  );
 
   useEffect(() => {
     if (services.session.getSnapshot().status === "unknown") void services.probe();
@@ -49,8 +53,8 @@ export function AppProviders({
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<AuthPlaceholderPage mode="login" />} />
-      <Route path="/setup" element={<AuthPlaceholderPage mode="setup" />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/setup" element={<SetupPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<PlaceholderPage title="总览" milestone="F2" />} />

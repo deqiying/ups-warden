@@ -1,18 +1,12 @@
 import type { CSSProperties } from "react";
 import { NavLink } from "react-router";
-import { useTimeZone } from "../api/hooks.ts";
 import { Icon } from "../icons/Icon.tsx";
 import { useLive } from "../live/hooks.ts";
-import { formatDateTime } from "../model/time.ts";
-import { useSession } from "../session/hooks.ts";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
 import { NAV } from "./nav.ts";
 import { activeAlertCount } from "./selectors.ts";
 import { NavBadge } from "./NavBadge.tsx";
-
-function initials(username: string): string {
-  return username.slice(0, 2).toUpperCase();
-}
+import { UserMenu } from "./UserMenu.tsx";
 
 /**
  * 侧栏：品牌、四组导航、实时连接状态与当前用户。
@@ -21,8 +15,6 @@ function initials(username: string): string {
 export function Sidebar() {
   const deviceCount = useLive((s) => (s.data.syncedAt === null ? null : s.data.devices.length));
   const alertCount = useLive(activeAlertCount);
-  const session = useSession();
-  const timeZone = useTimeZone();
 
   return (
     <aside className="sidebar">
@@ -55,22 +47,7 @@ export function Sidebar() {
       </nav>
       <div className="side-foot">
         <ConnectionStatus />
-        {session.user ? (
-          <div className="user-row">
-            <span className="avatar" aria-hidden="true">
-              {initials(session.user.username)}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="t-subhead strong">{session.user.username}</div>
-              <div className="t-caption faint">
-                管理员
-                {session.expiresAt
-                  ? ` · 会话至 ${formatDateTime(session.expiresAt, timeZone)}`
-                  : ""}
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <UserMenu />
       </div>
     </aside>
   );

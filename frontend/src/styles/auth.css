@@ -1,0 +1,268 @@
+/*
+ * 初始化与登录页（login.html 页内样式迁移）。只使用 tokens.css 的语义 token；
+ * 背景渐变与应用图标的固定色值与效果图保持一致。
+ */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 20px 96px;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(52, 199, 89, 0.1), transparent 60%),
+    radial-gradient(900px 500px at 100% 110%, rgba(0, 113, 227, 0.08), transparent 60%), var(--bg);
+}
+.auth {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+.auth-icon {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 22px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(160deg, #5fe07b 0%, #28b44f 55%, #12913a 100%);
+  box-shadow:
+    inset 0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 10px 30px rgba(36, 160, 70, 0.28);
+}
+.auth-icon .i {
+  width: 40px;
+  height: 40px;
+  stroke-width: 2;
+}
+.auth h1 {
+  font: 700 2rem/1.15 var(--font-display);
+  letter-spacing: -0.022em;
+}
+.auth-lead {
+  margin-top: 10px;
+  font-size: 1.0625rem;
+  line-height: 1.45;
+  color: var(--label-2);
+}
+
+/* 组合输入框：多个字段共享一个圆角容器，中间以细线分隔（Apple 账户登录样式） */
+.field-group {
+  margin-top: 32px;
+  text-align: left;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 0.5px var(--separator-strong),
+    var(--shadow-1);
+  transition: box-shadow var(--dur-quick) var(--ease-standard);
+}
+.field-group:focus-within {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    var(--ring-focus);
+}
+.field-group.is-error {
+  box-shadow:
+    0 0 0 1px var(--red),
+    0 0 0 4px var(--red-tint);
+}
+/* 抖动与错误边框分开：错误边框保持到下次输入，抖动每次失败重新播放一次 */
+.field-group.is-shaking {
+  animation: auth-shake 420ms var(--ease-out);
+}
+@keyframes auth-shake {
+  15%,
+  55% {
+    transform: translateX(-7px);
+  }
+  35%,
+  75% {
+    transform: translateX(6px);
+  }
+  90% {
+    transform: translateX(-2px);
+  }
+}
+.field {
+  position: relative;
+  display: block;
+}
+.field + .field {
+  border-top: 0.5px solid var(--separator-strong);
+}
+.field label {
+  position: absolute;
+  left: 16px;
+  top: 9px;
+  font-size: 0.75rem;
+  color: var(--label-3);
+  pointer-events: none;
+}
+.field input {
+  width: 100%;
+  height: 58px;
+  padding: 22px 52px 6px 16px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 1.0625rem;
+  color: var(--label);
+}
+.field input.mono {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+}
+.field-go {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: #fff;
+  background: var(--accent);
+  transition:
+    transform var(--dur-press) ease-out,
+    opacity var(--dur-quick);
+}
+.field-go:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.field-go:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.field-go[disabled] {
+  background: var(--fill);
+  color: var(--label-3);
+  cursor: default;
+}
+.field-go .i {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.4;
+}
+.field-go .spinner-status {
+  color: var(--label-2);
+}
+.auth-msg {
+  margin-top: 14px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.auth-foot {
+  margin-top: 36px;
+  font-size: 0.75rem;
+  color: var(--label-3);
+  line-height: 1.6;
+}
+.auth-req {
+  list-style: none;
+  padding: 0;
+  margin: 14px 4px 0;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.auth-req li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-req .ok {
+  color: var(--green-ink);
+}
+.auth-req .bad {
+  color: var(--red-ink);
+}
+.auth-req .i {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
+  flex: none;
+}
+.auth .banner {
+  margin-top: 22px;
+  text-align: left;
+}
+.auth .banner-title {
+  font-size: 0.875rem;
+}
+.lock-ring {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+}
+.lock-ring .t-metric {
+  font-size: 1.75rem;
+}
+.step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.step-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fill);
+}
+.step-dots i.on {
+  background: var(--accent);
+  width: 20px;
+  border-radius: 4px;
+}
+
+/* 侧栏用户菜单：效果图 user-row 带 chev-updown，展开后提供「退出登录」 */
+.user-menu {
+  position: relative;
+}
+.user-menu .user-row {
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.user-menu .user-row:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.user-menu .popover {
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  min-width: 0;
+}
+.user-menu .menu-item {
+  width: 100%;
+  appearance: none;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--red);
+}
+.user-menu .menu-item:hover,
+.user-menu .menu-item:focus-visible {
+  outline: none;
+  background: var(--red);
+  color: #fff;
+}
+.user-menu .menu-item[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}

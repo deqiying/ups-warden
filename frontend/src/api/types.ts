@@ -216,6 +216,11 @@ export interface User {
   last_login_at: string | null;
 }
 
+/** GET /setup/status。 */
+export interface SetupStatus {
+  setup_required: boolean;
+}
+
 /** `POST /auth/login` 与 `GET /auth/session` 的响应。CSRF token 只保存在内存。 */
 export interface SessionResponse {
   user: User;

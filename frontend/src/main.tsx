@@ -5,6 +5,7 @@ import "./styles/components.css";
 import "./styles/controls.css";
 import "./styles/overlays.css";
 import "./styles/app.css";
+import "./styles/auth.css";
 import App from "./App.tsx";
 import { createAppServices } from "./app/services.ts";
 

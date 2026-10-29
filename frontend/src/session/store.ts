@@ -22,6 +22,11 @@ export interface SessionSnapshot {
   /** 空闲与绝对期限中较早者（UTC），探测或登录时刻的值。 */
   expiresAt: string | null;
   signedOutReason: SignedOutReason;
+  /**
+   * 仅 status=anonymous 时有意义：后端尚无管理员，需要先初始化（`GET /setup/status`）。
+   * 只在启动探测时查询；请求中途 401 说明已有管理员，保持 false。
+   */
+  setupRequired: boolean;
   /** status=error 时的界面文案。 */
   error: string | null;
 }
@@ -32,6 +37,7 @@ const initial: SessionSnapshot = {
   csrfToken: null,
   expiresAt: null,
   signedOutReason: null,
+  setupRequired: false,
   error: null,
 };
 
@@ -58,13 +64,20 @@ export class SessionStore {
       csrfToken: session.csrf_token,
       expiresAt: session.expires_at,
       signedOutReason: null,
+      setupRequired: false,
       error: null,
     });
   }
 
   /** 清空会话（登出或 401）；凭据只在内存中，清空即失效。 */
-  signOut(reason: SignedOutReason): void {
-    this.set({ ...initial, status: "anonymous", signedOutReason: reason });
+  signOut(reason: SignedOutReason, setupRequired = false): void {
+    this.set({ ...initial, status: "anonymous", signedOutReason: reason, setupRequired });
+  }
+
+  /** 首个管理员已存在（初始化成功或返回 setup_closed）：此后只能登录。 */
+  setupCompleted(): void {
+    if (!this.snapshot.setupRequired) return;
+    this.set({ ...this.snapshot, setupRequired: false });
   }
 
   setProbing(): void {

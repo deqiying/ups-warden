@@ -1,52 +1,37 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { Button } from "../components/Button.tsx";
-import { Empty } from "../components/Empty.tsx";
-import { Spinner } from "../components/Spinner.tsx";
-import { useSession, useSessionActions } from "./hooks.ts";
+import { SessionChecking, SessionError } from "./BootState.tsx";
+import { useSession } from "./hooks.ts";
 
-/** 登录页从 location.state 读取返回路径与原因。 */
+/** 登录页从 location.state 读取返回路径、原因与预填用户名。 */
 export interface LoginLocationState {
   from?: string;
   reason?: "expired" | "logout" | null;
+  /** 刚完成初始化时预填的用户名（密码从不预填）。 */
+  username?: string;
+  /** 来自初始化页：显示第 2 步与“账户已创建”提示。 */
+  setupDone?: boolean;
+  /** 初始化页收到 setup_closed：已由他人完成初始化。 */
+  setupClosed?: boolean;
 }
 
 /**
- * 会话守卫：未登录访问任意页面时跳转登录并保留返回路径（frontend-plan 3.2）。
- * 探测失败（网络等）不当作未登录，显示可重试的错误态，避免把断网误判为会话过期。
+ * 会话守卫：未登录访问任意页面时跳转登录并保留返回路径（frontend-plan 3.2）；
+ * 尚未初始化时转到初始化页。探测失败（网络等）显示可重试的错误态。
  */
 export function RequireAuth() {
   const session = useSession();
-  const { probe } = useSessionActions();
   const location = useLocation();
 
-  if (session.status === "unknown") {
-    return (
-      <div className="boot-state">
-        <Spinner label="正在检查登录状态" />
-      </div>
-    );
-  }
-  if (session.status === "error") {
-    return (
-      <div className="boot-state">
-        <Empty
-          icon="wifi-off"
-          tone="warning"
-          title="无法连接到 UPS Warden"
-          action={
-            <Button variant="tinted" onClick={() => void probe()}>
-              重试
-            </Button>
-          }
-        >
-          {session.error}
-        </Empty>
-      </div>
-    );
-  }
+  if (session.status === "unknown") return <SessionChecking />;
+  if (session.status === "error") return <SessionError />;
   if (session.status === "anonymous") {
+    if (session.setupRequired) return <Navigate to="/setup" replace />;
+    // 主动登出后重新登录回到首页；会话过期则回到原页面继续操作。
     const state: LoginLocationState = {
-      from: location.pathname + location.search + location.hash,
+      from:
+        session.signedOutReason === "logout"
+          ? undefined
+          : location.pathname + location.search + location.hash,
       reason: session.signedOutReason,
     };
     return <Navigate to="/login" replace state={state} />;

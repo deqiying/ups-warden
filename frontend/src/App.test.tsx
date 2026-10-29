@@ -28,6 +28,7 @@ beforeEach(() => {
   FakeEventSource.reset();
   routes = {
     "/api/v1/auth/session": () => json(200, sessionResponse()),
+    "/api/v1/setup/status": () => json(200, { setup_required: false }),
     "/api/v1/settings": () => json(200, settings()),
     "/api/v1/notify-logs": () => json(200, { items: [], next_before: null }),
   };
@@ -72,7 +73,7 @@ describe("App 路由与会话守卫", () => {
   it("未登录访问业务页面时转到登录页，不建立实时连接", async () => {
     routes["/api/v1/auth/session"] = unauthorized;
     renderApp("/devices?filter=on_battery");
-    expect(await screen.findByText("登录")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "登录 UPS Warden" })).toBeTruthy();
     expect(currentPath()).toBe("/login");
     expect(screen.queryByText(/会话已过期/)).toBeNull();
     expect(FakeEventSource.instances).toHaveLength(0);
