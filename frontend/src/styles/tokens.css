@@ -1,0 +1,230 @@
+/*
+ * UPS Warden 设计 token（浅色 / 深色）
+ *
+ * 由 docs/design/assets/apple-ui.css 迁移：颜色、字号、间距、圆角与动效时长保持原值。
+ * 效果图评审浮条（.mock-bar、html.is-embedded）不属于产品界面，未迁移。
+ * 颜色只通过语义 token 引用；状态色语义见 docs/design/README.md。
+ */
+
+/* ---------- 1. Token：浅色 ---------- */
+:root {
+  color-scheme: light;
+
+  --font-text:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", "PingFang SC", "Hiragino Sans GB",
+    "Helvetica Neue", "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "PingFang SC",
+    "Hiragino Sans GB", "Helvetica Neue", "Segoe UI", "Microsoft YaHei", sans-serif;
+  /* 指标数字使用 SF Rounded（Apple 健康/电池小组件同款），其他平台回退系统字体 */
+  --font-rounded:
+    ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI",
+    "Microsoft YaHei", sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #fbfbfd;
+  --surface-sunken: #f5f5f7;
+  --label: #1d1d1f;
+  --label-2: #6e6e73;
+  --label-3: #86868b;
+  --label-4: #c7c7cc;
+  --separator: rgba(0, 0, 0, 0.08);
+  --separator-strong: rgba(0, 0, 0, 0.14);
+  --fill: rgba(120, 120, 128, 0.12);
+  --fill-2: rgba(120, 120, 128, 0.08);
+  --fill-3: rgba(120, 120, 128, 0.05);
+  --hover: rgba(0, 0, 0, 0.035);
+  --seg-thumb: #ffffff;
+
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --link: #0066cc;
+  --accent-tint: rgba(0, 113, 227, 0.1);
+
+  --green: #34c759;
+  --green-ink: #248a3d;
+  --green-tint: rgba(52, 199, 89, 0.14);
+  --orange: #ff9500;
+  --orange-ink: #c93400;
+  --orange-tint: rgba(255, 149, 0, 0.14);
+  --red: #ff3b30;
+  --red-ink: #d70015;
+  --red-tint: rgba(255, 59, 48, 0.11);
+  --yellow: #ffcc00;
+  --yellow-ink: #9a5b00;
+  --yellow-tint: rgba(255, 204, 0, 0.2);
+  --indigo: #5856d6;
+  --indigo-ink: #3634a3;
+  --indigo-tint: rgba(88, 86, 214, 0.12);
+  --teal: #30b0c7;
+  --cyan: #32ade6;
+  --mint: #00c7be;
+  --purple: #af52de;
+  --pink: #ff2d55;
+  --brown: #a2845e;
+  --gray: #8e8e93;
+  --gray-ink: #6e6e73;
+  --gray-tint: rgba(142, 142, 147, 0.16);
+
+  /* 材质：结构区域（侧栏）更重，交互浮层（工具栏/浮条）更轻 */
+  --material-sidebar: rgba(232, 232, 237, 0.72);
+  --material-bar: rgba(245, 245, 247, 0.76);
+  --material-thick: rgba(251, 251, 253, 0.88);
+  --material-chip: rgba(255, 255, 255, 0.72);
+  --scrim: rgba(0, 0, 0, 0.26);
+
+  --shadow-1: 0 0.5px 1px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 24px rgba(0, 0, 0, 0.045);
+  --shadow-float: 0 2px 6px rgba(0, 0, 0, 0.06), 0 18px 48px rgba(0, 0, 0, 0.16);
+  --shadow-sheet: 0 4px 12px rgba(0, 0, 0, 0.08), 0 32px 80px rgba(0, 0, 0, 0.24);
+  --ring-focus: 0 0 0 4px rgba(0, 113, 227, 0.26);
+  --hairline-card: inset 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 22px;
+  --r-pill: 980px;
+
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.25rem;
+  --sp-6: 1.5rem;
+  --sp-8: 2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+
+  /*
+   * 动效：Web 端用 cubic-bezier 近似 Apple 弹簧参数。
+   * --ease-out   ≈ damping 1.0 / response 0.35s（默认，无回弹）
+   * --ease-sheet ≈ damping 0.85 / response 0.3s（浮层、抽屉）
+   * 手势驱动（拖拽 sheet 等）需要可打断的弹簧库，不能只靠 CSS transition。
+   */
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-press: 100ms;
+  --dur-quick: 200ms;
+  --dur-base: 350ms;
+  --dur-sheet: 450ms;
+
+  --sidebar-w: 248px;
+  --toolbar-h: 52px;
+  --content-max: 1240px;
+}
+
+/* ---------- 2. Token：深色（跟随系统，或 data-theme 强制） ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface-2: #242426;
+    --surface-sunken: #111113;
+    --label: #f5f5f7;
+    --label-2: #a1a1a6;
+    --label-3: #86868b;
+    --label-4: #48484a;
+    --separator: rgba(255, 255, 255, 0.08);
+    --separator-strong: rgba(255, 255, 255, 0.16);
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-2: rgba(118, 118, 128, 0.18);
+    --fill-3: rgba(118, 118, 128, 0.1);
+    --hover: rgba(255, 255, 255, 0.05);
+    --seg-thumb: #636366;
+    --accent: #0a84ff;
+    --accent-hover: #2490ff;
+    --link: #2997ff;
+    --accent-tint: rgba(10, 132, 255, 0.2);
+    --green: #30d158;
+    --green-ink: #30d158;
+    --green-tint: rgba(48, 209, 88, 0.18);
+    --orange: #ff9f0a;
+    --orange-ink: #ffb340;
+    --orange-tint: rgba(255, 159, 10, 0.2);
+    --red: #ff453a;
+    --red-ink: #ff6961;
+    --red-tint: rgba(255, 69, 58, 0.2);
+    --yellow: #ffd60a;
+    --yellow-ink: #ffd60a;
+    --yellow-tint: rgba(255, 214, 10, 0.18);
+    --indigo: #5e5ce6;
+    --indigo-ink: #9d9bff;
+    --indigo-tint: rgba(94, 92, 230, 0.26);
+    --teal: #40c8e0;
+    --cyan: #64d2ff;
+    --mint: #63e6e2;
+    --gray-ink: #a1a1a6;
+    --gray-tint: rgba(142, 142, 147, 0.24);
+    --material-sidebar: rgba(36, 36, 38, 0.72);
+    --material-bar: rgba(18, 18, 20, 0.74);
+    --material-thick: rgba(40, 40, 42, 0.88);
+    --material-chip: rgba(60, 60, 64, 0.7);
+    --scrim: rgba(0, 0, 0, 0.5);
+    --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --shadow-float: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 18px 48px rgba(0, 0, 0, 0.6);
+    --shadow-sheet: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 32px 80px rgba(0, 0, 0, 0.7);
+    --ring-focus: 0 0 0 4px rgba(10, 132, 255, 0.4);
+    --hairline-card: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #242426;
+  --surface-sunken: #111113;
+  --label: #f5f5f7;
+  --label-2: #a1a1a6;
+  --label-3: #86868b;
+  --label-4: #48484a;
+  --separator: rgba(255, 255, 255, 0.08);
+  --separator-strong: rgba(255, 255, 255, 0.16);
+  --fill: rgba(118, 118, 128, 0.24);
+  --fill-2: rgba(118, 118, 128, 0.18);
+  --fill-3: rgba(118, 118, 128, 0.1);
+  --hover: rgba(255, 255, 255, 0.05);
+  --seg-thumb: #636366;
+  --accent: #0a84ff;
+  --accent-hover: #2490ff;
+  --link: #2997ff;
+  --accent-tint: rgba(10, 132, 255, 0.2);
+  --green: #30d158;
+  --green-ink: #30d158;
+  --green-tint: rgba(48, 209, 88, 0.18);
+  --orange: #ff9f0a;
+  --orange-ink: #ffb340;
+  --orange-tint: rgba(255, 159, 10, 0.2);
+  --red: #ff453a;
+  --red-ink: #ff6961;
+  --red-tint: rgba(255, 69, 58, 0.2);
+  --yellow: #ffd60a;
+  --yellow-ink: #ffd60a;
+  --yellow-tint: rgba(255, 214, 10, 0.18);
+  --indigo: #5e5ce6;
+  --indigo-ink: #9d9bff;
+  --indigo-tint: rgba(94, 92, 230, 0.26);
+  --teal: #40c8e0;
+  --cyan: #64d2ff;
+  --mint: #63e6e2;
+  --gray-ink: #a1a1a6;
+  --gray-tint: rgba(142, 142, 147, 0.24);
+  --material-sidebar: rgba(36, 36, 38, 0.72);
+  --material-bar: rgba(18, 18, 20, 0.74);
+  --material-thick: rgba(40, 40, 42, 0.88);
+  --material-chip: rgba(60, 60, 64, 0.7);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-card: 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-float: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 18px 48px rgba(0, 0, 0, 0.6);
+  --shadow-sheet: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 32px 80px rgba(0, 0, 0, 0.7);
+  --ring-focus: 0 0 0 4px rgba(10, 132, 255, 0.4);
+  --hairline-card: inset 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+}

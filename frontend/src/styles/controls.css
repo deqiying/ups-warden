@@ -1,0 +1,173 @@
+/* 通用组件在 components.css（效果图原样迁移）之外需要的补充样式。 */
+
+/* 仅对读屏可见的标准写法 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Select：原生 <select> + 叠放的装饰 chevron ---------- */
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.select-wrap > .select {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  appearance: none;
+  /* 右侧给 chevron（16px）和边距留位，避免长文本压到它 */
+  padding-right: 32px;
+  text-overflow: ellipsis;
+}
+.select-wrap > .select option {
+  color: var(--label);
+  background: var(--surface);
+}
+.select-wrap > .select:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* .select .chev 的规则按后代选择，这里 chev 是兄弟节点，需要重复一份 */
+.select-wrap > .chev {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 18px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--accent);
+  pointer-events: none;
+}
+.select-wrap > .chev .i {
+  width: 10px;
+  height: 10px;
+  stroke-width: 2.6;
+}
+.select-wrap > .select.is-plain + .chev {
+  background: transparent;
+  color: var(--label-2);
+}
+.select-wrap > .select:disabled + .chev {
+  opacity: 0.5;
+}
+
+/* ---------- Stepper：数值改为可编辑输入框，外观与效果图的 .val 一致 ---------- */
+.stepper input.val {
+  appearance: none;
+  min-width: 56px;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  outline: none;
+  /* 支持 field-sizing 的浏览器按内容收缩，其余用下面的固定宽度回退 */
+  field-sizing: content;
+}
+@supports not (field-sizing: content) {
+  .stepper input.val {
+    width: 64px;
+  }
+}
+.stepper:focus-within {
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    var(--ring-focus);
+}
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.stepper button:disabled:active {
+  background: transparent;
+}
+.stepper button:focus-visible {
+  outline: none;
+  background: var(--fill);
+}
+.stepper input.val:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- TokenInput ---------- */
+.token-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.token-input .input {
+  height: 26px;
+  width: 160px;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+}
+.token-input-error {
+  flex-basis: 100%;
+}
+/* 效果图里 token 与 .x 是 span；这里是真正的 button，需要还原默认外观 */
+button.token {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+}
+button.token.token-add {
+  color: var(--link);
+}
+.token .x {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-quick) var(--ease-out),
+    color var(--dur-quick) var(--ease-out);
+}
+.token .x:hover {
+  background: var(--fill);
+  color: var(--label-2);
+}
+.token .x:focus-visible,
+button.token:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.token .x:disabled,
+button.token:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- 输入框补充 ---------- */
+.textarea.is-invalid {
+  box-shadow:
+    inset 0 0 0 1px var(--red),
+    0 0 0 4px var(--red-tint);
+}
+.input:disabled,
+.textarea:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- Spinner：role="status" 外壳，图形与读屏文字并排 ---------- */
+.spinner-status {
+  display: inline-flex;
+  align-items: center;
+}

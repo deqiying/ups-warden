@@ -8,7 +8,18 @@ export default defineConfig({
   plugins: lazyPlugins(() => [react()]),
   server: {
     proxy: {
-      "/api": { target: backendOrigin },
+      "/api": {
+        target: backendOrigin,
+        configure(proxy) {
+          // 后端重启或崩溃时，代理不会结束已开始的流式响应，SSE 会一直挂起而不触发 error。
+          // 上游响应未完整结束（complete=false）就关闭时，主动断开下游，让前端按退避重连。
+          proxy.on("proxyRes", (proxyRes, _req, res) => {
+            proxyRes.on("close", () => {
+              if (!proxyRes.complete) res.destroy();
+            });
+          });
+        },
+      },
       "/healthz": { target: backendOrigin },
     },
   },
@@ -18,6 +29,9 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
+    // 组件测试需要 DOM；纯函数测试同样在 happy-dom 下运行，不影响结果。
+    environment: "happy-dom",
+    setupFiles: ["src/test/setup.ts"],
   },
   fmt: {
     ignorePatterns: ["dist/**"],

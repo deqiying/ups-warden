@@ -1,0 +1,98 @@
+/* 浮层与 Toast 在 components.css 之外需要的补充样式。 */
+
+/* Overlay 容器只是定位上下文之外的包裹层；程序化聚焦它时不显示焦点环 */
+.overlay:focus {
+  outline: none;
+}
+
+/* ---------- Dialog ---------- */
+.dialog {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.dialog-icon.is-danger {
+  background: var(--red-tint);
+  color: var(--red-ink);
+}
+.dialog-icon.is-warning {
+  background: var(--orange-tint);
+  color: var(--orange-ink);
+}
+.dialog-icon.is-neutral {
+  background: var(--fill-2);
+  color: var(--label-2);
+}
+.dialog-icon.is-info {
+  background: var(--accent-tint);
+  color: var(--link);
+}
+
+.dlg-wide {
+  width: 380px;
+}
+.confirm-field {
+  margin-top: 14px;
+  text-align: left;
+}
+.confirm-field .input {
+  width: 100%;
+}
+.confirm-field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--label-2);
+  margin: 0 0 6px 2px;
+}
+
+/* DestructiveDialog：级联影响列表与就地错误 */
+.dialog-consequences {
+  margin-top: 12px;
+  text-align: left;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.dialog-consequences ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.dialog-error {
+  margin-top: 12px;
+  text-align: left;
+}
+
+/* ---------- Toast 栈 ---------- */
+.toast-stack {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  z-index: 60;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 栈本身不挡点击，只有 toast 接收事件 */
+  pointer-events: none;
+}
+.toast-stack > .toast {
+  position: static;
+  width: auto;
+  pointer-events: auto;
+}
+.toast-body {
+  flex: 1;
+  min-width: 0;
+}
+.toast-body > .t-footnote {
+  margin-top: 2px;
+}
+
+@media (max-width: 860px) {
+  .dlg-wide {
+    width: calc(100vw - 32px);
+  }
+  .toast-stack {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}

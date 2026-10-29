@@ -13,14 +13,20 @@
     "test": "vp test run"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.105.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-router": "8.5.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
+    "happy-dom": "21.0.4",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"
