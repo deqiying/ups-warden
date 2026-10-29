@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDevice, listAllDevices, listDeviceSources, listSourcesByDevice } from "./devices.ts";
+import { listProfiles } from "./profiles.ts";
 import { getSettings } from "./settings.ts";
-import type { Device, Settings, Source } from "./types.ts";
+import type { Device, ProfileSummary, Settings, Source } from "./types.ts";
 
 /**
  * 查询键前缀。实时帧与全局错误处理按前缀失效，各资源页面在此基础上追加参数，
@@ -17,6 +18,8 @@ export const queryKeys = {
   /** 数据源：`[...sources, "device", id]`、`[...sources, "by-device", ids]`、诊断。 */
   sources: ["sources"] as const,
   history: ["history"] as const,
+  /** Profile 列表与详情：`[...profiles]`、`[...profiles, key]`。 */
+  profiles: ["profiles"] as const,
 };
 
 export function useSettings() {
@@ -71,6 +74,15 @@ export function useSourcesByDevice(deviceIds: readonly number[]) {
     queryKey: [...queryKeys.sources, "by-device", ids],
     queryFn: ({ signal }) => listSourcesByDevice(ids, signal),
     enabled: ids.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+/** 全部 Profile；导入、复制、删除后由 Profile 页主动失效。 */
+export function useProfiles() {
+  return useQuery<ProfileSummary[]>({
+    queryKey: queryKeys.profiles,
+    queryFn: ({ signal }) => listProfiles(signal),
     staleTime: 60_000,
   });
 }

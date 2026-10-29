@@ -1,11 +1,14 @@
 import { api } from "./client.ts";
+import { confirmBody } from "./patch.ts";
 import type {
   Device,
+  DeviceInput,
   HistoryResponse,
   Page,
   ProbeResult,
   Source,
   SourceDiagnostics,
+  SourceInput,
 } from "./types.ts";
 
 /** 契约分页上限；一次取满以减少“取全部”时的请求次数。 */
@@ -45,6 +48,48 @@ export function listAllDevices(signal?: AbortSignal): Promise<Device[]> {
 
 export function getDevice(id: number, signal?: AbortSignal): Promise<Device> {
   return api.request<Device>(`/devices/${id}`, { signal });
+}
+
+export function createDevice(input: DeviceInput): Promise<Device> {
+  return api.request<Device>("/devices", { method: "POST", body: input });
+}
+
+/** 局部修改：只提交修改的字段；config 为整体替换。 */
+export function updateDevice(id: number, input: DeviceInput): Promise<Device> {
+  return api.request<Device>(`/devices/${id}`, { method: "PATCH", body: input });
+}
+
+export function setDeviceEnabled(id: number, enabled: boolean): Promise<Device> {
+  return api.request<Device>(`/devices/${id}/enabled`, { method: "PUT", body: { enabled } });
+}
+
+/** 确认删除：清理状态、事件与周期并级联数据源 / 历史；被规则或执行记录引用时 409。 */
+export function deleteDevice(id: number): Promise<{ ok: boolean }> {
+  return api.request(`/devices/${id}`, { method: "DELETE", body: confirmBody() });
+}
+
+export async function createSource(deviceId: number, input: SourceInput): Promise<Source> {
+  return normalizeSource(
+    await api.request<Source>(`/devices/${deviceId}/sources`, { method: "POST", body: input }),
+  );
+}
+
+export async function updateSource(id: number, input: SourceInput): Promise<Source> {
+  return normalizeSource(
+    await api.request<Source>(`/sources/${id}`, { method: "PATCH", body: input }),
+  );
+}
+
+export function deleteSource(id: number): Promise<{ ok: boolean }> {
+  return api.request(`/sources/${id}`, { method: "DELETE", body: confirmBody() });
+}
+
+/**
+ * 未保存配置的只读连接测试（添加向导）。请求须含合法 profile_key / profile_version；
+ * 不指定 timeout_ms 时后端总限额 5 秒。失败码同 {@link testSource}。
+ */
+export function testSourceDraft(input: SourceInput): Promise<ProbeResult> {
+  return api.request<ProbeResult>("/sources/test", { method: "POST", body: input });
 }
 
 // Go 零值时间表示“从未成功”。

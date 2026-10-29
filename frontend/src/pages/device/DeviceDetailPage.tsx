@@ -119,6 +119,14 @@ export function DeviceDetailPage() {
       title={name}
       eyebrow="设备"
       back={{ to: "/", label: "总览" }}
+      toolbar={
+        device.data ? (
+          <Link className="btn btn-gray btn-sm" to={`/devices?edit=${deviceId}`}>
+            <Icon name="pencil" />
+            编辑
+          </Link>
+        ) : null
+      }
       headAside={
         state && tab === "live" ? (
           <span className="t-footnote faint">

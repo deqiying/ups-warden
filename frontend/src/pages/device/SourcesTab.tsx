@@ -9,7 +9,7 @@ import { Banner } from "../../components/Banner.tsx";
 import { Button } from "../../components/Button.tsx";
 import { Empty } from "../../components/Empty.tsx";
 import { Spinner } from "../../components/Spinner.tsx";
-import { protocolLabel } from "../../model/device.ts";
+import { protocolLabel, sourceErrorText } from "../../model/device.ts";
 import { fieldText, NA_TEXT } from "../../model/format.ts";
 import { formatFullDateTime, formatTime } from "../../model/time.ts";
 
@@ -21,12 +21,6 @@ const QUALITY_TONE: Readonly<Record<string, BadgeTone>> = {
   invalid: "yellow",
   stale: "orange",
   unsupported: "gray",
-};
-
-/** 运行状态错误码文案；password_wrong 为 AYI9 设备密码错误（103）。 */
-const SOURCE_ERROR_TEXT: Readonly<Record<string, string>> = {
-  password_wrong: "设备密码错误（103）",
-  timeout: "超时",
 };
 
 function credentialText(source: Source): string {
@@ -193,9 +187,7 @@ function SourcePanel({ source }: { source: Source }) {
                     <span className="row-main">连续失败</span>
                     <span className={status.failures > 0 ? "row-value ink-orange" : "row-value"}>
                       {status.failures}
-                      {status.error_code
-                        ? ` · ${SOURCE_ERROR_TEXT[status.error_code] ?? status.error_code}`
-                        : ""}
+                      {status.error_code ? ` · ${sourceErrorText(status.error_code)}` : ""}
                     </span>
                   </div>
                 </>

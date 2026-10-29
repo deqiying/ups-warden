@@ -1,0 +1,372 @@
+/*
+ * 通知页私有样式（迁移自 docs/design/notifications.html 的 <style>）。
+ * 通用类（.logs、.tpl-key 等）限定在 .notifications-page 下；页内专用类统一带 nt- 前缀。
+ * 颜色、间距只引用 tokens.css 的变量。
+ */
+
+/* 窄屏时 Page 会隐藏页头右侧控件，视图切换改在内容区提供 */
+.nt-tabs-narrow {
+  display: none;
+}
+
+/* ---------- 渠道：列表与详情头 ---------- */
+.notifications-page .ch-list .row {
+  align-items: flex-start;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.notifications-page .ch-list .row-icon {
+  margin-top: 1px;
+}
+.notifications-page .strong {
+  font-weight: 600;
+}
+.notifications-page .nt-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.notifications-page .nt-head .row-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+}
+.notifications-page .nt-head .row-icon .i {
+  width: 24px;
+  height: 24px;
+}
+.notifications-page .nt-title {
+  flex: 1 1 10em;
+  min-width: 0;
+}
+.notifications-page .nt-title h2 {
+  margin: 0;
+}
+.notifications-page .nt-acts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.notifications-page .nt-pad {
+  padding: 0 var(--sp-5) var(--sp-3);
+}
+.notifications-page .nt-banner {
+  margin-bottom: var(--sp-4);
+}
+.notifications-page .nt-actions {
+  flex-wrap: wrap;
+}
+
+/* ---------- 渠道：表单行 ---------- */
+.notifications-page .form-row .control {
+  max-width: 60%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.notifications-page .nt-stack .control,
+.notifications-page .nt-secret .control {
+  min-width: 0;
+}
+.notifications-page .nt-stack .control {
+  flex: 1 1 60%;
+}
+.notifications-page .nt-secret-input {
+  width: 240px;
+  max-width: 100%;
+}
+.notifications-page textarea.nt-secret-input {
+  width: 100%;
+  min-height: 72px;
+}
+.notifications-page .secret-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.notifications-page .secret-set .i {
+  width: 14px;
+  height: 14px;
+  color: var(--green-ink);
+}
+.notifications-page .nt-field-error {
+  flex-basis: 100%;
+  text-align: right;
+}
+.notifications-page .nt-retry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.notifications-page .nt-retry .dotx {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 600 0.6875rem var(--font-rounded);
+  background: var(--fill);
+  color: var(--label);
+}
+.notifications-page .nt-retry .line {
+  width: 26px;
+  height: 1.5px;
+  background: var(--separator-strong);
+}
+
+/* ---------- 模板 ---------- */
+.notifications-page .nt-group + .nt-group {
+  margin-top: var(--sp-4);
+}
+.notifications-page .tpl-list .row {
+  min-height: 38px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+.notifications-page .tpl-list .row-title {
+  font-size: 0.875rem;
+}
+.notifications-page .tpl-key {
+  font: 500 0.6875rem var(--font-mono);
+  color: var(--label-3);
+}
+.notifications-page .nt-tpl-head {
+  justify-content: space-between;
+  gap: 12px;
+}
+.notifications-page .nt-tpl-head h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * 带变量高亮的编辑器：透明的 textarea 叠在同样排版的 <pre> 上，
+ * 两者的字体、行高、内边距与换行必须完全一致，高亮才不会错位。
+ */
+.notifications-page .nt-editor {
+  position: relative;
+  min-height: 168px;
+  border-radius: 10px;
+  background: var(--fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+}
+.notifications-page .nt-hl,
+.notifications-page .nt-ta {
+  margin: 0;
+  padding: 12px 14px;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+.notifications-page .nt-hl {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--label);
+  pointer-events: none;
+}
+.notifications-page .nt-ta {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 168px;
+  height: 100%;
+  resize: none;
+  overflow: hidden;
+  appearance: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--label);
+  border-radius: 10px;
+}
+.notifications-page .nt-ta:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    var(--ring-focus);
+}
+.notifications-page .nt-hl .v {
+  color: var(--indigo-ink);
+  background: var(--indigo-tint);
+  border-radius: 4px;
+}
+.notifications-page .nt-hl .bad {
+  color: var(--red-ink);
+  background: var(--red-tint);
+  border-radius: 4px;
+  text-decoration: underline wavy var(--red);
+  text-underline-offset: 3px;
+}
+.notifications-page .nt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.notifications-page .nt-all-vars summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--link);
+}
+.notifications-page .nt-issues {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.notifications-page .preview-wrap {
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--fill-3);
+}
+.notifications-page .preview-msg {
+  margin: var(--sp-3) 0 0;
+  border-radius: 16px 16px 16px 4px;
+  padding: 12px 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 420px;
+}
+
+/* ---------- 发送记录 ---------- */
+.notifications-page .nt-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.notifications-page .nt-filter-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+.notifications-page .nt-filter-field .i {
+  width: 14px;
+  height: 14px;
+}
+.notifications-page .nt-filter-field .lbl {
+  color: var(--label-2);
+}
+.notifications-page .nt-filters .select {
+  height: 28px;
+  font-size: 0.8125rem;
+}
+.notifications-page .nt-logs-card {
+  overflow-x: auto;
+}
+.notifications-page .logs td {
+  white-space: nowrap;
+}
+.notifications-page .logs .sum {
+  white-space: normal;
+  min-width: 220px;
+  color: var(--label-2);
+}
+.notifications-page .nt-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+.notifications-page .nt-load-more-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+
+/* ---------- 窄屏（≤860px） ---------- */
+@media (max-width: 860px) {
+  .nt-tabs-narrow {
+    display: block;
+    margin-bottom: var(--sp-4);
+  }
+  /* 渠道 / 模板列表叠在编辑区上方并取消吸顶，保证随时能切换 */
+  .notifications-page .sticky-col {
+    position: static;
+  }
+  .notifications-page .form-row .control {
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+  .notifications-page .nt-field-error {
+    text-align: left;
+  }
+  .notifications-page .nt-secret-input {
+    width: 100%;
+  }
+  .notifications-page .col-hide {
+    display: none;
+  }
+  .notifications-page .preview-msg {
+    max-width: none;
+  }
+  /* 发送记录重排为两行列表：事件与结果在上，时间、渠道与尝试次数在下 */
+  .notifications-page .logs,
+  .notifications-page .logs tbody {
+    display: block;
+  }
+  .notifications-page .logs thead {
+    display: none;
+  }
+  .notifications-page .logs tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 8px;
+    row-gap: 3px;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .notifications-page .logs tr td {
+    padding: 0;
+    border: 0;
+  }
+  .notifications-page .logs td:nth-child(4) {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+    font-weight: 600;
+  }
+  .notifications-page .logs td:nth-child(5) {
+    grid-column: 3;
+    grid-row: 1;
+    text-align: right;
+  }
+  .notifications-page .logs td:nth-child(1),
+  .notifications-page .logs td:nth-child(2) {
+    grid-row: 2;
+    font-size: 0.8125rem;
+    color: var(--label-2);
+  }
+  .notifications-page .logs td:nth-child(6) {
+    grid-column: 3;
+    grid-row: 2;
+    font-size: 0.8125rem;
+    color: var(--label-2);
+  }
+  .notifications-page .logs td:nth-child(6)::before {
+    content: "尝试 ";
+  }
+  .notifications-page .logs td:nth-child(6)::after {
+    content: " 次";
+  }
+}

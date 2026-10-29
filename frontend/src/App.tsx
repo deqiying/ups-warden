@@ -11,9 +11,12 @@ import { AlertsPage } from "./pages/alerts/AlertsPage.tsx";
 import { LoginPage } from "./pages/auth/LoginPage.tsx";
 import { SetupPage } from "./pages/auth/SetupPage.tsx";
 import { DeviceDetailPage } from "./pages/device/DeviceDetailPage.tsx";
+import { DevicesPage } from "./pages/devices/DevicesPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
+import { NotificationsPage } from "./pages/notifications/NotificationsPage.tsx";
 import { OverviewPage } from "./pages/overview/OverviewPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
+import { ProfilesPage } from "./pages/profiles/ProfilesPage.tsx";
 import { SessionContext } from "./session/hooks.ts";
 import { RequireAuth } from "./session/RequireAuth.tsx";
 
@@ -61,8 +64,8 @@ export function AppRoutes() {
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route index element={<OverviewPage />} />
-          <Route path="devices" element={<PlaceholderPage title="设备" milestone="F3" />} />
-          <Route path="devices/new" element={<PlaceholderPage title="添加设备" milestone="F3" />} />
+          <Route path="devices" element={<DevicesPage />} />
+          <Route path="devices/new" element={<DevicesPage />} />
           <Route path="devices/:id" element={<DeviceDetailPage />} />
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="rules" element={<PlaceholderPage title="规则" milestone="F7" />} />
@@ -73,16 +76,13 @@ export function AppRoutes() {
             path="hosts-actions"
             element={<PlaceholderPage title="主机与动作" milestone="F5" />}
           />
-          <Route
-            path="notifications"
-            element={<PlaceholderPage title="通知渠道" milestone="F4" />}
-          />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<PlaceholderPage title="设置" milestone="F8" />} />
           <Route
             path="settings/:section"
             element={<PlaceholderPage title="设置" milestone="F8" />}
           />
-          <Route path="profiles" element={<PlaceholderPage title="Profile" milestone="F3" />} />
+          <Route path="profiles" element={<ProfilesPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

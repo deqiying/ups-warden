@@ -374,3 +374,54 @@ export interface ProbeResult {
   raw: RawData;
   trace: TraceEntry[] | null;
 }
+
+/** 设备写入（POST /devices、PATCH /devices/{id}）：只提交显式字段；config 为整体替换，省略的子字段取 device_defaults。 */
+export interface DeviceInput {
+  name?: string;
+  note?: string;
+  location?: string;
+  tags?: string[];
+  enabled?: boolean;
+  config?: DeviceConfig;
+}
+
+/**
+ * 数据源写入（POST /devices/{id}/sources、PATCH /sources/{id}、POST /sources/test）。
+ * 凭据只写：`community`（SNMP）/ `password`（AYI9）省略或空串表示保留；清除用 `clear_secrets`，不能与新值同时提交。
+ */
+export interface SourceInput {
+  protocol?: SourceProtocol;
+  host?: string;
+  port?: number;
+  params?: Record<string, unknown>;
+  profile_key?: string;
+  profile_version?: number;
+  poll_ms?: number;
+  timeout_ms?: number;
+  retries?: number;
+  enabled?: boolean;
+  community?: string;
+  password?: string;
+  clear_secrets?: ("community" | "password")[];
+}
+
+/** Profile 列表项（GET /profiles，按 key 排序一次返回）。 */
+export interface ProfileSummary {
+  key: string;
+  name: string;
+  protocol: SourceProtocol;
+  version: number;
+  /** 内置 Profile 只读，须复制后修改。 */
+  builtin: boolean;
+}
+
+/** GET /profiles/{key}：附声明原文。 */
+export interface ProfileDetail extends ProfileSummary {
+  content: string;
+}
+
+/** POST /profiles/validate 成功响应；失败为 422 profile_invalid，details 可能含 `line` 与受限 `path`。 */
+export interface ProfileValidation {
+  valid: true;
+  profile: ProfileSummary;
+}

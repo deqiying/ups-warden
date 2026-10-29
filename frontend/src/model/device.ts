@@ -179,6 +179,16 @@ export function protocolLabel(source: Pick<Source, "protocol" | "params">): stri
   }
 }
 
+/** 数据源运行状态错误码文案；password_wrong 为 AYI9 设备密码错误（103），未知码原样显示。 */
+const SOURCE_ERROR_TEXT: Readonly<Record<string, string>> = {
+  password_wrong: "设备密码错误（103）",
+  timeout: "超时",
+};
+
+export function sourceErrorText(code: string): string {
+  return SOURCE_ERROR_TEXT[code] ?? code;
+}
+
 /** 设备的当前数据源：P0 每台设备最多一个启用源，优先取启用的。 */
 export function primarySource(sources: readonly Source[] | undefined): Source | undefined {
   if (!sources || sources.length === 0) return undefined;

@@ -27,12 +27,14 @@ export interface DestructiveDialogProps {
   onDisableInstead?: () => void;
   /** 默认“改为停用”。 */
   disableLabel?: string;
+  /** 409 时的说明；默认提示可改为停用，不支持停用的资源（如 Profile）应覆盖。 */
+  conflictMessage?: string;
 }
 
 const CONFLICT_MESSAGE = "仍有其他配置引用它，无法删除。可以改为停用。";
 
-function errorText(error: unknown): string {
-  if (isApiError(error) && error.status === 409) return CONFLICT_MESSAGE;
+function errorText(error: unknown, conflictMessage: string): string {
+  if (isApiError(error) && error.status === 409) return conflictMessage;
   return error instanceof Error ? error.message : "操作失败，请重试";
 }
 
@@ -46,6 +48,7 @@ function DestructiveDialogBody({
   onConfirm,
   onDisableInstead,
   disableLabel = "改为停用",
+  conflictMessage = CONFLICT_MESSAGE,
 }: Omit<DestructiveDialogProps, "open">) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
@@ -112,7 +115,7 @@ function DestructiveDialogBody({
       ) : null}
       {failure ? (
         <div className="dialog-error t-footnote ink-red" role="alert">
-          {errorText(failure.error)}
+          {errorText(failure.error, conflictMessage)}
         </div>
       ) : null}
     </Dialog>
