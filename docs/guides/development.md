@@ -161,7 +161,7 @@ VERSION=v0.8.0 mise run backend:release
 
 AC 映射、压测方法与实测数据见[验收与压测](acceptance.md)，发布与部署见[部署指南](deployment.md)。计划协程的 panic 隔离未单独构造测试。
 
-本机 `upssim` 与显式 `upsprobe` 的参数、安全边界及示例见[协议驱动与本机模拟器](protocol-drivers.md)。主服务会自动采集启用数据源；勿用含真实设备配置的数据目录做开发冒烟。
+本机 `upssim` 与显式 `upsprobe` 的参数、安全边界及示例见[协议驱动与本机模拟器](protocol-drivers.md)。需要多台模拟设备或在联调中切换停电、低电、失联时，使用 `mise run sim -- ...` 驱动 `upssim` 多设备守护进程（见该文档“多设备守护进程”一节），agent 按 [upssim 技能](../../.agents/skills/upssim/SKILL.md)操作。主服务会自动采集启用数据源；勿用含真实设备配置的数据目录做开发冒烟。
 
 在仓库根目录可单独执行短时 fuzz；所有输入均离线，不连接设备：
 

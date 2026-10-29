@@ -1,121 +1,123 @@
 // upssim 提供只监听 loopback 的三协议模拟 UPS，供本机开发和联调。
+//
+// 无子命令（或首个参数以 '-' 开头）时为单设备前台模式；子命令模式由后台守护进程
+// 托管多台模拟设备，客户端经 loopback 控制面增删设备和切换状态。
 package main
 
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"os/signal"
-	"strconv"
+	"path/filepath"
+	"strings"
 	"syscall"
-
-	"ups-warden/internal/sim"
 )
+
+// version 可由 -ldflags "-X main.version=..." 注入。
+var version = "dev"
+
+// 退出码约定：0 成功；1 操作失败；2 参数错误；3 守护进程未运行。
+const (
+	exitOK         = 0
+	exitFailure    = 1
+	exitUsage      = 2
+	exitNotRunning = 3
+)
+
+// usageError 表示命令行参数错误，退出码 2。
+type usageError struct{ msg string }
+
+func (e usageError) Error() string { return e.msg }
+
+func usagef(format string, args ...any) error { return usageError{fmt.Sprintf(format, args...)} }
+
+// errNotRunning 表示状态目录中没有可达的守护进程，退出码 3。
+var errNotRunning = errors.New("守护进程未运行（先执行 upssim daemon start）")
+
+const usageText = `用法：
+  upssim [--et1k] [--scenario FILE] [...]     单设备前台模式（upssim --help 查看参数）
+  upssim daemon start|run|stop|status [--state-dir DIR]
+  upssim add NAME [flags]                     追加模拟设备
+  upssim set NAME [flags]                     修改模式、通信状态或物理参数
+  upssim list [--json]                        列出设备
+  upssim show NAME [--json]                   查看单台设备
+  upssim remove NAME                          删除设备
+
+每个子命令都接受 --state-dir DIR；默认依次取 UPSSIM_STATE_DIR、用户配置目录下的 ups-warden/upssim。
+子命令后加 --help 查看参数。退出码：0 成功，1 操作失败，2 参数错误，3 守护进程未运行。
+`
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	err := run(ctx, os.Args[1:], os.Stdout, os.Stderr)
+	code := dispatch(ctx, os.Args[1:], os.Stdout, os.Stderr)
 	stop()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "upssim: %v\n", err)
-		os.Exit(1)
+	os.Exit(code)
+}
+
+// dispatch 解析子命令并把错误映射为退出码；错误信息统一写入 errout。
+func dispatch(ctx context.Context, args []string, out, errout io.Writer) int {
+	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		if err := run(ctx, args, out, errout); err != nil {
+			fmt.Fprintf(errout, "upssim: %v\n", err)
+			return exitFailure
+		}
+		return exitOK
+	}
+	var err error
+	switch args[0] {
+	case "daemon":
+		err = daemonCommand(ctx, args[1:], out, errout)
+	case "add":
+		err = addCommand(args[1:], out, errout)
+	case "set":
+		err = setCommand(args[1:], out, errout)
+	case "list":
+		err = listCommand(args[1:], out, errout)
+	case "show":
+		err = showCommand(args[1:], out, errout)
+	case "remove":
+		err = removeCommand(args[1:], out, errout)
+	case "help":
+		fmt.Fprint(out, usageText)
+		return exitOK
+	default:
+		err = usagef("未知子命令 %q\n\n%s", args[0], usageText)
+	}
+	if err == nil || errors.Is(err, errHelp) {
+		return exitOK
+	}
+	fmt.Fprintf(errout, "upssim: %v\n", err)
+	var usage usageError
+	switch {
+	case errors.As(err, &usage):
+		return exitUsage
+	case errors.Is(err, errNotRunning):
+		return exitNotRunning
+	default:
+		return exitFailure
 	}
 }
 
-func readConfig(path string) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("读取配置: %w", err)
+// resolveStateDir 按 --state-dir、UPSSIM_STATE_DIR、用户配置目录的顺序确定绝对路径。
+// 默认目录按用户隔离，不写入仓库；不同状态目录对应相互独立的守护进程。
+func resolveStateDir(flagValue string) (string, error) {
+	dir := flagValue
+	if dir == "" {
+		dir = os.Getenv("UPSSIM_STATE_DIR")
 	}
-	defer file.Close()
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !stat.Mode().IsRegular() || stat.Size() > 65536 {
-		return nil, fmt.Errorf("配置必须为不超过 64 KiB 的普通文件")
-	}
-	data, err := io.ReadAll(io.LimitReader(file, 65537))
-	if err != nil {
-		return nil, err
-	}
-	if len(data) > 65536 {
-		return nil, fmt.Errorf("配置超过 64 KiB")
-	}
-	return data, nil
-}
-
-func run(ctx context.Context, args []string, out, errout io.Writer) (result error) {
-	flags := flag.NewFlagSet("upssim", flag.ContinueOnError)
-	flags.SetOutput(errout)
-	scenarioFile := flags.String("scenario", "", "schema=1 场景 YAML 文件（默认正常单相）")
-	registerFile := flags.String("registers", "", "schema=1 自定义 Modbus 寄存器表 YAML 文件")
-	snmpPort := flags.Int("snmp-port", 0, "SNMP UDP 本机端口，0 自动分配")
-	modbusPort := flags.Int("modbus-port", 0, "Modbus TCP 本机端口，0 自动分配")
-	ayi9Port := flags.Int("ayi9-port", 0, "AYI9 TCP 本机端口，0 自动分配")
-	cfg := sim.Config{}
-	flags.StringVar(&cfg.SNMPAddress, "snmp-address", "", "覆盖 SNMP loopback IP:port")
-	flags.StringVar(&cfg.ModbusAddress, "modbus-address", "", "覆盖 Modbus loopback IP:port")
-	flags.StringVar(&cfg.AYI9Address, "ayi9-address", "", "覆盖 AYI9 loopback IP:port")
-	flags.StringVar(&cfg.Community, "community", "sim-public", "虚构 SNMP 测试 community（不输出）")
-	flags.StringVar(&cfg.Password, "password", "", "虚构 AYI9 测试密码，最长 15 字节（不输出）")
-	flags.BoolVar(&cfg.ET1K, "et1k", false, "启用 ET1K SNMP/Modbus 怪癖")
-	flags.IntVar(&cfg.AYI9ErrorCode, "ayi9-error-code", 0, "固定 AYI9 错误码，如 103；0 正常")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return nil
-		}
-		return err
-	}
-	if flags.NArg() != 0 {
-		return fmt.Errorf("不接受位置参数")
-	}
-	for _, pair := range []struct {
-		port    int
-		address *string
-	}{{*snmpPort, &cfg.SNMPAddress}, {*modbusPort, &cfg.ModbusAddress}, {*ayi9Port, &cfg.AYI9Address}} {
-		if pair.port < 0 || pair.port > 65535 {
-			return fmt.Errorf("端口必须在 0..65535 内")
-		}
-		if *pair.address == "" {
-			*pair.address = net.JoinHostPort("127.0.0.1", strconv.Itoa(pair.port))
-		} else if pair.port != 0 {
-			return fmt.Errorf("不能同时指定 address 和非零 port")
-		}
-	}
-	if *scenarioFile != "" {
-		data, err := readConfig(*scenarioFile)
+	if dir == "" {
+		base, err := os.UserConfigDir()
 		if err != nil {
-			return err
+			return "", fmt.Errorf("无法确定默认状态目录，请使用 --state-dir: %w", err)
 		}
-		cfg.Scenario, err = sim.ParseScenario(data)
-		if err != nil {
-			return fmt.Errorf("场景: %w", err)
-		}
+		dir = filepath.Join(base, "ups-warden", "upssim")
 	}
-	if *registerFile != "" {
-		data, err := readConfig(*registerFile)
-		if err != nil {
-			return err
-		}
-		cfg.Registers, err = sim.ParseRegisters(data)
-		if err != nil {
-			return fmt.Errorf("寄存器表: %w", err)
-		}
-	}
-	server, err := sim.Start(cfg)
+	abs, err := filepath.Abs(dir)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("解析状态目录: %w", err)
 	}
-	defer func() { result = errors.Join(result, server.Close()) }()
-	snmp, modbus, ayi9 := server.Addresses()
-	if _, err := fmt.Fprintf(out, "SNMP=%s Modbus=%s AYI9=%s ET1K=%t\n", snmp, modbus, ayi9, cfg.ET1K); err != nil {
-		return err
-	}
-	<-ctx.Done()
-	return nil
+	return abs, nil
 }

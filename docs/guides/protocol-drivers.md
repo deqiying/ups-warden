@@ -74,6 +74,85 @@ steps:
 
 场景的可选物理数值使用零值作为默认值标记（例如温度 0 会采用默认 25），不用于零点校准；需要精确协议零值可使用自定义寄存器表或录制 fixture。
 
+### 多设备守护进程
+
+上面的单设备前台模式适合一次性测试。需要同时模拟多台 UPS，或在联调中随时切换某台设备的供电和通信状态时，使用守护进程模式。本节是命令、参数和错误语义的唯一事实来源；agent 的联调流程见 [upssim 技能](../../.agents/skills/upssim/SKILL.md)。
+
+```bash
+mise run sim:build                           # 构建到 .cache/build/upssim（Windows 为 upssim.exe）
+export UPSSIM_STATE_DIR="$(mktemp -d)"       # 开发测试使用独立临时状态目录
+mise run sim -- daemon start
+mise run sim -- add ups-1 --et1k --ip 127.0.0.2
+mise run sim -- set ups-1 --mode battery
+mise run sim -- list
+mise run sim -- daemon stop
+```
+
+`mise run sim -- <参数>` 会先构建再透传参数。无子命令或首个参数以 `-` 开头时仍是单设备前台模式，原有用法不变。
+
+| 命令 | 作用 |
+|---|---|
+| `daemon start` | 以脱离终端的子进程启动守护进程，控制面就绪后返回；已在运行时只输出状态。不能从 `go run` 的临时二进制启动 |
+| `daemon run` | 前台运行守护进程，Ctrl+C 或 `daemon stop` 退出；适合由宿主的后台任务托管 |
+| `daemon stop` | 请求优雅退出，等待状态目录锁释放（最长 10 秒）；不按 PID 强制结束进程 |
+| `daemon status` | 输出 PID、控制地址、版本、状态目录和设备数 |
+| `add NAME [flags]` | 添加设备并立即监听三协议；输出实际端口和推荐的内置 Profile |
+| `set NAME [flags]` | 修改模式、通信状态、物理参数、AYI9 错误码，或切换场景 |
+| `list` / `show NAME` | 查看设备、实时快照和端点；加 `--json` 输出机器可读结果 |
+| `remove NAME` | 停止并删除设备 |
+
+所有子命令都接受 `--state-dir DIR`，默认依次取 `UPSSIM_STATE_DIR`、`os.UserConfigDir()/ups-warden/upssim`。每个状态目录对应一个独立的守护进程。`daemon start`/`run` 可用 `--control-port` 固定控制面端口，默认自动分配。
+
+`add` 参数：
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `NAME` | 必填 | 匹配 `^[a-z0-9][a-z0-9-]{0,31}$`，最多 128 台 |
+| `--ip` | `127.0.0.1` | 三协议共用的监听 IP，必须是 loopback；多台设备建议各用一个 IP（`127.0.0.2`、`127.0.0.3`……），因为 ups-warden 对同一 IP 串行采集 |
+| `--snmp-port` / `--modbus-port` / `--ayi9-port` | `0` | 0 表示自动分配；SNMP 走 UDP，Modbus 和 AYI9 走 TCP，Modbus 与 AYI9 不能同端口 |
+| `--et1k` | 否 | 启用 ET1K 怪癖，只允许单相 |
+| `--phases` | `1` | 1 或 3 |
+| `--mode` | `mains` | 初始供电模式：`mains`、`battery`、`low` |
+| `--link` | `up` | 初始通信状态：`up`、`down` |
+| `--scenario FILE` | 无 | schema=1 场景，按时间轴运行；与 `--mode`、`--link`、电量和物理参数互斥 |
+| `--community` / `--password` | `sim-public` / 空 | 只用于虚构测试凭据，不在输出和日志中出现 |
+| `--ayi9-error-code` | `0` | 固定 AYI9 错误码，如 103 |
+| 物理参数 | 见下 | `add` 与 `set` 共用 |
+
+物理参数：`--load`（负载 %，默认 30）、`--capacity`（当前电量 %，默认 100）、`--temperature`（°C，默认 25，-40..100）、`--input-voltage`（V，默认 220，1..500）、`--discharge-minutes`（满电放空所需分钟数，默认 30，1..1440）。负载、温度、输入电压和放电时长不能设为 0，因为 0 是场景中的默认值标记。
+
+`set` 额外支持 `--flash`（立即触发 5 秒闪断，仅市电模式可用）、`--ayi9-error-code`（0 恢复正常）、`--scenario FILE`（以当前时刻为起点重新运行场景，不能与其他修改同时使用）。监听地址、端口、ET1K、相数和凭据不能用 `set` 修改，需要 `remove` 后重新 `add`。
+
+**模式语义：**
+
+- `mains`：市电供电，电量按 `discharge_minutes` 的速率回充到 100%。
+- `battery`：电池供电，电量线性下降；电量降到 20% 及以下时自动置低电标志。
+- `low`：电池供电且低电，电量钳制在 15% 以内（`--capacity` 超过 15 会被拒绝）。
+- `--link down`：三协议都不回包，供电状态照常演进；`--link up` 恢复。
+- 场景控制下，任何状态或参数修改都会让设备从当前时刻转为手动控制，电量和电池供电计时保持连续。`list` 中模式带 `*` 表示仍按场景运行。
+- 低电标志沿用物理模型：从 `low` 切回 `mains` 后，标志会保持到电量回充超过 20%。需要立即清除时，同时指定电量，例如 `set ups-1 --mode mains --capacity 100`。ups-warden 侧的低电触发和清除阈值、去抖时间见[采集、状态与历史](collection-state-history.md)。
+
+**持久化与恢复：** 状态目录包含 `devices.json`（设备定义，含虚构凭据，Unix 权限 0600）、`control.json`（控制地址和本次运行的随机 token）、`upssim.log`（启动前超过 5 MiB 时轮转为 `upssim.log.1`）和目录锁。每次修改成功后原子写入 `devices.json`；守护进程重启后按原端口恢复所有设备，场景设备从头运行，手动设备从最近一次显式设置的电量开始。单台恢复失败时，这台设备标记为 failed，其他设备不受影响，不会改用其他端口；failed 设备只能 `remove` 后重新 `add`。
+
+**控制面：** 只监听 `127.0.0.1`，每个请求都要带 `control.json` 中的 Bearer token，请求体上限 64 KiB，未知字段会被拒绝。客户端只连接 loopback 地址。
+
+**退出码：** 0 成功；1 操作失败；2 参数错误；3 守护进程未运行。
+
+| 错误码 | HTTP | 含义 |
+|---|---|---|
+| `validation_failed` | 422 | 参数不合法（名称、非 loopback IP、端口范围、互斥项、物理参数为 0 等） |
+| `device_exists` | 409 | 设备名已存在 |
+| `limit_exceeded` | 409 | 设备数已达 128 |
+| `address_conflict` | 409 | 与守护进程内其他设备的同传输层端点冲突，信息中给出冲突设备 |
+| `address_in_use` | 409 | 系统绑定失败（端口被其他进程占用或权限不足）；已绑定的监听器会全部释放 |
+| `device_not_found` | 404 | 设备不存在 |
+| `device_failed` | 409 | 设备恢复时启动失败，需要 `remove` 后重新 `add` |
+| `persist_failed` | 500 | 写入 `devices.json` 失败。`set` 的运行期修改已生效，但重启后会恢复为旧配置 |
+| `body_too_large` | 413 | 请求体超过 64 KiB |
+| `unauthorized` | 401 | 缺少 token 或 token 错误 |
+
+**Windows 注意：** `daemon start` 会优先让子进程脱离当前 Windows Job。IDE 终端、自动化工具等宿主可能不允许脱离；这种情况下仍能启动，但会输出提示：关闭该终端或宿主程序时，守护进程也会结束。处于这类环境时，应改用宿主的后台任务机制运行前台 `daemon run`。第一版面向 Windows 和 Linux（Unix 使用 `setsid` 脱离终端），目前只在 Windows 本机验证，Linux 实机和 macOS 未验证。
+
 ## 单次只读冒烟
 
 仅在明确获得目标设备授权后执行。以下示例**只指向本机模拟器**，将端口改成 `upssim` 实际输出值：

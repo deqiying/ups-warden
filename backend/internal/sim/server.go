@@ -17,6 +17,7 @@ const maxRequests = 4096
 
 // Config 指定三个本机监听器和虚构测试凭据。空地址采用 127.0.0.1:0。
 // Now 可注入虚拟时钟；调用者须保证并发安全。Registers 非 nil 时替换默认寄存器表。
+// Initial 非 nil 时在开始监听前应用一次，使设备从第一个请求起就处于指定的手动状态。
 type Config struct {
 	SNMPAddress, ModbusAddress, AYI9Address string
 	Community                               string
@@ -26,6 +27,7 @@ type Config struct {
 	Registers                               map[driver.RegKey]uint16
 	AYI9ErrorCode                           int
 	Now                                     func() time.Time
+	Initial                                 *Change
 }
 
 // Request 仅保留安全元信息。Data 是重新编码且清除凭据后的完整合法读请求，
@@ -41,9 +43,9 @@ type Request struct {
 
 // Server 同时提供三种协议，共享场景时钟；最多 64 条 TCP 连接及 4096 条请求记录。
 // 记录达到上限后丢弃新记录并递增 DroppedRequests，避免无限增长。
+// 运行期可变的时间轴、模式与 AYI9 错误码由 live 读写锁保护，可通过 Apply 原子修改。
 type Server struct {
 	cfg          Config
-	started      time.Time
 	udp          *net.UDPConn
 	modbus, ayi9 net.Listener
 	mu           sync.Mutex
@@ -54,6 +56,11 @@ type Server struct {
 	wg           sync.WaitGroup
 	closeOnce    sync.Once
 	closeErr     error
+	live         sync.RWMutex
+	seg          segment
+	control      string
+	mode         Mode
+	ayi9Code     int
 }
 
 // Start 校验场景、寄存器与监听地址后启动三个本机监听器；失败时回收已分配资源。
@@ -100,7 +107,14 @@ func Start(cfg Config) (*Server, error) {
 			return nil, err
 		}
 	}
-	s := &Server{cfg: cfg, started: cfg.Now(), conns: make(map[net.Conn]struct{})}
+	now := cfg.Now()
+	s := &Server{cfg: cfg, conns: make(map[net.Conn]struct{}), control: ControlScenario, ayi9Code: cfg.AYI9ErrorCode,
+		seg: segment{origin: now, scenario: cfg.Scenario, initial: start{Capacity: cfg.Scenario.BatteryCapacity, Mains: true, Online: true}}}
+	if cfg.Initial != nil {
+		if err := s.applyLocked(*cfg.Initial, now); err != nil {
+			return nil, err
+		}
+	}
 	ua, err := net.ResolveUDPAddr("udp", cfg.SNMPAddress)
 	if err != nil {
 		return nil, fmt.Errorf("SNMP 地址: %w", err)
@@ -199,7 +213,6 @@ func (s *Server) record(protocol string, size int, data []byte, allowed bool) {
 	}
 	s.requests = append(s.requests, request)
 }
-func (s *Server) state() State { return s.cfg.Scenario.StateAt(s.cfg.Now().Sub(s.started)) }
 func (s *Server) accept(listener net.Listener, serve func(net.Conn)) {
 	for {
 		conn, err := listener.Accept()

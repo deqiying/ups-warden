@@ -19,7 +19,7 @@ func TestIdleConnectionsSurvivePollingInterval(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				a, b := net.Pipe()
 				defer b.Close()
-				server := &Server{cfg: Config{Now: time.Now}, started: time.Now()}
+				server := idleServer()
 				done := make(chan struct{})
 				go func() {
 					defer close(done)
@@ -70,7 +70,7 @@ func TestPartialFrameStillTimesOut(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				a, b := net.Pipe()
 				defer a.Close()
-				server := &Server{cfg: Config{Now: time.Now}, started: time.Now()}
+				server := idleServer()
 				done := make(chan struct{})
 				go func() {
 					defer close(done)
@@ -96,4 +96,14 @@ func TestPartialFrameStillTimesOut(t *testing.T) {
 			})
 		})
 	}
+}
+
+// idleServer 构造只用于直接调用服务函数的最小 Server，时间轴与 Start 的默认值一致。
+func idleServer() *Server {
+	scenario, err := Scenario{}.normalized()
+	if err != nil {
+		panic(err)
+	}
+	return &Server{cfg: Config{Now: time.Now}, control: ControlScenario,
+		seg: segment{origin: time.Now(), scenario: scenario, initial: start{Capacity: scenario.BatteryCapacity, Mains: true, Online: true}}}
 }

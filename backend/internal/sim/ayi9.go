@@ -226,7 +226,7 @@ func (s *Server) serveAYI9(conn net.Conn) {
 			}
 			continue
 		}
-		code := s.cfg.AYI9ErrorCode
+		code := s.ayi9ErrorCode()
 		if req.Pass != s.cfg.Password {
 			code = 103
 		}

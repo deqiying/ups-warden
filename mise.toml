@@ -46,6 +46,19 @@ dir = "backend"
 env.CGO_ENABLED = "0"
 run = "go build -trimpath -o ../.cache/build/ ./cmd/ups-warden"
 
+[tasks."sim:build"]
+description = "构建本机三协议模拟器 upssim（开发联调用，不随服务发布）"
+dir = "backend"
+env.CGO_ENABLED = "0"
+run = "go build -trimpath -o ../.cache/build/ ./cmd/upssim"
+
+[tasks.sim]
+description = "构建并运行 upssim，参数原样透传，例如 mise run sim -- add ups-1 --et1k"
+depends = ["sim:build"]
+dir = "{{config_root}}"
+shell = "bash -c"
+run = ".cache/build/upssim"
+
 [tasks."backend:release"]
 description = "交叉编译 linux/amd64、linux/arm64、windows/amd64 发布二进制（内嵌 WebUI，注入版本号）"
 depends = ["webui:build"]

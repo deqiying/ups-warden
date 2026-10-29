@@ -8,6 +8,8 @@
 
 README 视觉与文案调整使用 `.agents/skills/beautify-github-readme` 技能。
 
+联调或测试需要 UPS 设备数据时使用 `.agents/skills/upssim` 技能；不得用伪造数据库数据或连接真实设备代替。
+
 ## 目录结构
 
 ```text

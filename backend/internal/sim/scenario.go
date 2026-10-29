@@ -163,13 +163,27 @@ func (s Scenario) StateAt(elapsed time.Duration) State {
 	if err != nil {
 		return State{}
 	}
+	return s.stateFrom(start{Capacity: s.BatteryCapacity, Mains: true, Online: true}, elapsed)
+}
+
+// start 是一段时间轴的起始条件，供运行期切换状态时延续上一段的物理状态。
+// BatteryStart 为相对本段起点的进入电池供电时刻，可为负，表示在本段之前已开始放电。
+type start struct {
+	Capacity           float64
+	Mains, Low, Online bool
+	BatteryStart       time.Duration
+}
+
+// stateFrom 从起始条件按场景步骤推进到 elapsed；s 必须已经过 normalized。
+// 回充上限始终为 s.BatteryCapacity，而不是起始电量。
+func (s Scenario) stateFrom(initial start, elapsed time.Duration) State {
 	if elapsed < 0 {
 		elapsed = 0
 	}
-	mains, online, low := true, true, false
-	capacity := s.BatteryCapacity
+	mains, online, low := initial.Mains, initial.Online, initial.Low
+	capacity := initial.Capacity
 	cursor := time.Duration(0)
-	batteryStart := time.Duration(0)
+	batteryStart := initial.BatteryStart
 	advance := func(to time.Duration) {
 		seconds := (to - cursor).Seconds()
 		if mains {
