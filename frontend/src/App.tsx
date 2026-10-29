@@ -7,9 +7,12 @@ import { ToastProvider } from "./components/Toast.tsx";
 import { IconSprite } from "./icons/Icon.tsx";
 import { AppShell } from "./layout/AppShell.tsx";
 import { LiveProvider } from "./live/LiveProvider.tsx";
+import { AlertsPage } from "./pages/alerts/AlertsPage.tsx";
 import { LoginPage } from "./pages/auth/LoginPage.tsx";
 import { SetupPage } from "./pages/auth/SetupPage.tsx";
+import { DeviceDetailPage } from "./pages/device/DeviceDetailPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
+import { OverviewPage } from "./pages/overview/OverviewPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
 import { SessionContext } from "./session/hooks.ts";
 import { RequireAuth } from "./session/RequireAuth.tsx";
@@ -57,11 +60,11 @@ export function AppRoutes() {
       <Route path="/setup" element={<SetupPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          <Route index element={<PlaceholderPage title="总览" milestone="F2" />} />
+          <Route index element={<OverviewPage />} />
           <Route path="devices" element={<PlaceholderPage title="设备" milestone="F3" />} />
           <Route path="devices/new" element={<PlaceholderPage title="添加设备" milestone="F3" />} />
-          <Route path="devices/:id" element={<PlaceholderPage title="设备详情" milestone="F2" />} />
-          <Route path="alerts" element={<PlaceholderPage title="告警与事件" milestone="F2" />} />
+          <Route path="devices/:id" element={<DeviceDetailPage />} />
+          <Route path="alerts" element={<AlertsPage />} />
           <Route path="rules" element={<PlaceholderPage title="规则" milestone="F7" />} />
           <Route path="rules/:id" element={<PlaceholderPage title="规则" milestone="F7" />} />
           <Route path="plans" element={<PlaceholderPage title="关机计划" milestone="F6" />} />

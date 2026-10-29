@@ -267,3 +267,110 @@ export interface WireError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+/** 设备（GET /devices、GET /devices/{id}）。 */
+export interface Device {
+  id: number;
+  name: string;
+  note: string;
+  location: string;
+  tags: string[];
+  enabled: boolean;
+  config: DeviceConfig;
+}
+
+export type SourceProtocol = "snmp" | "modbus" | "ayi9-json";
+
+/** 数据源运行状态；无活动 worker 时整个对象缺省。 */
+export interface SourceStatus {
+  /** 从未成功时为 null（线上为 Go 零值时间）。 */
+  last_ok_at: string | null;
+  latency_ms: number;
+  failures: number;
+  /** 例如 timeout；`password_wrong` 表示 AYI9 密码错误（103）。 */
+  error_code: string;
+}
+
+/** 数据源（GET /devices/{id}/sources）。凭据只返回 `*_set`，不返回明文或掩码。 */
+export interface Source {
+  id: number;
+  device_id: number;
+  protocol: SourceProtocol;
+  host: string;
+  port: number;
+  /** SNMP `{version}`、Modbus `{unit_id}`、AYI9 `{}`。 */
+  params: Record<string, unknown> | null;
+  profile_key: string;
+  profile_version: number;
+  poll_ms: number;
+  timeout_ms: number;
+  retries: number;
+  enabled: boolean;
+  password_set: boolean;
+  community_set: boolean;
+  status: SourceStatus | null;
+}
+
+/** 历史单字段统计；raw 分辨率下 min = max = avg。 */
+export interface HistoryValue {
+  min: number;
+  max: number;
+  avg: number;
+  count: number;
+}
+
+export interface HistoryPoint {
+  at: string;
+  fields: Record<string, HistoryValue>;
+}
+
+/** GET /devices/{id}/history；resolution 为实际读取的 raw 或 1m。 */
+export interface HistoryResponse {
+  resolution: "raw" | "1m";
+  points: HistoryPoint[];
+}
+
+/** 字段追踪（GET /sources/{id}/raw 与连接测试的 trace 项）。 */
+export interface TraceEntry {
+  field: string;
+  source?: string;
+  raw?: unknown;
+  decoded?: unknown;
+  final: WireField;
+  quality: Quality;
+  reason?: string;
+}
+
+/** 原始数据诊断：只用于校准与诊断，不是统一业务数据。 */
+export interface RawData {
+  protocol: string;
+  at: string;
+  snmp: unknown;
+  modbus: unknown;
+  ayi9: unknown;
+  errors: unknown;
+}
+
+/** GET /sources/{id}/raw。 */
+export interface SourceDiagnostics {
+  raw: RawData;
+  trace: TraceEntry[] | null;
+}
+
+export interface DeviceInfo {
+  model: string;
+  manufacturer: string;
+  firmware: string;
+  agent_version: string;
+  identity: string;
+}
+
+/** POST /sources/{id}/test 成功响应（只读连接测试）。 */
+export interface ProbeResult {
+  latency_ms: number;
+  device_info: DeviceInfo;
+  snapshot: { fields?: Record<string, WireField> | null } | null;
+  recommendations: { key: string; score: number; reason: string }[] | null;
+  raw: RawData;
+  trace: TraceEntry[] | null;
+}

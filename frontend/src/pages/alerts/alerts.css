@@ -1,0 +1,264 @@
+/*
+ * 告警与事件页私有样式（迁移自 docs/design/alerts.html 的 <style>）。
+ * 全局样式是共享的，这里所有选择器都限定在 .alerts-page 下，避免与其他页面的同名类冲突；
+ * 颜色、间距只引用 tokens.css 的变量。
+ */
+
+/* 窄屏时 Page 会隐藏页头右侧控件，视图切换改在内容区提供 */
+.alerts-view-narrow {
+  display: none;
+}
+
+.alerts-page .alerts-notify-banner {
+  margin-bottom: var(--sp-4);
+}
+
+/* ---------- 严重告警主卡：只在顶部用一层浅色调区分，不使用侧边色条 ---------- */
+.alerts-page .alert-hero {
+  overflow: hidden;
+}
+.alerts-page .hero-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  background: var(--red-tint);
+}
+.alerts-page .hero-top .sev {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  background: var(--red);
+  color: #fff;
+}
+.alerts-page .hero-top .sev .i {
+  width: 22px;
+  height: 22px;
+}
+.alerts-page .hero-main {
+  flex: 1;
+  min-width: 0;
+}
+.alerts-page .hero-elapsed {
+  text-align: right;
+}
+.alerts-page .hero-elapsed .t-metric {
+  font-size: 2rem;
+  color: var(--red-ink);
+}
+.alerts-page .hero-elapsed .t-metric.is-stale {
+  color: var(--label-3);
+}
+.alerts-page .hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--separator);
+}
+.alerts-page .hero-metrics .metric {
+  padding: 14px 22px;
+  background: var(--surface);
+}
+
+/* 主卡下方的关机计划运行 */
+.alerts-page .alert-plan {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 22px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+.alerts-page .alert-plan-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--orange-ink);
+  background: var(--orange-tint);
+}
+.alerts-page .alert-plan-icon .i {
+  width: 15px;
+  height: 15px;
+}
+.alerts-page .alert-plan-main {
+  flex: 1;
+  min-width: 0;
+}
+.alerts-page .alert-plan-title {
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.alerts-page .alert-plan-line {
+  margin-top: 2px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+/* ---------- 需要关注卡片 ---------- */
+.alerts-page .alert-card {
+  display: flex;
+  flex-direction: column;
+}
+.alerts-page .alert-card .card-body {
+  flex: 1;
+}
+.alerts-page .alert-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 0;
+}
+.alerts-page .alert-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.alerts-page .alert-foot a {
+  margin-left: auto;
+}
+.alerts-page .alert-card .kv {
+  font-size: 0.8125rem;
+}
+
+/* ---------- 历史事件：筛选条 ---------- */
+.alerts-page .filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.alerts-page .filter-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+}
+.alerts-page .filter-field .i {
+  width: 14px;
+  height: 14px;
+}
+.alerts-page .filters .select {
+  height: 28px;
+  font-size: 0.8125rem;
+}
+.alerts-page .filters .lbl {
+  color: var(--label-2);
+}
+
+/* ---------- 历史事件：表格 ---------- */
+.alerts-page .grp td {
+  padding: 18px 16px 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--label);
+  background: var(--surface);
+  border-bottom: 0.5px solid var(--separator-strong);
+}
+.alerts-page .table tbody tr.grp:hover {
+  background: none;
+}
+.alerts-page .table .sev {
+  width: 24px;
+  height: 24px;
+}
+.alerts-page .table .sev .i {
+  width: 13px;
+  height: 13px;
+}
+.alerts-page .ev-name {
+  font-weight: 600;
+}
+.alerts-page .col-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.alerts-page .load-more {
+  display: flex;
+  justify-content: center;
+  padding: 14px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+.alerts-page .load-more-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 860px) {
+  .alerts-view-narrow {
+    display: block;
+    margin-bottom: var(--sp-4);
+  }
+  .alerts-page .hero-top {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+  .alerts-page .hero-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .alerts-page .hero-metrics .metric {
+    padding: 12px 16px;
+  }
+  .alerts-page .alert-plan {
+    padding: 12px 16px;
+  }
+
+  /* 窄屏：表格重排为两行列表项（事件+设备 / 开始+结束），不横向滚动 */
+  .alerts-page .ev,
+  .alerts-page .ev tbody {
+    display: block;
+  }
+  .alerts-page .ev thead,
+  .alerts-page .ev .col-sum,
+  .alerts-page .ev .col-dur {
+    display: none;
+  }
+  .alerts-page .ev tr:not(.grp) {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .alerts-page .ev tr:not(.grp) td {
+    padding: 0;
+    border: 0;
+  }
+  .alerts-page .ev td:nth-child(1) {
+    grid-row: 1 / span 2;
+  }
+  .alerts-page .ev td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 0.8125rem;
+    color: var(--label-2);
+  }
+  .alerts-page .ev td:nth-child(4) {
+    grid-column: 3;
+    grid-row: 1;
+    text-align: right;
+  }
+  .alerts-page .ev td:nth-child(5) {
+    grid-column: 3;
+    grid-row: 2;
+    text-align: right;
+    font-size: 0.8125rem;
+    color: var(--label-2);
+  }
+  .alerts-page .ev tr.grp,
+  .alerts-page .ev tr.grp td {
+    display: block;
+  }
+}

@@ -9,7 +9,7 @@ const NOTIFY_LOGS_PATH = "/notifications?tab=logs";
 
 /**
  * 把实时存储的副作用转为查询失效与 toast（frontend-plan 3.4）：
- * - sync：断线期间可能有运行结束、事件变化，计划运行与事件查询失效。
+ * - sync：断线期间可能有运行结束、事件变化，计划运行、事件、设备与数据源查询失效。
  * - plan_progress 进入终态：计划运行查询失效。
  * - notify_failed：弹出 toast；断线补齐的多条合并为一条摘要。
  */
@@ -26,6 +26,9 @@ export function LiveEffects() {
         case "resynced":
           void queryClient.invalidateQueries({ queryKey: queryKeys.planRuns });
           void queryClient.invalidateQueries({ queryKey: queryKeys.events });
+          // 设备、数据源、Profile 配置变更后后端同样推送 sync（monitoring-api.md「SSE」）。
+          void queryClient.invalidateQueries({ queryKey: queryKeys.devices });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.sources });
           return;
         case "plan_run_finished":
           void queryClient.invalidateQueries({ queryKey: queryKeys.planRuns });

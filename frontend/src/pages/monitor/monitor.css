@@ -1,0 +1,49 @@
+/*
+ * 监控页面（总览、设备详情）共用样式；来源 overview.html、device-detail.html 的页面私有样式。
+ * 只使用 tokens.css 的语义 token。
+ */
+
+.cd-num {
+  font: 600 1.375rem/1 var(--font-rounded);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 实时连接断开：设备数据整体降低对比度（FR-UI-01） */
+.is-live-stale {
+  opacity: 0.55;
+  filter: saturate(0.4);
+  transition:
+    opacity var(--dur-base) var(--ease-standard),
+    filter var(--dur-base);
+}
+
+/* 状态色的柔光背景：只在顶部一层浅色调，不使用侧边色条 */
+.tone-battery {
+  background: linear-gradient(180deg, var(--orange-tint), transparent 46%), var(--surface);
+}
+.tone-lost {
+  background: linear-gradient(180deg, var(--gray-tint), transparent 46%), var(--surface);
+}
+.tone-warn {
+  background: linear-gradient(180deg, var(--yellow-tint), transparent 46%), var(--surface);
+}
+
+.pending-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--yellow-ink);
+  font-weight: 600;
+}
+.pending-meter .meter {
+  width: 64px;
+  --c: var(--yellow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-live-stale {
+    transition: none;
+  }
+}
