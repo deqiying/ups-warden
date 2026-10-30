@@ -114,7 +114,7 @@
   color: #fff;
 }
 .pl-node.is-now {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: #fff;
   box-shadow: 0 0 0 5px var(--accent-tint);
 }
@@ -205,10 +205,12 @@
 .pl-run-switch {
   margin-bottom: 14px;
 }
+/* 内容区较窄（约 1024px 的笔记本、侧栏占位后）时，环 + 文案 + 按钮放不下一行：允许换行而不是把按钮挤出卡片 */
 .pl-run-hero {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 16px 24px;
   padding: 22px 24px;
 }
 .pl-run-main {

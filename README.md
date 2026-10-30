@@ -5,7 +5,7 @@
 UPS Warden 是一个通过 WebUI 管理的 UPS 监控与联动服务：添加 UPS 网卡、查看实时状态，并在停电、低电量、通讯中断时发送通知，按预设阶段关闭局域网内的 NAS、服务器和 PC。
 
 > [!IMPORTANT]
-> 后端 **M0～M8 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，M7 提供[关机计划编排 API](docs/reference/shutdown-plans-api.md)，M8 提供[系统设置 API](docs/reference/settings-api.md)、[验收与压测](docs/guides/acceptance.md)和[部署产物](docs/guides/deployment.md)，新建规则默认 dry-run。**CP-1 三协议只读冒烟已通过，错误密码核验与独立面板比对待完成；CP-4 首版真机验收待完成，CP-3 关机编排评审未完成，Docker 镜像与 Linux 实机运行未验证**。前端仍为脚手架、无业务页面。下文分阶段关机流程已由后端实现，但只经过本机模拟器与假主机验证，不等于真实设备、渠道或主机验收。
+> 后端 **M0～M8 已实现并通过本机验证**；M4 的[监控 API 与 SSE 契约](docs/reference/monitoring-api.md)作为 **CP-2 后端联调基线**，双方联调待验收；M5 提供[通知服务](docs/reference/notifications-api.md)，M6 提供[规则、通知联动、动作与受控主机 API](docs/reference/rules-actions-hosts-api.md)，M7 提供[关机计划编排 API](docs/reference/shutdown-plans-api.md)，M8 提供[系统设置 API](docs/reference/settings-api.md)、[验收与压测](docs/guides/acceptance.md)和[部署产物](docs/guides/deployment.md)，新建规则默认 dry-run。**CP-1 三协议只读冒烟已通过，错误密码核验与独立面板比对待完成；CP-4 首版真机验收待完成，CP-3 关机编排评审未完成，Docker 镜像与 Linux 实机运行未验证**。前端 F0～F9 已实现（初始化/登录、总览、设备与 Profile、告警与事件、规则、关机计划、主机与动作、通知、设置与审计），已通过本机单元/组件测试、内嵌构建与模拟器 + 浏览器走查；双方联调（CP-2）、CP-3 评审与 CP-4 首版真机验收仍待完成，见[前端开发计划](docs/planning/frontend-plan.md)。下文分阶段关机流程已由后端实现，但只经过本机模拟器与假主机验证，不等于真实设备、渠道或主机验收。
 
 ## 停电联动流程
 

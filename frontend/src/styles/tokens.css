@@ -1,9 +1,15 @@
 /*
  * UPS Warden 设计 token（浅色 / 深色）
  *
- * 由 docs/design/assets/apple-ui.css 迁移：颜色、字号、间距、圆角与动效时长保持原值。
+ * 由 docs/design/assets/apple-ui.css 迁移：字号、间距、圆角与动效时长保持原值。
  * 效果图评审浮条（.mock-bar、html.is-embedded）不属于产品界面，未迁移。
  * 颜色只通过语义 token 引用；状态色语义见 docs/design/README.md。
+ *
+ * F9 对比度修正（frontend-plan Q-D5）：效果图的 --label-3（#86868b）对白底只有 3.6:1，
+ * 对侧栏 / 灰底更低，却用于小字与「—」。按 WCAG AA 4.5:1 调整：
+ * 浅色 --label-2 #6e6e73→#505055、--label-3 #86868b→#66666b、--green-ink #248a3d→#1d7434、
+ * --gray-ink #6e6e73→#505055、--link #0066cc→#0062c4；新增 --accent-solid（深色白字实心底）；深色 --label-2 #a1a1a6→#aeaeb2、--label-3 #86868b→#9d9da2、--link #2997ff→#47a3ff。
+ * 其余颜色保持效果图原值；设计确认后若要回退，只需恢复这几处。
  */
 
 /* ---------- 1. Token：浅色 ---------- */
@@ -28,8 +34,8 @@
   --surface-2: #fbfbfd;
   --surface-sunken: #f5f5f7;
   --label: #1d1d1f;
-  --label-2: #6e6e73;
-  --label-3: #86868b;
+  --label-2: #505055;
+  --label-3: #66666b;
   --label-4: #c7c7cc;
   --separator: rgba(0, 0, 0, 0.08);
   --separator-strong: rgba(0, 0, 0, 0.14);
@@ -41,11 +47,14 @@
 
   --accent: #0071e3;
   --accent-hover: #0077ed;
-  --link: #0066cc;
+  /* 承载白色文字的实心底：浅色与 accent 相同；深色的 accent（#0a84ff）对白字只有 3.65:1，改用 #0071e3（4.8:1） */
+  --accent-solid: #0071e3;
+  --accent-solid-hover: #0077ed;
+  --link: #0062c4;
   --accent-tint: rgba(0, 113, 227, 0.1);
 
   --green: #34c759;
-  --green-ink: #248a3d;
+  --green-ink: #1d7434;
   --green-tint: rgba(52, 199, 89, 0.14);
   --orange: #ff9500;
   --orange-ink: #c93400;
@@ -66,7 +75,7 @@
   --pink: #ff2d55;
   --brown: #a2845e;
   --gray: #8e8e93;
-  --gray-ink: #6e6e73;
+  --gray-ink: #505055;
   --gray-tint: rgba(142, 142, 147, 0.16);
 
   /* 材质：结构区域（侧栏）更重，交互浮层（工具栏/浮条）更轻 */
@@ -128,8 +137,8 @@
     --surface-2: #242426;
     --surface-sunken: #111113;
     --label: #f5f5f7;
-    --label-2: #a1a1a6;
-    --label-3: #86868b;
+    --label-2: #aeaeb2;
+    --label-3: #9d9da2;
     --label-4: #48484a;
     --separator: rgba(255, 255, 255, 0.08);
     --separator-strong: rgba(255, 255, 255, 0.16);
@@ -140,7 +149,9 @@
     --seg-thumb: #636366;
     --accent: #0a84ff;
     --accent-hover: #2490ff;
-    --link: #2997ff;
+    --accent-solid: #0071e3;
+    --accent-solid-hover: #0077ed;
+    --link: #47a3ff;
     --accent-tint: rgba(10, 132, 255, 0.2);
     --green: #30d158;
     --green-ink: #30d158;
@@ -182,8 +193,8 @@
   --surface-2: #242426;
   --surface-sunken: #111113;
   --label: #f5f5f7;
-  --label-2: #a1a1a6;
-  --label-3: #86868b;
+  --label-2: #aeaeb2;
+  --label-3: #9d9da2;
   --label-4: #48484a;
   --separator: rgba(255, 255, 255, 0.08);
   --separator-strong: rgba(255, 255, 255, 0.16);
@@ -194,7 +205,9 @@
   --seg-thumb: #636366;
   --accent: #0a84ff;
   --accent-hover: #2490ff;
-  --link: #2997ff;
+  --accent-solid: #0071e3;
+  --accent-solid-hover: #0077ed;
+  --link: #47a3ff;
   --accent-tint: rgba(10, 132, 255, 0.2);
   --green: #30d158;
   --green-ink: #30d158;

@@ -162,16 +162,49 @@ describe("model/plan", () => {
     expect(countdownRemaining(run, at("2026-10-27T06:02:00Z"))).toBe(0);
   });
 
+  it("阶段下标从 0 开始：current_stage=0 的执行中运行显示为阶段 1，倒计时中不显示阶段", () => {
+    const steps = [
+      {
+        stage: 0,
+        step: 0,
+        action_id: 1,
+        host_id: null,
+        status: "waiting" as const,
+        started_at: null,
+        ended_at: null,
+        result: null,
+      },
+      {
+        stage: 1,
+        step: 0,
+        action_id: 2,
+        host_id: null,
+        status: "waiting" as const,
+        started_at: null,
+        ended_at: null,
+        result: null,
+      },
+    ];
+    const running = normalizePlanRun(
+      wirePlanRun({ status: "running", current_stage: 0, countdown_until: null, steps }),
+    );
+    expect(runProgressText(running)).toContain("阶段 1 / 2");
+    const countdown = normalizePlanRun(
+      wirePlanRun({ status: "countdown", current_stage: 0, steps }),
+    );
+    expect(runProgressText(countdown)).not.toContain("阶段");
+  });
+
   it("执行进度由 steps 推导阶段数（Q-C5）", () => {
     const run = normalizePlanRun(
       wirePlanRun({
         status: "running",
-        current_stage: 2,
+        current_stage: 1,
         countdown_until: null,
         steps: [
           {
-            stage: 1,
-            step: 1,
+            stage: 0,
+            step: 0,
             action_id: 1,
             host_id: null,
             status: "offline",
@@ -180,8 +213,8 @@ describe("model/plan", () => {
             result: null,
           },
           {
-            stage: 2,
-            step: 1,
+            stage: 1,
+            step: 0,
             action_id: 2,
             host_id: null,
             status: "running",
@@ -190,8 +223,8 @@ describe("model/plan", () => {
             result: null,
           },
           {
-            stage: 3,
-            step: 1,
+            stage: 2,
+            step: 0,
             action_id: 3,
             host_id: null,
             status: "waiting",

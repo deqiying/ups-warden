@@ -297,3 +297,10 @@
     margin: 0 16px 16px;
   }
 }
+
+/* 行内「查看计划」链接：保证至少 24px 高的点按区域（WCAG 2.2 目标尺寸） */
+.ru-acts a.t-footnote {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}

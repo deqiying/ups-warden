@@ -4,7 +4,7 @@
 
 ## 范围与版本
 
-当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知、M6 规则/动作/主机、M7 关机计划及 M8 系统设置已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md)、[系统设置](settings-api.md)；前端仍为脚手架。
+当前后端实现 M4 监控类 API、认证、审计及静态 WebUI 托管。以下 `/api/v1` 契约作为 CP-2 的后端联调基线；前后端双方的联调确认仍待执行。后续保持已有字段语义，破坏性变更须先评审。M5 通知、M6 规则/动作/主机、M7 关机计划及 M8 系统设置已实现，独立契约见[通知服务与 API](notifications-api.md)、[规则、动作与受控主机](rules-actions-hosts-api.md)、[关机计划](shutdown-plans-api.md)、[系统设置](settings-api.md)；前端 WebUI（F0～F9）已按这些契约实现，双方联调仍待验收。
 
 - 下述路径除 `/healthz` 外均以 `/api/v1` 为前缀。
 - 请求/响应 JSON、UTF-8，字段 snake_case，时间 RFC3339 UTC，ID 为整数，Profile 使用字符串 key。
@@ -129,6 +129,6 @@ data: {"schema_version":1,"devices":[],"alerts":[],"plan_runs":[]}
 
 ## WebUI 与开发联调
 
-`mise run backend:build` 先执行现有前端 build，再由 `scripts/build-webui.mjs` 安全复制到 `backend/internal/webui/dist` 后 embed；产物忽略，不提交。直接 `go run` 且 dist 未构建时返回 503 提示页；构建后托管当前 React 占位页，深层 GET/HEAD 路由回退 index。
+`mise run backend:build` 先执行现有前端 build，再由 `scripts/build-webui.mjs` 安全复制到 `backend/internal/webui/dist` 后 embed；产物忽略，不提交。直接 `go run` 且 dist 未构建时返回 503 提示页；构建后托管当前 React WebUI，深层 GET/HEAD 路由回退 index（本机已用内嵌二进制验证带 query 的深层路由；不存在的 `/assets/*` 路径同样回退为 200 的 index）。
 
 API/healthz 路径不回退 SPA；拒绝隐藏文件、遍历和目录列表。index no-cache，带 hash 的 assets immutable。开发时仍可使用 Vite 代理 `/api`，但认证/Origin 必须保持同源；完整初始化和登录业务 UI 尚待前端实现。

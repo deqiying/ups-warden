@@ -140,6 +140,15 @@ button.token.token-add {
     background-color var(--dur-quick) var(--ease-out),
     color var(--dur-quick) var(--ease-out);
 }
+/* 删除按钮视觉只有 16×16，用不可见伪元素把点按热区扩到 24×24（WCAG 2.2），不改变布局 */
+.token .x {
+  position: relative;
+}
+.token .x::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
 .token .x:hover {
   background: var(--fill);
   color: var(--label-2);

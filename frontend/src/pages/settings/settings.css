@@ -254,6 +254,7 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+  min-height: 24px;
   text-align: left;
 }
 .settings-page .audit-toggle:focus-visible {

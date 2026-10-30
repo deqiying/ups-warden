@@ -259,11 +259,11 @@ export function wirePlan(overrides: Partial<PlanWire> = {}): PlanWire {
 
 type WirePlanStepWire = import("../api/types.ts").WirePlanStep;
 
-/** 计划运行中的一个步骤（线上格式）；默认是阶段 1 的第 1 步、尚未开始。 */
+/** 计划运行中的一个步骤（线上格式）；默认是第 1 个阶段（下标 0）的第 1 步、尚未开始。 */
 export function wirePlanStep(overrides: Partial<WirePlanStepWire> = {}): WirePlanStepWire {
   return {
-    stage: 1,
-    step: 1,
+    stage: 0,
+    step: 0,
     action_id: 1,
     host_id: null,
     status: "waiting",

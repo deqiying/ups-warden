@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-M8 发布产物：三平台单文件二进制（内嵌 WebUI）、多阶段 Dockerfile、[compose.yaml](../../compose.yaml) 示例与 [systemd unit](../../deploy/ups-warden.service) 示例。本机已验证三平台交叉编译和 Windows 二进制启动/优雅退出；**Linux 实机、Docker 镜像构建与运行尚未验证**（开发机无 Docker/WSL）。前端仍为占位页，管理操作暂需调用 API。
+M8 发布产物：三平台单文件二进制（内嵌 WebUI）、多阶段 Dockerfile、[compose.yaml](../../compose.yaml) 示例与 [systemd unit](../../deploy/ups-warden.service) 示例。本机已验证三平台交叉编译和 Windows 二进制启动/优雅退出；**Linux 实机、Docker 镜像构建与运行尚未验证**（开发机无 Docker/WSL）。WebUI 已随二进制托管（F0～F9，本机验证；真机与 Linux 实机验收未完成）：首次访问 `/setup` 用启动日志中的 setup token 创建管理员，之后在界面管理设备、规则、计划与通知。
 
 ## 1. 构建发布二进制
 

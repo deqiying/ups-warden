@@ -257,7 +257,7 @@ code,
   background: var(--fill);
 }
 .nav-item[aria-current="page"] {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: #fff;
 }
 .nav-item[aria-disabled="true"] {
@@ -433,22 +433,26 @@ code,
 .section:first-child {
   margin-top: 0;
 }
+/* 窄屏时标题与右侧控件放不下一行：控件换到标题下方，标题本身不折行（否则「设备」会被挤成竖排） */
 .section-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--sp-4);
+  gap: var(--sp-2) var(--sp-4);
   margin: 0 2px var(--sp-3);
 }
 .section-title {
   font: 700 1.375rem/1.24 var(--font-display);
   letter-spacing: -0.014em;
+  white-space: nowrap;
 }
 .section-link {
   font-size: 0.875rem;
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  min-height: 24px;
 }
 
 .grid {
@@ -703,11 +707,11 @@ code,
   stroke-width: 2;
 }
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: #fff;
 }
 .btn-primary:hover {
-  background: var(--accent-hover);
+  background: var(--accent-solid-hover);
 }
 .btn-tinted {
   background: var(--accent-tint);
@@ -1084,7 +1088,7 @@ code,
     0 3px 8px rgba(0, 0, 0, 0.15),
     0 3px 1px rgba(0, 0, 0, 0.06);
   transition:
-    transform var(--dur-base) var(--ease-out),
+    transform var(--dur-quick) var(--ease-out),
     width var(--dur-quick) var(--ease-out);
 }
 .switch:active::after {
@@ -1116,6 +1120,12 @@ code,
 }
 .switch-sm[aria-checked="true"]::after {
   transform: translateX(12px);
+}
+/* 小开关视觉只有 32×20，用不可见的伪元素把点击热区扩到 40×28（WCAG 2.2 目标尺寸），不改变布局 */
+.switch-sm::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
 }
 
 /* 分段控件：滑块由 JS 写入 --seg-x/--seg-w，按临界阻尼曲线滑动 */
@@ -1199,7 +1209,7 @@ code,
   box-shadow: inset 0 0 0 1.5px var(--label-4);
 }
 .check.is-on {
-  background: var(--accent);
+  background: var(--accent-solid);
   box-shadow: none;
   color: #fff;
 }
@@ -1409,7 +1419,7 @@ code,
   backdrop-filter: blur(40px) saturate(180%);
   box-shadow: var(--shadow-sheet);
   transform: translate(-50%, -50%);
-  animation: materialize var(--dur-base) var(--ease-sheet) both;
+  animation: materialize var(--dur-sheet) var(--ease-sheet) both;
 }
 .dialog-icon {
   width: 56px;
@@ -1474,7 +1484,7 @@ code,
   cursor: pointer;
 }
 .menu-item:hover {
-  background: var(--accent);
+  background: var(--accent-solid);
   color: #fff;
 }
 .menu-item:hover .faint {
@@ -1711,6 +1721,21 @@ code,
 .tabbar {
   display: none;
 }
+/*
+ * 中等宽度（861～1000px）：侧栏仍显示（248px），列表栏 320px 之外右栏不足约 330px，
+ * 规则 / 计划 / 通知模板等编辑区会被挤出卡片甚至产生横向滚动，所以主从分栏提前叠放。
+ * 叠放后列表栏不再吸顶（否则会盖住下方的详情）。
+ */
+@media (max-width: 1000px) {
+  .split,
+  .split-narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sticky-col {
+    position: static;
+  }
+}
+
 @media (max-width: 860px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
@@ -1791,8 +1816,9 @@ code,
     height: 24px;
     stroke-width: 1.9;
   }
+  /* 文字只有 10px，accent 在标签栏材质上仅 4.3:1；用 --link（浅色更深、深色更亮）达到 AA */
   .tab[aria-current="page"] {
-    color: var(--accent);
+    color: var(--link);
   }
   .tab .nav-badge {
     position: absolute;
@@ -1871,6 +1897,26 @@ code,
   .card,
   .list {
     box-shadow: 0 0 0 1px var(--separator-strong);
+  }
+}
+/*
+ * 深色的「提高对比度」：tokens.css 的深色规则特异性更高（系统深色 / data-theme="dark"），
+ * 上面的 :root 覆盖在深色下不生效，需要单独为两种进入深色的路径补上。
+ */
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --separator: rgba(255, 255, 255, 0.3);
+    --separator-strong: rgba(255, 255, 255, 0.45);
+    --label-2: #d1d1d6;
+    --label-3: #aeaeb2;
+  }
+}
+@media (prefers-contrast: more) {
+  :root[data-theme="dark"] {
+    --separator: rgba(255, 255, 255, 0.3);
+    --separator-strong: rgba(255, 255, 255, 0.45);
+    --label-2: #d1d1d6;
+    --label-3: #aeaeb2;
   }
 }
 

@@ -66,6 +66,15 @@
   color: inherit;
   cursor: help;
 }
+/* 触发器只有「—」那么大（约 15×20），用不可见伪元素把点按热区扩到至少 24×24（WCAG 2.2），不影响布局 */
+.reason-tip-trigger {
+  position: relative;
+}
+.reason-tip-trigger::after {
+  content: "";
+  position: absolute;
+  inset: -4px -5px;
+}
 .reason-tip-trigger:focus-visible {
   outline: none;
   box-shadow: var(--ring-focus);

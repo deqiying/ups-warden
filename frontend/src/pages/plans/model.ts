@@ -76,7 +76,7 @@ export interface RunStage {
   steps: PlanStep[];
 }
 
-/** 按阶段分组（阶段与步骤序号均从 1 开始，按序排列）。 */
+/** 按阶段分组（后端的阶段与步骤序号都从 0 开始，按序排列；显示阶段号用 stageNumber）。 */
 export function runStages(run: PlanRun): RunStage[] {
   const map = new Map<number, PlanStep[]>();
   for (const step of run.steps) {

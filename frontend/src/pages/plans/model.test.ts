@@ -69,13 +69,13 @@ describe("planStats / planReferences / stepActions", () => {
 describe("runStages", () => {
   it("按阶段分组，阶段与步骤均升序，与输入顺序无关", () => {
     const run = runOf([
-      { stage: 2, step: 1, action_id: 20 },
-      { stage: 1, step: 2, action_id: 12 },
-      { stage: 1, step: 1, action_id: 11 },
-      { stage: 2, step: 2, action_id: 22 },
+      { stage: 1, step: 0, action_id: 20 },
+      { stage: 0, step: 1, action_id: 12 },
+      { stage: 0, step: 0, action_id: 11 },
+      { stage: 1, step: 1, action_id: 22 },
     ]);
     const stages = runStages(run);
-    expect(stages.map((s) => s.stage)).toEqual([1, 2]);
+    expect(stages.map((s) => s.stage)).toEqual([0, 1]);
     expect(stages[0].steps.map((s) => s.action_id)).toEqual([11, 12]);
     expect(stages[1].steps.map((s) => s.action_id)).toEqual([20, 22]);
   });
@@ -88,31 +88,31 @@ describe("runStages", () => {
   it("没有步骤时为空；不修改原 steps 顺序", () => {
     expect(runStages(runOf([]))).toEqual([]);
     const run = runOf([
-      { stage: 1, step: 2 },
-      { stage: 1, step: 1 },
+      { stage: 0, step: 1 },
+      { stage: 0, step: 0 },
     ]);
     runStages(run);
-    expect(run.steps.map((s) => s.step)).toEqual([2, 1]);
+    expect(run.steps.map((s) => s.step)).toEqual([1, 0]);
   });
 });
 
 describe("stageNode", () => {
-  const nodeOf = (run: PlanRun, stage = 1) =>
+  const nodeOf = (run: PlanRun, stage = 0) =>
     stageNode(
       run,
       runStages(run).find((s) => s.stage === stage)!,
     );
 
   it("有执行中的步骤：now", () => {
-    const run = runOf([{ status: "running" }, { step: 2, status: "waiting" }], {
+    const run = runOf([{ status: "running" }, { step: 1, status: "waiting" }], {
       status: "running",
-      current_stage: 1,
+      current_stage: 0,
     });
     expect(nodeOf(run)).toBe("now");
   });
 
   it("运行执行中且 current_stage 指向该阶段：now（步骤尚未标记为 running）", () => {
-    const run = runOf([{ status: "waiting" }], { status: "running", current_stage: 1 });
+    const run = runOf([{ status: "waiting" }], { status: "running", current_stage: 0 });
     expect(nodeOf(run)).toBe("now");
   });
 
@@ -122,21 +122,21 @@ describe("stageNode", () => {
 
     const later = runOf(
       [
-        { stage: 1, status: "running" },
-        { stage: 2, status: "waiting" },
+        { stage: 0, status: "running" },
+        { stage: 1, status: "waiting" },
       ],
-      { status: "running", current_stage: 1 },
+      { status: "running", current_stage: 0 },
     );
-    expect(nodeOf(later, 2)).toBe("pending");
+    expect(nodeOf(later, 1)).toBe("pending");
 
     const aborted = runOf([{ status: "waiting" }], { status: "aborted", current_stage: 0 });
     expect(nodeOf(aborted)).toBe("pending");
   });
 
   it("全部结束且无问题：done（sent / offline 都算成功类终态）", () => {
-    const run = runOf([{ status: "sent" }, { step: 2, status: "offline" }], {
+    const run = runOf([{ status: "sent" }, { step: 1, status: "offline" }], {
       status: "completed",
-      current_stage: 1,
+      current_stage: 0,
     });
     expect(nodeOf(run)).toBe("done");
   });
@@ -149,17 +149,17 @@ describe("stageNode", () => {
       "warn",
     );
     // 同一阶段只要有一个步骤有问题即 warn。
-    expect(nodeOf(runOf([{ status: "offline" }, { step: 2, status: "failed" }], base))).toBe(
+    expect(nodeOf(runOf([{ status: "offline" }, { step: 1, status: "failed" }], base))).toBe(
       "warn",
     );
   });
 
   it("全部步骤被取消：cancelled；取消与已完成混合：done", () => {
     const base = { status: "cancelled" } as const;
-    expect(nodeOf(runOf([{ status: "cancelled" }, { step: 2, status: "cancelled" }], base))).toBe(
+    expect(nodeOf(runOf([{ status: "cancelled" }, { step: 1, status: "cancelled" }], base))).toBe(
       "cancelled",
     );
-    expect(nodeOf(runOf([{ status: "sent" }, { step: 2, status: "cancelled" }], base))).toBe(
+    expect(nodeOf(runOf([{ status: "sent" }, { step: 1, status: "cancelled" }], base))).toBe(
       "done",
     );
   });

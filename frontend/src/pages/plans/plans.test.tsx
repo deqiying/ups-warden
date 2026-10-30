@@ -408,7 +408,7 @@ describe("取消运行：计划页「当前运行」", () => {
 
   it("执行中的运行入口文案为“取消未开始的步骤…”", async () => {
     const services = renderPlans("/plans/1?tab=run");
-    sync(services, wireSync({ plan_runs: [activeRun({ status: "running", current_stage: 1 })] }));
+    sync(services, wireSync({ plan_runs: [activeRun({ status: "running", current_stage: 0 })] }));
     expect(await screen.findByRole("button", { name: "取消未开始的步骤…" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "取消运行…" })).toBeNull();
   });
@@ -632,12 +632,12 @@ describe("运行视图", () => {
       plan_name: "机房关机",
       dry_run: false,
       status: "completed_with_errors",
-      current_stage: 2,
+      current_stage: 1,
       ended_at: "2026-10-27T06:25:00Z",
       steps: [
         wirePlanStep({
-          stage: 1,
-          step: 1,
+          stage: 0,
+          step: 0,
           action_id: 1,
           status: "sent",
           started_at: T0,
@@ -645,16 +645,16 @@ describe("运行视图", () => {
           result: { action_run_id: 11, action_status: "sent", offline_timeout: true },
         }),
         wirePlanStep({
-          stage: 1,
-          step: 2,
+          stage: 0,
+          step: 1,
           action_id: 2,
           status: "unknown",
           started_at: T0,
           result: { action_run_id: 12 },
         }),
         wirePlanStep({
-          stage: 2,
-          step: 1,
+          stage: 1,
+          step: 0,
           action_id: 3,
           status: "failed",
           started_at: T0,
@@ -723,7 +723,7 @@ describe("运行视图", () => {
     const user = userEvent.setup();
     const services = renderPlans("/plans/1?tab=run&run=3");
     await screen.findByRole("region", { name: "运行 #3" });
-    sync(services, wireSync({ plan_runs: [activeRun({ status: "running", current_stage: 1 })] }));
+    sync(services, wireSync({ plan_runs: [activeRun({ status: "running", current_stage: 0 })] }));
 
     expect(await screen.findByText(/计划当前有进行中的运行 #5/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "查看当前运行" }));

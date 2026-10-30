@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本文适用于已实现并通过本机验证的 M0～M8 后端，以及前端脚手架。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排，M8 提供系统设置 API、验收/压测任务与发布产物；M2 真机 CP-1 只读冒烟已通过（错误密码核验与独立面板比对待完成），CP-2 双方联调待验收，CP-3 关机编排评审与 CP-4 首版真机验收未完成。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)、[系统设置](../reference/settings-api.md)；部署见[部署指南](deployment.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
+本文适用于已实现并通过本机验证的 M0～M8 后端，以及前端 WebUI（F0～F9，本机验证）。M4 提供认证/审计/监控 API/SSE/静态 SPA，M5 提供通知，M6 提供规则联动、动作与受控主机，M7 提供关机计划编排，M8 提供系统设置 API、验收/压测任务与发布产物；M2 真机 CP-1 只读冒烟已通过（错误密码核验与独立面板比对待完成），CP-2 双方联调待验收，CP-3 关机编排评审与 CP-4 首版真机验收未完成。主服务会采集启用的数据源并评估启用规则，开发测试只能使用独立临时数据库 + loopback 模拟器，不访问真实 data。模块语义见[采集、状态与历史](collection-state-history.md)，HTTP 契约见[监控](../reference/monitoring-api.md)、[通知](../reference/notifications-api.md)、[规则、动作与受控主机](../reference/rules-actions-hosts-api.md)、[关机计划](../reference/shutdown-plans-api.md)、[系统设置](../reference/settings-api.md)；部署见[部署指南](deployment.md)。新规则默认 dry-run，联动需要显式选择动作和通知渠道。
 
 ## 1. 工具链与工作目录
 
@@ -35,7 +35,7 @@ cd backend
 mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden
 ```
 
-默认监听 `127.0.0.1:8080`。后端创建数据目录、获取独占文件锁、加载主密钥、迁移 SQLite，校验 Profile/渠道/动作/计划/规则配置并装配服务，恢复状态/历史后自动采集启用源，然后开放 `/healthz`、`/api/v1` 和静态 SPA。空数据库不会连接 UPS；已有启用源和规则会运行。通知队列不在启动时重放；未完成动作标为 unknown，规则保留已消费边沿；未结束的关机计划运行按 `on_restart` 继续或终止，中断时执行中的步骤记为 unknown 且不重放。直接 `go run` 未构建 embed dist 时 WebUI 返回 503；`mise run backend:build` 构建并嵌入当前前端占位页，不代表业务 UI 已完成。离线映射契约见 [Profile 与归一化](profiles.md)。
+默认监听 `127.0.0.1:8080`。后端创建数据目录、获取独占文件锁、加载主密钥、迁移 SQLite，校验 Profile/渠道/动作/计划/规则配置并装配服务，恢复状态/历史后自动采集启用源，然后开放 `/healthz`、`/api/v1` 和静态 SPA。空数据库不会连接 UPS；已有启用源和规则会运行。通知队列不在启动时重放；未完成动作标为 unknown，规则保留已消费边沿；未结束的关机计划运行按 `on_restart` 继续或终止，中断时执行中的步骤记为 unknown 且不重放。直接 `go run` 未构建 embed dist 时 WebUI 返回 503；`mise run backend:build` 构建并嵌入当前前端（`frontend/dist`）。离线映射契约见 [Profile 与归一化](profiles.md)。
 
 ### 启动配置
 
@@ -83,7 +83,7 @@ mise x -- go run ./cmd/ups-warden --data-dir /path/to/temporary/ups-warden --lis
 | `POST /healthz` | HTTP 405；当前方法路由不接受 POST |
 | `/api/v1/...` | 已注册 M4 监控/管理、M5 通知、M6 规则/动作/主机与 M7 关机计划 API；除初始化状态/初始化/登录外均需管理员会话，未知 API 也先认证、不回退 SPA |
 
-健康检查无需鉴权，只证明进程能处理 HTTP 请求，**不表示 UPS 连通或业务就绪**。占位前端没有调用它；需要单独检查。
+健康检查无需鉴权，只证明进程能处理 HTTP 请求，**不表示 UPS 连通或业务就绪**。前端不调用它，需要单独检查。
 
 启动后端后，可在另一终端访问本机服务（这不是 UPS 网卡地址）：
 
@@ -110,7 +110,7 @@ cd frontend
 mise x -- pnpm dev
 ```
 
-浏览器打开开发服务器在终端输出的地址。当前 [App.tsx](../../frontend/src/App.tsx) 只渲染项目名称和“业务页面尚未实现”的提示，没有设备管理或实时状态功能。
+浏览器打开开发服务器在终端输出的地址。首次访问会进入初始化页（`/setup`，需要后端启动时在 stderr 打印的 setup token），之后是登录页与各业务页面；未登录访问任意页面会跳到登录并保留返回路径。路由、目录结构与设计偏差见[前端开发计划](../planning/frontend-plan.md)。联调用 loopback 模拟器和临时数据目录（见 upssim 技能），不要连接含真实设备配置的 `data/`。
 
 [vite.config.ts](../../frontend/vite.config.ts) 为开发服务器配置了 `/api` 和 `/healthz` 代理，默认目标为 `http://127.0.0.1:8080`。`UPS_WARDEN_BACKEND` 在启动开发服务器时读取；未设置时使用默认目标，**空字符串不会回退默认值**，不要设置为空。
 
@@ -131,7 +131,7 @@ mise run backend:check
 mise run backend:build
 ```
 
-`backend:check` 使用 Bash / Git Bash，依次检查 `gofmt -l .`（有输出即失败）、`go vet ./...`、`go test ./...`。`backend:build` 依赖 `webui:build`，先执行 `pnpm --dir frontend build`，再由 `scripts/build-webui.mjs` 校验并安全复制产物至 `backend/internal/webui/dist`，保留占位文件、拒绝符号链接/隐藏文件/特殊文件；当前 index、favicon 与 JS/CSS 共 4 文件。随后 `CGO_ENABLED=0` 构建含 embed SPA 的本机二进制，输出 `.cache/build/`（Windows 为 `ups-warden.exe`）；dist 产物不提交。
+`backend:check` 使用 Bash / Git Bash，依次检查 `gofmt -l .`（有输出即失败）、`go vet ./...`、`go test ./...`。`backend:build` 依赖 `webui:build`，先执行 `pnpm --dir frontend build`，再由 `scripts/build-webui.mjs` 校验并安全复制产物至 `backend/internal/webui/dist`，保留占位文件、拒绝符号链接/隐藏文件/特殊文件；当前 index、favicon 与各 1 个 JS / CSS 共 4 文件（单个 JS 约 690 kB，未做代码拆分）。随后 `CGO_ENABLED=0` 构建含 embed SPA 的本机二进制，输出 `.cache/build/`（Windows 为 `ups-warden.exe`）；dist 产物不提交。
 
 需要单独运行时，在 **`backend/`** 执行：
 
@@ -179,7 +179,7 @@ mise x -- pnpm build
 ```
 
 - `check` 调用 `vp check`，覆盖格式、lint 与配置启用的类型检查。
-- `test` 调用 `vp test run`；现有 [App.test.tsx](../../frontend/src/App.test.tsx) 使用服务端渲染检查项目名称，不是浏览器端到端测试。
+- `test` 调用 `vp test run`；测试环境为 happy-dom，覆盖纯函数、API 构造函数、SSE reducer、设计 token 对比度（[tokens.test.ts](../../frontend/src/styles/tokens.test.ts)）以及各页面的组件测试；不是浏览器端到端测试（E2E 为 P1）。
 - `build` 执行 `tsc -b && vp build`，产物位于 `frontend/dist/`；单独 pnpm build 不复制/嵌入，根目录 `mise run webui:build` 完成安全复制，`mise run backend:build` 再构建内嵌二进制。
 - `backend:release` 输出 linux/amd64、linux/arm64、windows/amd64 三个内嵌 WebUI 的二进制到 `.cache/build/release/`。当前没有文档构建或专用链接检查脚本；仅修改文档时核对路径、相对链接、参数和示例，不为验证文档访问真实设备。
 
@@ -191,6 +191,6 @@ mise x -- pnpm build
 | 后端无法启动 | 查看 stderr 或日志文件；检查端口、配置、目录权限、是否有另一实例持锁，以及主密钥和数据库是否完整 |
 | 前端代理报连接错误 | 确认后端已启动，检查 `UPS_WARDEN_BACKEND` 是否与 `-listen` 一致且非空 |
 | `/api/v1` 返回 401/403/404 | 检查完整路由、会话 Cookie、CSRF 与 Origin；未知 API 不回退 SPA，健康检查不代表已登录 |
-| 后端根路径返回 503 提示页 | embed dist 未构建；在根目录执行 `mise run backend:build`，或单独启动前端开发服务器；构建后仍仅为占位页 |
+| 后端根路径返回 503 提示页 | embed dist 未构建；在根目录执行 `mise run backend:build`，或单独启动前端开发服务器；构建后托管当前前端 |
 
 完整设备安全规则见 [AGENTS.md](../../AGENTS.md)。自动化测试只用临时目录、回环服务、模拟器或脱敏录制数据，不需要真实 UPS。实际设备地址、community、密码和未脱敏数据不得写入文档或 Git 跟踪文件；本地敏感数据统一放仓库根目录 `/data/`（已在 [.gitignore](../../.gitignore) 中忽略）。额外忽略 `backend/data/` 仅防止误用默认目录时泄漏，不改变推荐位置。

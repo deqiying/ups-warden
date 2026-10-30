@@ -8,7 +8,12 @@ import { Badge, Banner, Button, List, Pill, Ring, Row, Spinner } from "../../com
 import { Icon } from "../../icons/Icon.tsx";
 import { useLiveStale, useNow } from "../../live/hooks.ts";
 import { clockText } from "../../model/format.ts";
-import { countdownFraction, countdownRemaining, stageCount } from "../../model/plan.ts";
+import {
+  countdownFraction,
+  countdownRemaining,
+  stageCount,
+  stageNumber,
+} from "../../model/plan.ts";
 import { formatFullDateTime, formatTime } from "../../model/time.ts";
 import {
   ACTION_TYPE_COLORS,
@@ -66,8 +71,8 @@ export function RunView({ run, actions, hosts, devices, timeZone }: RunViewProps
                 dot={active}
                 breathe={run.status === "countdown"}
               >
-                {run.status === "running" && run.current_stage > 0
-                  ? `执行中 · 阶段 ${run.current_stage} / ${stageCount(run)}`
+                {run.status === "running"
+                  ? `执行中 · 阶段 ${stageNumber(run.current_stage)} / ${stageCount(run)}`
                   : planRunStatusText(run)}
               </Pill>
               {run.dry_run && active ? <Badge tone="indigo">Dry-run</Badge> : null}
@@ -137,9 +142,8 @@ function heroTitle(run: PlanRun): string {
     case "countdown":
       return `「${run.plan_name}」即将开始`;
     case "running":
-      return run.current_stage > 0
-        ? `正在执行阶段 ${run.current_stage}`
-        : `「${run.plan_name}」执行中`;
+      // current_stage 为从 0 开始的阶段下标（见 model/plan.ts），显示时加 1。
+      return `正在执行阶段 ${stageNumber(run.current_stage)}`;
     case "completed":
       return run.dry_run ? "Dry-run 预演已完成" : "全部步骤已结束";
     case "completed_with_errors":
@@ -260,14 +264,14 @@ function RunStageCard({
           ) : node === "warn" ? (
             <Icon name="alert" />
           ) : (
-            stage.stage
+            stageNumber(stage.stage)
           )}
         </span>
       </div>
       <div className="pl-stage-body">
-        <section className="card pl-stage-card" aria-label={`阶段 ${stage.stage}`}>
+        <section className="card pl-stage-card" aria-label={`阶段 ${stageNumber(stage.stage)}`}>
           <div className="pl-stage-head">
-            <h3>阶段 {stage.stage}</h3>
+            <h3>阶段 {stageNumber(stage.stage)}</h3>
             <span className="pl-timing">{timing}</span>
           </div>
           <List hasIcons flat className="pl-steps">

@@ -4,12 +4,12 @@
 
 ## 当前状态
 
-后端 **M0～M8 已实现并通过本机验证**；M6 提供规则、通知联动、HTTP/脚本/SSH 动作、受控主机与执行记录，M7 提供关机计划编排、取消/市电恢复、停电周期幂等、重启恢复与 SSE 进度，M8 提供系统设置 API、AC 自动化套件与 32/100 台压测、优雅关闭与 panic 隔离、三平台交叉编译与 Docker/systemd 部署示例，验证证据见[开发计划](planning/backend-plan.md)。M2 真机检查点 CP-1 的三协议只读冒烟已于 2026-10-27 通过，错误密码核验与独立面板比对待完成；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排评审未完成；CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证。前端仍为脚手架、无业务页面。自动联动需要显式配置规则与动作，默认 dry-run；本机验证不代替真实设备、渠道或主机验收。
+后端 **M0～M8 已实现并通过本机验证**；M6 提供规则、通知联动、HTTP/脚本/SSH 动作、受控主机与执行记录，M7 提供关机计划编排、取消/市电恢复、停电周期幂等、重启恢复与 SSE 进度，M8 提供系统设置 API、AC 自动化套件与 32/100 台压测、优雅关闭与 panic 隔离、三平台交叉编译与 Docker/systemd 部署示例，验证证据见[开发计划](planning/backend-plan.md)。M2 真机检查点 CP-1 的三协议只读冒烟已于 2026-10-27 通过，错误密码核验与独立面板比对待完成；CP-2 后端契约已交付，双方联调待验收；CP-3 关机编排评审未完成；CP-4 首版真机验收未完成；Docker 镜像与 Linux 实机运行未验证。前端 F0～F9 已实现（初始化/登录、总览、设备与 Profile、告警与事件、规则、关机计划、主机与动作、通知、设置与审计），已通过本机单元/组件测试、内嵌构建与模拟器 + 浏览器走查；双方联调（CP-2）、CP-3 评审与 CP-4 首版真机验收仍待完成，见[前端开发计划](planning/frontend-plan.md)。自动联动需要显式配置规则与动作，默认 dry-run；本机验证不代替真实设备、渠道或主机验收。
 
 | 模块 | 已有实现 | 尚未实现 |
 |---|---|---|
 | 后端 | M0～M3 基础设施、统一模型、Profile/归一化、只读驱动、采集/状态/事件/历史；M4 认证、API、审计、SSE；M5 通知；M6 规则、通知联动、动作、主机及执行日志；M7 关机计划编排；M8 系统设置 API、优雅关闭与 panic 隔离；`GET /healthz` | — |
-| 前端 | React 占位页、开发代理、检查与测试脚本 | 初始化/登录、总览、设备、规则、设置等业务页面及 API 调用 |
+| 前端 | F0～F9：设计系统、API 客户端与 SSE 实时存储、初始化/登录、总览、设备与 Profile、告警与事件、规则、关机计划、主机与动作、通知、设置与审计页面；开发代理、检查与测试脚本 | P1：English 界面、Profile 编辑器、E2E、角色界面等（见[前端开发计划](planning/frontend-plan.md)第 11 节）；双方联调与真机验收未完成 |
 | 构建与运行 | mise 工具链及仓库内缓存；`backend:check`；`webui:build`；`backend:build` 内嵌静态 SPA；`backend:release` 三平台交叉编译与版本注入；`backend:acceptance`、`backend:load`；Dockerfile、compose 与 systemd 示例 | Docker 镜像构建与 Linux 实机运行验证 |
 
 现状依据与具体运行方式集中在[开发指南](guides/development.md)。
@@ -32,7 +32,7 @@
 | 了解功能目标、优先级、字段和验收要求 | [需求文档](planning/requirements.md) | v0.3 草案；已确认项与待确认项按正文区分 |
 | 理解架构边界、技术选择和放弃的方案 | [后端实现方案](../.agents/notes/proposed/architecture/2026-10-11-backend-design.md) | 整体仍为 proposed；M0～M8 代码已落地，真机与评审检查点未完成 |
 | 查看开发顺序、交付条件和外部依赖 | [后端开发计划](planning/backend-plan.md) | M0/M1/M3/M5/M6/M7/M8 已完成本机验证；M2 的 CP-1 只读冒烟通过、剩余项待完成；M4 实现/CP-2 联调待验收；M7 待 CP-3；M8 待 CP-4 |
-| 查看前端开发顺序、技术方案、契约缺口与待确认事项 | [前端开发计划](planning/frontend-plan.md) | v0.1 草案，待 FCP-0 评审；尚未开始实现 |
+| 查看前端开发顺序、技术方案、契约缺口与待确认事项 | [前端开发计划](planning/frontend-plan.md) | v0.2；F0～F9 已实现并通过本机验证，含 F9 走查记录与设计偏差登记；CP-2/CP-3/CP-4 待完成 |
 | 查阅 ET1K 字段样本、协议限制和事故证据 | [协议支持探测报告](reference/protocols/et1k-probe-report.md) | 2026-10-11 历史记录；新采样证据见 Profile 指南与 fixture 说明 |
 | 评审前端界面的视觉与交互设计 | [界面效果图](design/index.html)、[设计说明](design/README.md) | 按 M4～M8 契约设计的静态 HTML 效果图与设计规范，不是 `frontend/` 中的已实现页面 |
 | 查询协作、缓存与设备安全规则 | [AGENTS.md](../AGENTS.md) | 项目强制约束 |

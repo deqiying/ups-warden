@@ -2,7 +2,7 @@
 
 [返回文档导航](../README.md)
 
-本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化本身不访问设备。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；M3 主服务已接入[采集、状态与历史](collection-state-history.md)，启动会采集数据库中启用的数据源。M4 已开放设备与 Profile 管理 HTTP API，完整路由与请求格式见[监控 API 与 SSE 契约](../reference/monitoring-api.md)；CP-2 双方联调待验收，前端无业务页面。
+本指南说明 `backend/internal/model`、`profile` 与 `normalize` 的离线契约。Profile 解析、读计划和归一化本身不访问设备。M2 驱动可消费读计划，见[协议驱动与本机模拟器](protocol-drivers.md)；M3 主服务已接入[采集、状态与历史](collection-state-history.md)，启动会采集数据库中启用的数据源。M4 已开放设备与 Profile 管理 HTTP API，完整路由与请求格式见[监控 API 与 SSE 契约](../reference/monitoring-api.md)；CP-2 双方联调待验收；前端提供 Profile 列表-详情、导入 / 导出 / 复制页面（无编辑器与校准视图，为 P1）。
 
 ## 内置 Profile
 

@@ -23,9 +23,17 @@ export function countdownFraction(run: PlanRun, nowMs: number): number | null {
   return Math.min(1, Math.max(0, (until - nowMs) / (until - start)));
 }
 
+/**
+ * 阶段序号约定：后端的 `steps[].stage` 与 `current_stage` 都是从 0 开始的阶段下标
+ * （current_stage 在倒计时 / 尚未执行时同为 0，需结合 status 判断），界面一律显示为「阶段 n+1」。
+ */
+export function stageNumber(stage: number): number {
+  return stage + 1;
+}
+
 /** 由 steps 推导的阶段数（Q-C5）；没有步骤时为 0。 */
 export function stageCount(run: PlanRun): number {
-  return run.steps.reduce((max, s) => Math.max(max, s.stage), 0);
+  return run.steps.length === 0 ? 0 : run.steps.reduce((max, s) => Math.max(max, s.stage), 0) + 1;
 }
 
 const DONE_STEP = new Set(["sent", "offline", "failed", "cancelled", "unknown"]);
@@ -34,8 +42,10 @@ const DONE_STEP = new Set(["sent", "offline", "failed", "cancelled", "unknown"])
 export function runProgressText(run: PlanRun): string {
   const parts = [PLAN_RUN_STATUS_LABELS[run.status] ?? run.status];
   const stages = stageCount(run);
-  if (run.status === "running" && run.current_stage > 0) {
-    parts.push(stages > 0 ? `阶段 ${run.current_stage} / ${stages}` : `阶段 ${run.current_stage}`);
+  // 倒计时中的 current_stage 为 0 不代表已进入第 1 阶段，只有执行中才显示阶段进度。
+  if (run.status === "running") {
+    const now = stageNumber(run.current_stage);
+    parts.push(stages > 0 ? `阶段 ${now} / ${stages}` : `阶段 ${now}`);
   }
   if (run.steps.length > 0) {
     const done = run.steps.filter((s) => DONE_STEP.has(s.status)).length;

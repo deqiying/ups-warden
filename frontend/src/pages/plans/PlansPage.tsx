@@ -29,7 +29,7 @@ import {
 import { Page } from "../../layout/Page.tsx";
 import { useLive, useNow } from "../../live/hooks.ts";
 import { clockText } from "../../model/format.ts";
-import { countdownRemaining, stageCount } from "../../model/plan.ts";
+import { countdownRemaining, stageCount, stageNumber } from "../../model/plan.ts";
 import { PlanEditor } from "./PlanEditor.tsx";
 import { PlanRunsTable } from "./PlanRunsTable.tsx";
 import { RunPlanDialog } from "./RunPlanDialog.tsx";
@@ -200,7 +200,9 @@ function LiveRunBadge({ run }: { run: PlanRun }) {
   return (
     <Badge tone={run.dry_run ? "indigo" : "blue"}>
       {dry}执行中
-      {run.current_stage > 0 ? ` · 阶段 ${run.current_stage} / ${stageCount(run)}` : ""}
+      {run.status === "running"
+        ? ` · 阶段 ${stageNumber(run.current_stage)} / ${stageCount(run)}`
+        : ""}
     </Badge>
   );
 }

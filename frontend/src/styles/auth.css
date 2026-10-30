@@ -127,7 +127,7 @@
   place-items: center;
   cursor: pointer;
   color: #fff;
-  background: var(--accent);
+  background: var(--accent-solid);
   transition:
     transform var(--dur-press) ease-out,
     opacity var(--dur-quick);
