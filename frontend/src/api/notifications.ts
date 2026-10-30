@@ -88,7 +88,7 @@ export interface ChannelDraft {
 
 // Header 规则镜像后端 validHeaders：token 字符、禁用名、大小写不敏感去重。
 const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
-const FORBIDDEN_HEADERS = new Set([
+const FORBIDDEN_HEADERS: ReadonlySet<string> = new Set([
   "host",
   "content-length",
   "transfer-encoding",
@@ -105,8 +105,14 @@ function hasControlChar(value: string): boolean {
   return false;
 }
 
-/** 解析 Header 文本；错误信息只含行号与规则，不回显值（值可能是凭据）。 */
-export function parseHeaders(text: string): {
+/**
+ * 解析 Header 文本；错误信息只含行号与规则，不回显值（值可能是凭据）。
+ * `forbidden` 为小写的禁用名集合，默认是 Webhook 渠道的规则；HTTP 动作传入自己的集合。
+ */
+export function parseHeaders(
+  text: string,
+  forbidden: ReadonlySet<string> = FORBIDDEN_HEADERS,
+): {
   headers: Record<string, string>;
   error: string | null;
 } {
@@ -122,7 +128,7 @@ export function parseHeaders(text: string): {
     const value = raw.slice(colon + 1).trim();
     if (!HEADER_NAME.test(name)) return { headers: {}, error: `${at}：Header 名称含非法字符` };
     const key = name.toLowerCase();
-    if (FORBIDDEN_HEADERS.has(key)) return { headers: {}, error: `${at}：不能设置 ${name}` };
+    if (forbidden.has(key)) return { headers: {}, error: `${at}：不能设置 ${name}` };
     if (seen.has(key)) return { headers: {}, error: `${at}：Header 名称重复（不区分大小写）` };
     if (hasControlChar(value)) return { headers: {}, error: `${at}：值含控制字符` };
     seen.add(key);

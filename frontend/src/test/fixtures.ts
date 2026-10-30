@@ -176,3 +176,100 @@ export class FakeEventSource {
     for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 }
+
+// ───────────────────────── F5：主机 / 动作 / 计划 / 执行记录 ─────────────────────────
+
+type HostWire = import("../api/hosts.ts").Host;
+type ActionWire = import("../api/actions.ts").Action;
+type ActionRunWire = import("../api/actions.ts").ActionRun;
+type PlanWire = import("../api/plans.ts").Plan;
+
+/** 已设置密码、指纹未确认的 SSH 主机（NAS）。 */
+export function wireHost(overrides: Partial<HostWire> = {}): HostWire {
+  return {
+    id: 1,
+    name: "NAS-01",
+    address: "nas-01.lan",
+    kind: "nas",
+    conn: { port: 22, username: "admin", auth_method: "password", sudo: false },
+    hostkey_fingerprint: "",
+    online_check: { type: "tcp", port: 22 },
+    password_set: true,
+    private_key_set: false,
+    passphrase_set: false,
+    ...overrides,
+  };
+}
+
+/** SSH 关机命令动作（引用主机 #1）。 */
+export function wireAction(overrides: Partial<ActionWire> = {}): ActionWire {
+  return {
+    id: 1,
+    name: "关闭 NAS",
+    type: "ssh",
+    timeout_s: 30,
+    config: { host_id: 1, command: "poweroff", shutdown: true },
+    url_set: false,
+    headers_set: false,
+    body_template_set: false,
+    ...overrides,
+  };
+}
+
+export function wireActionRun(overrides: Partial<ActionRunWire> = {}): ActionRunWire {
+  return {
+    id: 1,
+    action_id: 1,
+    trigger: { type: "manual", user_id: 1 },
+    dry_run: true,
+    status: "dry_run",
+    started_at: T0,
+    ended_at: T0,
+    exit_code: null,
+    stdout: "",
+    stderr: "",
+    error: "",
+    duration_ms: 3,
+    ...overrides,
+  };
+}
+
+/** 两阶段计划：阶段 0 关闭 NAS（动作 #1），最后阶段为自关机（动作 #2）。 */
+export function wirePlan(overrides: Partial<PlanWire> = {}): PlanWire {
+  return {
+    id: 1,
+    name: "机房关机",
+    countdown_s: 60,
+    on_mains_restored: "cancel_pending",
+    on_restart: "resume",
+    notify_channel_ids: [1],
+    stages: [
+      { delay_s: 0, step_timeout_s: 30, offline_wait_s: 120, steps: [{ action_id: 1 }] },
+      {
+        delay_s: 5,
+        step_timeout_s: 30,
+        offline_wait_s: 0,
+        self_shutdown: true,
+        steps: [{ action_id: 2 }],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+type WirePlanStepWire = import("../api/types.ts").WirePlanStep;
+
+/** 计划运行中的一个步骤（线上格式）；默认是阶段 1 的第 1 步、尚未开始。 */
+export function wirePlanStep(overrides: Partial<WirePlanStepWire> = {}): WirePlanStepWire {
+  return {
+    stage: 1,
+    step: 1,
+    action_id: 1,
+    host_id: null,
+    status: "waiting",
+    started_at: null,
+    ended_at: null,
+    result: null,
+    ...overrides,
+  };
+}

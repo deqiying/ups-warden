@@ -1,0 +1,309 @@
+/*
+ * 主机与动作页样式（迁移自 docs/design/hosts-actions.html 的 <style>）。
+ * 浮层（Sheet / Dialog）渲染在 body 下的 portal 中，因此浮层内用到的类不能限定在 .hosts-actions-page 下，
+ * 统一使用 ha- 前缀；只作用于页面内容的规则才限定 .hosts-actions-page。
+ * 颜色、间距只引用 tokens.css 的变量。
+ */
+
+.ha-tabs-narrow {
+  display: none;
+}
+
+/* ---------- 列表行 ---------- */
+.ha-big-icons {
+  --row-inset: 64px;
+}
+.ha-row .row-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.ha-row .row-icon .i {
+  width: 19px;
+  height: 19px;
+}
+.ha-col-auth {
+  width: 190px;
+  flex: none;
+}
+.ha-col-fp {
+  width: 130px;
+  flex: none;
+}
+.ha-col-online {
+  width: 80px;
+  flex: none;
+}
+.ha-col-last {
+  width: 170px;
+  flex: none;
+  text-align: right;
+}
+/* 行尾操作占固定宽度，保证各列在不同按钮组合下仍然对齐 */
+.ha-col-end {
+  flex: none;
+  min-width: 140px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ha-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 22px 4px 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.ha-group-title:first-of-type {
+  margin-top: 0;
+}
+.ha-group-title .i {
+  width: 15px;
+  height: 15px;
+}
+.ha-group-title .faint {
+  font-weight: 500;
+}
+.ha-guard {
+  margin-bottom: 18px;
+}
+
+/* ---------- 浮层：通用 ---------- */
+.ha-mb {
+  margin-bottom: var(--sp-4);
+}
+.ha-btn-indigo {
+  background: var(--indigo);
+}
+.ha-secret {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ha-secret .input,
+.ha-secret .textarea {
+  flex: 1 1 220px;
+}
+.secret-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+  flex-basis: 100%;
+}
+.secret-state .i {
+  width: 14px;
+  height: 14px;
+  color: var(--green-ink);
+}
+
+/* ---------- 指纹 ---------- */
+.ha-fp-host {
+  gap: 12px;
+  margin: 6px 0 16px;
+}
+.ha-fp-host .row-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.ha-fp-current {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ha-fp-value {
+  font-size: 0.8125rem;
+  word-break: break-all;
+}
+.ha-fp .fp {
+  margin-top: 14px;
+  font: 500 0.9375rem/1.5 var(--font-mono);
+  letter-spacing: 0.01em;
+  word-break: break-all;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+}
+.ha-fp .fp-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.ha-fp .steps-mini {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.ha-fp .steps-mini > div {
+  display: flex;
+  gap: 10px;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+  line-height: 1.45;
+}
+.ha-fp .steps-mini .n {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 600 0.6875rem var(--font-rounded);
+  background: var(--fill);
+  color: var(--label);
+}
+.ha-fp .steps-mini .n.ok {
+  background: var(--green);
+  color: #fff;
+}
+.ha-fp .steps-mini .n .i {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+
+/* ---------- 主机检测 ---------- */
+.ha-tool {
+  align-items: flex-start;
+}
+.ha-tool .code-block {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ---------- 手动执行预览 ---------- */
+.ha-preview {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+}
+.ha-preview .head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--indigo-ink);
+  background: var(--indigo-tint);
+}
+.ha-preview .head .i {
+  width: 14px;
+  height: 14px;
+}
+.ha-preview-body {
+  margin: 0;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  background: var(--fill-3);
+}
+.ha-preview-body > div {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 0.8125rem;
+}
+.ha-preview-body dt {
+  color: var(--label-2);
+}
+.ha-preview-body dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* ---------- 执行记录 ---------- */
+.ha-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ha-runs-card {
+  overflow-x: auto;
+}
+.ha-runs td {
+  vertical-align: top;
+}
+.ha-runs tr.is-open td {
+  background: var(--accent-tint);
+}
+.ha-runs tr.ha-run-detail td {
+  padding: 0 16px 16px;
+  background: var(--accent-tint);
+}
+.ha-link-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--link);
+  cursor: pointer;
+  text-align: left;
+}
+.ha-link-btn:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.ha-run-error {
+  margin: 4px 2px 10px;
+}
+.ha-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ha-detail-grid .code-block {
+  min-height: 64px;
+  background: var(--surface);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.ha-detail-grid .lbl {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--label-2);
+  margin: 0 0 6px 2px;
+}
+.ha-load-more {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+
+/* ---------- 窄屏（≤860px） ---------- */
+@media (max-width: 860px) {
+  .ha-tabs-narrow {
+    display: block;
+    margin-bottom: var(--sp-4);
+  }
+  .ha-col-auth,
+  .ha-col-fp,
+  .ha-col-last,
+  .ha-col-online,
+  .ha-col-hide {
+    display: none;
+  }
+  .ha-col-end {
+    min-width: 0;
+  }
+  .ha-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -47,6 +47,7 @@ import {
 import { formatDateHeading, formatDateTime, formatTime } from "../../model/time.ts";
 import { useLiveClock } from "../monitor/hooks.ts";
 import { CapacityRing, CountdownRing, PowerPill } from "../monitor/shared.tsx";
+import { CancelRunDialog } from "../plans/CancelRunDialog.tsx";
 import "./overview.css";
 
 type DeviceFilter = "all" | "battery" | "attention";
@@ -537,6 +538,7 @@ function DeviceCard({
 
 function PlanRunBody({ run, now, stale }: { run: PlanRun; now: number; stale: boolean }) {
   const remaining = countdownRemaining(run, now);
+  const [cancelOpen, setCancelOpen] = useState(false);
   return (
     <div style={{ minWidth: 0 }}>
       <div className="t-subhead strong hstack wrap gap-1">
@@ -552,7 +554,16 @@ function PlanRunBody({ run, now, stale }: { run: PlanRun; now: number; stale: bo
         <Link className="btn btn-plain btn-sm" to={planRunPath(run)}>
           查看进度
         </Link>
+        {/* 运行列表只含活动运行（countdown / running），因此总能取消。 */}
+        <button
+          type="button"
+          className="btn btn-danger-tinted btn-sm"
+          onClick={() => setCancelOpen(true)}
+        >
+          {run.status === "countdown" ? "取消运行…" : "取消未开始的步骤…"}
+        </button>
       </div>
+      <CancelRunDialog run={run} open={cancelOpen} onClose={() => setCancelOpen(false)} />
     </div>
   );
 }

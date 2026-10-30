@@ -124,8 +124,8 @@ describe("总览（F2-1）", () => {
     );
     // 关联到停电设备的运行只出现在主卡内，不再单独列出。
     expect(screen.queryByRole("region", { name: "关机计划「机房关机」" })).toBeNull();
-    // 取消运行属于 F6，总览不提供。
-    expect(screen.queryByRole("button", { name: /取消/ })).toBeNull();
+    // F6 起总览提供取消入口（倒计时中为「取消运行…」），行为见 plans.test.tsx。
+    expect(within(outage).getByRole("button", { name: "取消运行…" })).toBeTruthy();
   });
 
   it("设备卡中非 good 字段显示「—」而不是 0", async () => {

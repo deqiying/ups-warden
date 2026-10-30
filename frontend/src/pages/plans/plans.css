@@ -1,0 +1,348 @@
+/*
+ * 关机计划页样式（迁移自 docs/design/shutdown-plans.html 的 <style>）。
+ * 统一使用 pl- 前缀；对话框（手动执行、取消运行）只使用全局类，因为浮层渲染在 portal 中。
+ * 颜色、间距只引用 tokens.css 的变量。
+ */
+
+/* ---------- 列表与详情头 ---------- */
+.pl-list .row {
+  align-items: flex-start;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.pl-list .row-icon {
+  margin-top: 1px;
+}
+.pl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.pl-detail {
+  min-width: 0;
+}
+.pl-detail-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* ---------- 计划配置 ---------- */
+.pl-head {
+  padding-bottom: 12px;
+}
+.pl-name-label {
+  display: block;
+  margin: 8px 2px 6px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.pl-name {
+  width: min(100%, 420px);
+}
+.pl-err {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--red-ink);
+}
+.pl-stage-adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-left: 46px;
+}
+.pl-save {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------- 阶段时间线：阶段串行（竖线连接），阶段内步骤并行（同一卡片内并列） ---------- */
+.pl-stages {
+  display: grid;
+  gap: 0;
+}
+.pl-stage {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 14px;
+}
+.pl-rail {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+.pl-stage:not(:last-child) .pl-rail::after {
+  content: "";
+  position: absolute;
+  top: 34px;
+  bottom: 6px;
+  left: 50%;
+  width: 1.5px;
+  transform: translateX(-50%);
+  background: var(--separator-strong);
+  border-radius: 1px;
+}
+.pl-node {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  margin-top: 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font: 600 0.8125rem var(--font-rounded);
+  background: var(--fill);
+  color: var(--label-2);
+}
+.pl-node .i {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.6;
+}
+.pl-node.is-done {
+  background: var(--green);
+  color: #fff;
+}
+.pl-node.is-warn {
+  background: var(--orange);
+  color: #fff;
+}
+.pl-node.is-now {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 5px var(--accent-tint);
+}
+.pl-node.is-self {
+  background: var(--red);
+  color: #fff;
+}
+.pl-node.is-cancelled {
+  background: var(--fill-2);
+  color: var(--label-3);
+}
+.pl-stage-body {
+  padding-bottom: 18px;
+  min-width: 0;
+}
+.pl-stage-card {
+  overflow: hidden;
+}
+.pl-self-card {
+  background: linear-gradient(var(--red-tint), var(--red-tint)), var(--surface);
+}
+.pl-stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 14px 18px 10px;
+}
+.pl-stage-head h3 {
+  font: 600 0.9375rem/1.3 var(--font-text);
+  margin-right: auto;
+}
+.pl-timing {
+  font-size: 0.75rem;
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pl-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 0 18px 12px;
+}
+.pl-param {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.pl-param > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pl-param .i {
+  width: 13px;
+  height: 13px;
+  color: var(--label-3);
+}
+.pl-self-note {
+  padding: 0 18px 12px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.pl-stage-card .pl-steps {
+  border-radius: 0;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+  background: transparent;
+}
+.pl-stage-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  font-size: 0.75rem;
+  color: var(--label-3);
+  box-shadow: inset 0 0.5px 0 var(--separator);
+}
+.pl-stage-err {
+  margin: 0;
+  padding: 0 18px 12px;
+}
+
+/* ---------- 运行 ---------- */
+.pl-run-stale,
+.pl-run-switch {
+  margin-bottom: 14px;
+}
+.pl-run-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 22px 24px;
+}
+.pl-run-main {
+  flex: 1;
+  min-width: 220px;
+}
+.pl-run-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: auto;
+}
+.pl-cd {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.pl-run-icon {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill);
+  color: var(--label-2);
+}
+.pl-run-icon .i {
+  width: 26px;
+  height: 26px;
+}
+.pl-run-icon.is-running {
+  background: var(--accent-tint);
+  color: var(--link);
+}
+.pl-run-icon.is-completed {
+  background: var(--green-tint);
+  color: var(--green);
+}
+.pl-run-icon.is-completed_with_errors,
+.pl-run-icon.is-aborted {
+  background: var(--orange-tint);
+  color: var(--orange);
+}
+.pl-progress {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+}
+.pl-progress span {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--fill);
+}
+.pl-progress .is-done {
+  background: var(--green);
+}
+.pl-progress .is-warn {
+  background: var(--orange);
+}
+.pl-progress .is-now {
+  background: linear-gradient(90deg, var(--accent) 60%, var(--fill) 60%);
+}
+.pl-step-err {
+  overflow-wrap: anywhere;
+}
+.pl-step-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: none;
+}
+
+/* ---------- 运行记录 ---------- */
+.pl-runs-wrap {
+  overflow-x: auto;
+}
+.pl-runs td {
+  white-space: nowrap;
+}
+.pl-runs tr.is-selected td {
+  background: var(--accent-tint);
+}
+.pl-link-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--link);
+  cursor: pointer;
+}
+.pl-link-btn:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.pl-load-more {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+
+@media (max-width: 860px) {
+  /* 窄屏：计划列表叠在详情上方并取消吸顶，保证随时能回到列表 */
+  .pl-col {
+    position: static;
+  }
+  .pl-run-hero {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+  .pl-run-actions {
+    flex-direction: row;
+    margin-left: 0;
+    width: 100%;
+  }
+  .pl-run-actions .btn {
+    flex: 1;
+  }
+  .pl-stage {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 10px;
+  }
+  .pl-node {
+    width: 24px;
+    height: 24px;
+  }
+  .pl-stage-adds {
+    margin-left: 34px;
+  }
+}

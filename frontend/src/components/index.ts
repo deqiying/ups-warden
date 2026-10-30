@@ -1,6 +1,7 @@
 export { Badge, type BadgeProps, type BadgeTone } from "./Badge.tsx";
 export { Banner, type BannerProps, type BannerTone } from "./Banner.tsx";
 export { Button, type ButtonProps, type ButtonVariant } from "./Button.tsx";
+export { ChipSelect, type ChipOption, type ChipSelectProps } from "./ChipSelect.tsx";
 export { Empty, type EmptyProps } from "./Empty.tsx";
 export { FormRow, type FormRowProps } from "./FormRow.tsx";
 export { Input, Textarea, type InputProps, type TextareaProps } from "./Input.tsx";

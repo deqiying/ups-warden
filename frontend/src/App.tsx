@@ -12,10 +12,12 @@ import { LoginPage } from "./pages/auth/LoginPage.tsx";
 import { SetupPage } from "./pages/auth/SetupPage.tsx";
 import { DeviceDetailPage } from "./pages/device/DeviceDetailPage.tsx";
 import { DevicesPage } from "./pages/devices/DevicesPage.tsx";
+import { HostsActionsPage } from "./pages/hosts-actions/HostsActionsPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage.tsx";
 import { OverviewPage } from "./pages/overview/OverviewPage.tsx";
 import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
+import { PlansPage } from "./pages/plans/PlansPage.tsx";
 import { ProfilesPage } from "./pages/profiles/ProfilesPage.tsx";
 import { SessionContext } from "./session/hooks.ts";
 import { RequireAuth } from "./session/RequireAuth.tsx";
@@ -70,12 +72,9 @@ export function AppRoutes() {
           <Route path="alerts" element={<AlertsPage />} />
           <Route path="rules" element={<PlaceholderPage title="规则" milestone="F7" />} />
           <Route path="rules/:id" element={<PlaceholderPage title="规则" milestone="F7" />} />
-          <Route path="plans" element={<PlaceholderPage title="关机计划" milestone="F6" />} />
-          <Route path="plans/:id" element={<PlaceholderPage title="关机计划" milestone="F6" />} />
-          <Route
-            path="hosts-actions"
-            element={<PlaceholderPage title="主机与动作" milestone="F5" />}
-          />
+          <Route path="plans" element={<PlansPage />} />
+          <Route path="plans/:id" element={<PlansPage />} />
+          <Route path="hosts-actions" element={<HostsActionsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<PlaceholderPage title="设置" milestone="F8" />} />
           <Route

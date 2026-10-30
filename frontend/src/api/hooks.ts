@@ -1,5 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
+import { listActions, listScripts, type Action } from "./actions.ts";
 import { getDevice, listAllDevices, listDeviceSources, listSourcesByDevice } from "./devices.ts";
+import { listHosts, type Host } from "./hosts.ts";
+import { channelKeys, listChannels, type Channel } from "./notifications.ts";
+import { listPlans, type Plan } from "./plans.ts";
 import { listProfiles } from "./profiles.ts";
 import { getSettings } from "./settings.ts";
 import type { Device, ProfileSummary, Settings, Source } from "./types.ts";
@@ -20,6 +24,16 @@ export const queryKeys = {
   history: ["history"] as const,
   /** Profile 列表与详情：`[...profiles]`、`[...profiles, key]`。 */
   profiles: ["profiles"] as const,
+  /** 受控主机列表。 */
+  hosts: ["hosts"] as const,
+  /** 动作列表。 */
+  actions: ["actions"] as const,
+  /** 动作执行记录：`[...actionRuns, filters]`。 */
+  actionRuns: ["action-runs"] as const,
+  /** 服务端脚本目录。 */
+  scripts: ["scripts"] as const,
+  /** 关机计划列表。 */
+  plans: ["plans"] as const,
 };
 
 export function useSettings() {
@@ -84,5 +98,46 @@ export function useProfiles() {
     queryKey: queryKeys.profiles,
     queryFn: ({ signal }) => listProfiles(signal),
     staleTime: 60_000,
+  });
+}
+
+/** 全部受控主机；写入后由页面主动失效。 */
+export function useHosts() {
+  return useQuery<Host[]>({
+    queryKey: queryKeys.hosts,
+    queryFn: ({ signal }) => listHosts(signal),
+  });
+}
+
+/** 全部动作（含 plan / notify）；写入后由页面主动失效。 */
+export function useActions() {
+  return useQuery<Action[]>({
+    queryKey: queryKeys.actions,
+    queryFn: ({ signal }) => listActions(signal),
+  });
+}
+
+/** 全部关机计划。 */
+export function usePlans() {
+  return useQuery<Plan[]>({
+    queryKey: queryKeys.plans,
+    queryFn: ({ signal }) => listPlans(signal),
+  });
+}
+
+/** 脚本目录由管理员在服务端维护，API 不能修改；打开选择器时读取即可。 */
+export function useScripts(enabled = true) {
+  return useQuery<string[]>({
+    queryKey: queryKeys.scripts,
+    queryFn: ({ signal }) => listScripts(signal),
+    enabled,
+  });
+}
+
+/** 全部通知渠道（与通知页共用查询键）。 */
+export function useChannels() {
+  return useQuery<Channel[]>({
+    queryKey: [...channelKeys.all, "list"],
+    queryFn: ({ signal }) => listChannels(signal),
   });
 }
