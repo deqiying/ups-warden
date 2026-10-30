@@ -48,6 +48,25 @@ export const EVENT_TYPE_GROUPS: readonly { label: string; types: readonly string
   { label: "通讯", types: ["comm_lost", "comm_restored"] },
 ];
 
+/** 统一模型事件的严重度：镜像 backend/internal/model EventSeverity（规则事件选择器使用）。 */
+export const EVENT_SEVERITY: Readonly<Record<string, Severity>> = {
+  mains_lost: "critical",
+  battery_low: "critical",
+  battery_low_cleared: "critical",
+  battery_depleted: "critical",
+  ups_fault: "critical",
+  ups_shutting_down: "critical",
+  comm_lost: "warning",
+  comm_restored: "warning",
+  overload: "warning",
+  overload_cleared: "warning",
+  on_bypass: "warning",
+  bypass_cleared: "warning",
+  temperature_high: "warning",
+  mains_restored: "info",
+  self_test_result: "info",
+};
+
 export const SEVERITY_PILL_TONE: Readonly<Record<Severity, PillTone>> = {
   critical: "red",
   warning: "orange",

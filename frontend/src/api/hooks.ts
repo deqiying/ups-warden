@@ -5,6 +5,7 @@ import { listHosts, type Host } from "./hosts.ts";
 import { channelKeys, listChannels, type Channel } from "./notifications.ts";
 import { listPlans, type Plan } from "./plans.ts";
 import { listProfiles } from "./profiles.ts";
+import { listRules, listRuleTemplates, type Rule, type RuleTemplate } from "./rules.ts";
 import { getSettings } from "./settings.ts";
 import type { Device, ProfileSummary, Settings, Source } from "./types.ts";
 
@@ -34,6 +35,12 @@ export const queryKeys = {
   scripts: ["scripts"] as const,
   /** 关机计划列表。 */
   plans: ["plans"] as const,
+  /** 规则列表。 */
+  rules: ["rules"] as const,
+  /** 规则评估日志：`[...ruleLogs, { rule_id }]`。 */
+  ruleLogs: ["rule-logs"] as const,
+  /** 规则模板（后端内置，不随配置变化）。 */
+  ruleTemplates: ["rule-templates"] as const,
 };
 
 export function useSettings() {
@@ -122,6 +129,24 @@ export function usePlans() {
   return useQuery<Plan[]>({
     queryKey: queryKeys.plans,
     queryFn: ({ signal }) => listPlans(signal),
+  });
+}
+
+/** 全部规则；写入后由规则页主动失效。 */
+export function useRules() {
+  return useQuery<Rule[]>({
+    queryKey: queryKeys.rules,
+    queryFn: ({ signal }) => listRules(signal),
+  });
+}
+
+/** 规则模板为后端常量，读取一次即可。 */
+export function useRuleTemplates(enabled = true) {
+  return useQuery<RuleTemplate[]>({
+    queryKey: queryKeys.ruleTemplates,
+    queryFn: ({ signal }) => listRuleTemplates(signal),
+    enabled,
+    staleTime: Infinity,
   });
 }
 

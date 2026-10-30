@@ -1,0 +1,299 @@
+/*
+ * 规则页样式（迁移自 docs/design/rules.html 的 <style>）。
+ * 统一使用 ru- 前缀；对话框与 sheet 渲染在 portal 中，只依赖全局类或 ru- 类。
+ * 颜色、间距只引用 tokens.css 的变量。
+ */
+
+/* ---------- 列表 ---------- */
+.ru-list .row {
+  align-items: flex-start;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.ru-list .row-icon {
+  margin-top: 1px;
+}
+.ru-list .is-off .row-main {
+  opacity: 0.55;
+}
+.ru-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.ru-detail {
+  min-width: 0;
+}
+
+/* ---------- 编辑器头部 ---------- */
+.ru-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.ru-head-main {
+  flex: 1;
+  min-width: 0;
+}
+.ru-name-label {
+  display: block;
+  margin: 8px 2px 6px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.ru-name {
+  width: min(100%, 420px);
+}
+.ru-toggles {
+  display: flex;
+  gap: 20px;
+  flex: none;
+}
+.ru-toggles label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.ru-mode {
+  margin: 0 22px 18px;
+}
+.ru-err {
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--red-ink);
+}
+.ru-save-err {
+  margin: 0 22px 12px;
+}
+
+/* ---------- 分区 ---------- */
+.ru-sec {
+  padding: 20px 22px;
+  box-shadow: inset 0 0.5px 0 var(--separator-strong);
+}
+.ru-sec-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.ru-sec-title h3 {
+  font: 600 0.9375rem/1.3 var(--font-text);
+}
+.ru-cooldown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ru-save {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.ru-delete {
+  margin-right: auto;
+}
+
+/* ---------- 事件选择 ---------- */
+.ru-events {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ru-ev {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  box-shadow: inset 0 0 0 0.5px var(--separator-strong);
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--label);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-quick);
+}
+.ru-ev.is-on {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ru-ev:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.ru-ev-sev {
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+
+/* ---------- 条件构建器：OR（组之间）/ AND（组内）两层，与契约 any_of/all_of 一一对应 ---------- */
+.ru-groups-note {
+  margin: 0 2px 12px;
+}
+.ru-group {
+  border-radius: 14px;
+  background: var(--fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+  padding: 12px;
+}
+.ru-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 10px;
+  font-size: 0.8125rem;
+  color: var(--label-2);
+}
+.ru-group-head b {
+  color: var(--label);
+}
+.ru-cond-wrap + .ru-cond-wrap {
+  margin-top: 6px;
+}
+.ru-cond {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 92px minmax(0, 1.2fr) auto 28px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+.ru-cond .select,
+.ru-cond select,
+.ru-cond .input {
+  width: 100%;
+  min-width: 0;
+}
+.ru-num {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ru-unit {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--label-2);
+}
+.ru-for {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--label-2);
+  white-space: nowrap;
+}
+.ru-cond-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 4px 10px 0;
+  font-size: 0.75rem;
+}
+.ru-cond-foot .ru-err {
+  margin-top: 0;
+  font-size: 0.75rem;
+}
+.ru-add {
+  margin: 10px 0 0;
+}
+.ru-or {
+  margin: 10px 0;
+}
+
+/* ---------- 动作 ---------- */
+.ru-acts .row {
+  min-height: 52px;
+}
+.ru-acts-empty {
+  margin: 0 2px 8px;
+}
+.ru-act-add {
+  margin-top: 10px;
+  max-width: 360px;
+}
+.ru-plan-hint {
+  margin-bottom: 12px;
+}
+
+/* ---------- 模板 ---------- */
+.ru-tpl .row {
+  align-items: flex-start;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.ru-tpl-check {
+  margin-top: 2px;
+}
+.ru-tpl-warn {
+  padding: 10px 12px;
+}
+
+/* ---------- 评估日志 ---------- */
+.ru-logs-body {
+  padding-top: 0;
+}
+.ru-logs-wrap {
+  overflow-x: auto;
+}
+.ru-logs td {
+  vertical-align: top;
+}
+.ru-run-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ru-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+@media (max-width: 860px) {
+  /* 窄屏：规则列表叠在编辑器上方并取消吸顶，保证随时能回到列表 */
+  .ru-col {
+    position: static;
+  }
+  .ru-head {
+    flex-direction: column;
+  }
+  .ru-toggles label {
+    align-items: flex-start;
+  }
+  .ru-cond {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px;
+  }
+  .ru-cond .ru-field {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+  .ru-cond .ru-rm {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .ru-cond .ru-for {
+    grid-column: 1 / 3;
+  }
+  .ru-events {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ru-sec {
+    padding: 16px;
+  }
+  .ru-mode {
+    margin: 0 16px 16px;
+  }
+}

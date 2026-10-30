@@ -16,9 +16,10 @@ import { HostsActionsPage } from "./pages/hosts-actions/HostsActionsPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
 import { NotificationsPage } from "./pages/notifications/NotificationsPage.tsx";
 import { OverviewPage } from "./pages/overview/OverviewPage.tsx";
-import { PlaceholderPage } from "./pages/PlaceholderPage.tsx";
 import { PlansPage } from "./pages/plans/PlansPage.tsx";
 import { ProfilesPage } from "./pages/profiles/ProfilesPage.tsx";
+import { RulesPage } from "./pages/rules/RulesPage.tsx";
+import { SettingsPage } from "./pages/settings/SettingsPage.tsx";
 import { SessionContext } from "./session/hooks.ts";
 import { RequireAuth } from "./session/RequireAuth.tsx";
 
@@ -70,17 +71,14 @@ export function AppRoutes() {
           <Route path="devices/new" element={<DevicesPage />} />
           <Route path="devices/:id" element={<DeviceDetailPage />} />
           <Route path="alerts" element={<AlertsPage />} />
-          <Route path="rules" element={<PlaceholderPage title="规则" milestone="F7" />} />
-          <Route path="rules/:id" element={<PlaceholderPage title="规则" milestone="F7" />} />
+          <Route path="rules" element={<RulesPage />} />
+          <Route path="rules/:id" element={<RulesPage />} />
           <Route path="plans" element={<PlansPage />} />
           <Route path="plans/:id" element={<PlansPage />} />
           <Route path="hosts-actions" element={<HostsActionsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="settings" element={<PlaceholderPage title="设置" milestone="F8" />} />
-          <Route
-            path="settings/:section"
-            element={<PlaceholderPage title="设置" milestone="F8" />}
-          />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/:section" element={<SettingsPage />} />
           <Route path="profiles" element={<ProfilesPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

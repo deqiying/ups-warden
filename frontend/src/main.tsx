@@ -8,6 +8,10 @@ import "./styles/app.css";
 import "./styles/auth.css";
 import App from "./App.tsx";
 import { createAppServices } from "./app/services.ts";
+import { initTheme } from "./pages/settings/theme.ts";
+
+// 外观主题是本机偏好（localStorage），首屏渲染前恢复，避免先按系统主题闪一下。
+initTheme();
 
 const root = document.getElementById("root");
 if (!root) {
